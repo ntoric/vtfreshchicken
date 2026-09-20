@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-100 text-slate-900 antialiased;
+}
+
+/* Shimmer effect for skeleton loaders */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 40%,
+    #f1f5f9 80%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+/* Fade-in for content after loading */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
+
+/* ---- CKEditor content restoration ---- */
+/* Tailwind's preflight resets headings, paragraphs, lists, etc. to inherit/no styles.
+   CKEditor injects its own CSS at runtime via style-loader, but Tailwind's static CSS
+   in <head> can override the injected styles due to specificity. These rules restore
+   proper content styling inside the CKEditor editable area (.ck-content). */
+.ck-content h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content h2 { font-size: 1.5em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content h3 { font-size: 1.17em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content h4 { font-size: 1em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content h5 { font-size: 0.83em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content h6 { font-size: 0.67em; font-weight: 700; margin: 0.6em 0; line-height: 1.3; }
+.ck-content p { margin: 0.6em 0; }
+.ck-content ul { list-style: disc; padding-left: 2em; margin: 0.6em 0; }
+.ck-content ol { list-style: decimal; padding-left: 2em; margin: 0.6em 0; }
+.ck-content li { margin: 0.2em 0; }
+.ck-content blockquote { border-left: 4px solid #d1d5db; padding-left: 1em; margin: 0.6em 0; color: #6b7280; font-style: italic; }
+.ck-content a { color: #4f46e5; text-decoration: underline; }
+.ck-content pre { background: #f3f4f6; padding: 0.8em; border-radius: 6px; overflow-x: auto; margin: 0.6em 0; }
+.ck-content code { background: #f3f4f6; padding: 0.15em 0.3em; border-radius: 3px; font-family: monospace; }
+.ck-content pre code { background: none; padding: 0; }
+.ck-content table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }
+.ck-content table td, .ck-content table th { border: 1px solid #d1d5db; padding: 0.4em 0.6em; }
+.ck-content table th { background: #f9fafb; font-weight: 700; }
+.ck-content img { max-width: 100%; height: auto; }
+.ck-content figure { margin: 0.6em 0; text-align: center; }
+.ck-content figcaption { font-size: 0.8em; color: #6b7280; margin-top: 0.3em; }
+
+/* Ensure CKEditor toolbar renders above other content */
+.ck-toolbar { z-index: 10; }
+
+/* ===== Page Builder 3D Motion & Animations ===== */
+
+/* Block entrance — staggered fade-in with 3D perspective */
+@keyframes pb-block-enter {
+  0% { opacity: 0; transform: perspective(800px) translateY(20px) rotateX(-8deg); }
+  100% { opacity: 1; transform: perspective(800px) translateY(0) rotateX(0); }
+}
+.pb-block-enter { animation: pb-block-enter 0.5s ease-out both; }
+
+/* Palette button hover 3D lift */
+@keyframes pb-palette-icon-float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-3px) rotate(-5deg); }
+}
+.pb-palette-icon:hover svg { animation: pb-palette-icon-float 1.5s ease-in-out infinite; }
+
+/* Properties panel slide-in from right */
+@keyframes pb-panel-slide-in {
+  0% { opacity: 0; transform: translateX(30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.pb-panel-slide-in { animation: pb-panel-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Modal scale-in */
+@keyframes pb-modal-scale-in {
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pb-modal-scale-in { animation: pb-modal-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Empty state floating */
+@keyframes pb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.pb-float { animation: pb-float 3s ease-in-out infinite; }
+
+/* Empty state pulse ring */
+@keyframes pb-pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.pb-pulse-ring { animation: pb-pulse-ring 2s ease-out infinite; }
+
+/* Canvas animated grid background */
+@keyframes pb-grid-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+.pb-canvas-bg {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: pb-grid-drift 20s linear infinite;
+}
+
+/* Block glare sweep on hover */
+@keyframes pb-glare-sweep {
+  0% { transform: translateX(-150%) skewX(-15deg); }
+  100% { transform: translateX(250%) skewX(-15deg); }
+}
+.pb-glare {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.pb-block-card:hover .pb-glare { opacity: 1; animation: pb-glare-sweep 0.8s ease-out; }
+
+/* Block card 3D transition */
+.pb-block-card {
+  transform-style: preserve-3d;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s, border-color 0.2s;
+  will-change: transform;
+}
+
+/* Selected block glow pulse */
+@keyframes pb-selected-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--brand-color, #4f46e5), 0 4px 20px -4px rgba(79, 70, 229, 0.3); }
+  50% { box-shadow: 0 0 0 2px var(--brand-color, #4f46e5), 0 8px 30px -4px rgba(79, 70, 229, 0.45); }
+}
+.pb-selected-glow { animation: pb-selected-glow 2.5s ease-in-out infinite; }
+
+/* Toolbar button 3D press */
+.pb-tool-btn {
+  transition: transform 0.15s ease, background-color 0.2s, color 0.2s;
+}
+.pb-tool-btn:active { transform: scale(0.9); }
+
+/* Save button success pulse */
+@keyframes pb-save-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  100% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+}
+.pb-save-success { animation: pb-save-pulse 0.6s ease-out; }
+
+/* Drag overlay float */
+@keyframes pb-drag-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-4px) rotate(-1deg); }
+}
+.pb-drag-float { animation: pb-drag-float 1.5s ease-in-out infinite; }
+
+/* Block type badge pop */
+@keyframes pb-badge-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pb-badge-pop { animation: pb-badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }

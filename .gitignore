@@ -1,0 +1,24 @@
+# Environment files (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+.next/
+dist/
+build/
+*.log
+
+# OS / editor
+.DS_Store
+
+# Go
+backend/bin/
+backend/tmp/
+
+# Runtime uploads
+backend/uploads/

@@ -1,0 +1,69 @@
+# =============================================================================
+# TruCommerce — Production Docker Compose Override
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# This override applies production-safe settings on top of the base compose file:
+#   - Builds production Docker targets (no volume mounts, no dev servers)
+#   - Enables restart policies
+#   - Enforces security-related env vars
+#   - Removes source code volume mounts
+# =============================================================================
+
+services:
+  postgres:
+    restart: always
+    ports: [] # Don't expose PostgreSQL to host in production
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+  redis:
+    restart: always
+    ports: [] # Don't expose Redis to host in production
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+
+  backend:
+    build:
+      target: production
+    restart: always
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+    environment:
+      APP_ENV: production
+      LOG_FORMAT: json
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      COOKIE_SECURE: "true"
+      ENABLE_TEST_PAYMENTS: "false"
+      RATE_LIMIT_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET}
+    volumes: [] # No source mounts in production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontstore:
+    build:
+      target: production
+    restart: always
+    ports:
+      - "${FRONTSTORE_HOST_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      INTERNAL_API_BASE_URL: http://backend:8080
+      INTERNAL_BACKOFFICE_URL: http://backoffice:5173
+      NODE_ENV: production
+    volumes: [] # No source mounts in production
+
+  backoffice:
+    build:
+      target: production
+    restart: always
+    environment:
+      VITE_API_BASE_URL: http://backend:8080
+    volumes: [] # No source mounts in production
