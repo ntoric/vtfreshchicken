@@ -7,7 +7,6 @@ import { createReview, uploadReviewImages, type UploadedImage } from "@/lib/api"
 import type { PurchasedProduct } from "@/types";
 
 interface ReviewFormModalProps {
-  tenant: string;
   product: PurchasedProduct;
   brandColor: string;
   onClose: () => void;
@@ -16,7 +15,7 @@ interface ReviewFormModalProps {
 
 const MAX_IMAGES = 5;
 
-export function ReviewFormModal({ tenant, product, brandColor, onClose, onSuccess }: ReviewFormModalProps) {
+export function ReviewFormModal({ product, brandColor, onClose, onSuccess }: ReviewFormModalProps) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rating, setRating] = useState(0);
@@ -29,16 +28,16 @@ export function ReviewFormModal({ tenant, product, brandColor, onClose, onSucces
 
   const submitMut = useMutation({
     mutationFn: () =>
-      createReview(tenant, product.product_id, {
+      createReview(product.product_id, {
         rating,
         title,
         body,
         images: uploadedImages.map((img, i) => ({ url: img.url, alt: `Review photo ${i + 1}` })),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["purchased-products", tenant] });
-      qc.invalidateQueries({ queryKey: ["my-reviews", tenant] });
-      qc.invalidateQueries({ queryKey: ["reviews", tenant, product.product_id] });
+      qc.invalidateQueries({ queryKey: ["purchased-products"] });
+      qc.invalidateQueries({ queryKey: ["my-reviews"] });
+      qc.invalidateQueries({ queryKey: ["reviews", product.product_id] });
       onSuccess();
     },
   });
@@ -57,7 +56,7 @@ export function ReviewFormModal({ tenant, product, brandColor, onClose, onSucces
 
     setUploading(true);
     try {
-      const result = await uploadReviewImages(tenant, toUpload);
+      const result = await uploadReviewImages(toUpload);
       setUploadedImages((prev) => [...prev, ...result.uploaded]);
       if (result.errors.length > 0) {
         setUploadError(result.errors.map((er) => `${er.filename}: ${er.error}`).join("; "));

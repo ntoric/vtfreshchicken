@@ -18,6 +18,15 @@ const CardGatewayForm: FC<PaymentComponentProps> = ({ onDetailsChange, isProcess
   const [cardName, setCardName] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
+  const [testMode, setTestMode] = useState(false);
+
+  // Read this gateway's test-mode flag from the cached payment methods — the
+  // test-card hint only applies while the gateway is configured in test mode.
+  useEffect(() => {
+    const cached = (window as unknown as { __tcPaymentMethods?: { methods: Array<{ id: string; public_config?: Record<string, unknown> }> } }).__tcPaymentMethods;
+    const card = cached?.methods.find((m) => m.id === "card");
+    setTestMode(card?.public_config?.test_mode === true);
+  }, []);
 
   // Listen for "use test card" events from the TestCardsPanel
   useEffect(() => {
@@ -129,12 +138,14 @@ const CardGatewayForm: FC<PaymentComponentProps> = ({ onDetailsChange, isProcess
           />
         </div>
       </div>
+      {testMode && (
       <p className="text-xs text-gray-400 flex items-center gap-1.5">
         <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
         </svg>
         Test mode — use test cards from the panel below. Different card numbers trigger different scenarios.
       </p>
+      )}
     </div>
   );
 };

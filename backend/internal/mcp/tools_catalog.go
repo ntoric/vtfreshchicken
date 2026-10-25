@@ -20,7 +20,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/products/admin"), q)
+		return callGet(ctx, c, c.APIPath("/products/admin"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_product_admin",
@@ -28,7 +28,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/products/admin/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/products/admin/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_product_by_slug",
@@ -36,7 +36,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Product slug")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/products/slug/%s", argString(args, "slug"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/products/slug/%s", argString(args, "slug"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_product",
@@ -48,7 +48,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		if body == nil {
 			return errorResult(fmt.Errorf("product parameter is required")), nil
 		}
-		return callPost(ctx, c, c.TenantPath("/products"), body)
+		return callPost(ctx, c, c.APIPath("/products"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_product",
@@ -61,7 +61,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		if body == nil {
 			return errorResult(fmt.Errorf("product parameter is required")), nil
 		}
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/products/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/products/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_product",
@@ -69,14 +69,14 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/products/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/products/%s", argString(args, "id"))))
 	})
 
 	// ---- Categories ----
 	s.AddTool(mcp.NewTool("list_categories",
 		mcp.WithDescription("List all categories for the tenant (public endpoint)."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/categories"), nil)
+		return callGet(ctx, c, c.APIPath("/categories"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_category",
@@ -85,7 +85,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "category")
-		return callPost(ctx, c, c.TenantPath("/categories"), body)
+		return callPost(ctx, c, c.APIPath("/categories"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_category",
@@ -95,7 +95,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "category")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/categories/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/categories/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_category",
@@ -103,23 +103,23 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Category UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/categories/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/categories/%s", argString(args, "id"))))
 	})
 
 	// ---- Attributes ----
 	s.AddTool(mcp.NewTool("list_attributes",
 		mcp.WithDescription("List all attributes for the tenant (public endpoint)."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/attributes"), nil)
+		return callGet(ctx, c, c.APIPath("/attributes"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_attribute",
 		mcp.WithDescription("Create a new attribute. Requires attributes.manage permission."),
-		mcp.WithObject("attribute", mcp.Required(), mcp.Description("Attribute object with name, slug, type (text, number, boolean, select), is_filterable, is_variant_defining, options")),
+		mcp.WithObject("attribute", mcp.Required(), mcp.Description("Attribute object with name, slug, type (text, number, boolean, select, color, datetime), is_filterable, is_variant_defining, is_batch, options")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "attribute")
-		return callPost(ctx, c, c.TenantPath("/attributes"), body)
+		return callPost(ctx, c, c.APIPath("/attributes"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_attribute",
@@ -129,7 +129,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "attribute")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/attributes/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/attributes/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_attribute",
@@ -137,14 +137,14 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Attribute UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/attributes/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/attributes/%s", argString(args, "id"))))
 	})
 
 	// ---- Offers ----
 	s.AddTool(mcp.NewTool("list_offers",
 		mcp.WithDescription("List all promotional offers. Requires offers.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/offers"), nil)
+		return callGet(ctx, c, c.APIPath("/offers"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_offer",
@@ -152,7 +152,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Offer UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/offers/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/offers/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_offer",
@@ -161,7 +161,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "offer")
-		return callPost(ctx, c, c.TenantPath("/offers"), body)
+		return callPost(ctx, c, c.APIPath("/offers"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_offer",
@@ -171,7 +171,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "offer")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/offers/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/offers/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_offer",
@@ -179,14 +179,14 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Offer UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/offers/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/offers/%s", argString(args, "id"))))
 	})
 
 	// ---- Discounts ----
 	s.AddTool(mcp.NewTool("list_discounts",
 		mcp.WithDescription("List all discount codes. Requires discounts.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/discounts"), nil)
+		return callGet(ctx, c, c.APIPath("/discounts"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_discount",
@@ -194,13 +194,13 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Discount UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_discount_stats",
 		mcp.WithDescription("Get discount code statistics (total, active, used, expired). Requires discounts.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/discounts/stats"), nil)
+		return callGet(ctx, c, c.APIPath("/discounts/stats"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_discount",
@@ -209,7 +209,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "discount")
-		return callPost(ctx, c, c.TenantPath("/discounts"), body)
+		return callPost(ctx, c, c.APIPath("/discounts"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_discount",
@@ -219,7 +219,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "discount")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_discount",
@@ -227,7 +227,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Discount UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/discounts/%s", argString(args, "id"))))
 	})
 
 	s.AddTool(mcp.NewTool("validate_discount",
@@ -237,6 +237,6 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "code", "subtotal")
-		return callGet(ctx, c, c.TenantPath("/discount/validate"), q)
+		return callGet(ctx, c, c.APIPath("/discount/validate"), q)
 	})
 }

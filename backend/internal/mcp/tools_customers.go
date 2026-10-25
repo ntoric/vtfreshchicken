@@ -20,7 +20,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/customers"), q)
+		return callGet(ctx, c, c.APIPath("/customers"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_customer",
@@ -28,13 +28,13 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Customer UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/customers/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/customers/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_customer_stats",
 		mcp.WithDescription("Get customer summary statistics (total, active, new this month, etc.). Requires customers.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/customers/stats"), nil)
+		return callGet(ctx, c, c.APIPath("/customers/stats"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("update_customer",
@@ -44,7 +44,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "customer")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/customers/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/customers/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_customer",
@@ -52,14 +52,14 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Customer UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/customers/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/customers/%s", argString(args, "id"))))
 	})
 
 	// ---- Users / Staff ----
 	s.AddTool(mcp.NewTool("list_users",
 		mcp.WithDescription("List all tenant users with roles and status. Requires users.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/users"), nil)
+		return callGet(ctx, c, c.APIPath("/users"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_user",
@@ -67,13 +67,13 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("User UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/users/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/users/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_user_stats",
 		mcp.WithDescription("Get user summary statistics. Requires users.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/users/stats"), nil)
+		return callGet(ctx, c, c.APIPath("/users/stats"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_staff",
@@ -82,7 +82,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "staff")
-		return callPost(ctx, c, c.TenantPath("/users/staff"), body)
+		return callPost(ctx, c, c.APIPath("/users/staff"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_user",
@@ -92,7 +92,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "user")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/users/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/users/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("set_user_active",
@@ -102,7 +102,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "is_active")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/users/%s/active", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/users/%s/active", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("reset_user_password",
@@ -112,7 +112,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "password")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/users/%s/password", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/users/%s/password", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_user",
@@ -120,7 +120,7 @@ func RegisterCustomerTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("User UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/users/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/users/%s", argString(args, "id"))))
 	})
 }
 
@@ -132,13 +132,13 @@ func RegisterInventoryTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "search")
-		return callGet(ctx, c, c.TenantPath("/inventory"), q)
+		return callGet(ctx, c, c.APIPath("/inventory"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_inventory_stats",
 		mcp.WithDescription("Get inventory statistics (total products, low stock, out of stock, etc.). Requires inventory.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/inventory/stats"), nil)
+		return callGet(ctx, c, c.APIPath("/inventory/stats"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("adjust_stock",
@@ -150,7 +150,7 @@ func RegisterInventoryTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "product_id", "variant_id", "quantity", "reason")
-		return callPost(ctx, c, c.TenantPath("/inventory/adjust"), body)
+		return callPost(ctx, c, c.APIPath("/inventory/adjust"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_stock_movements",
@@ -164,6 +164,6 @@ func RegisterInventoryTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/inventory/movements"), q)
+		return callGet(ctx, c, c.APIPath("/inventory/movements"), q)
 	})
 }

@@ -6,7 +6,7 @@ import (
 
 // TestServerCreation verifies that the MCP server can be created with all tools registered.
 func TestServerCreation(t *testing.T) {
-	c := NewClient("http://localhost:18080", "demo")
+	c := NewClient("http://localhost:18080")
 	s := NewMCPServer(c)
 	if s == nil {
 		t.Fatal("expected non-nil MCP server")
@@ -15,19 +15,16 @@ func TestServerCreation(t *testing.T) {
 
 // TestClientBasics verifies the API client helper methods.
 func TestClientBasics(t *testing.T) {
-	c := NewClient("http://localhost:18080/", "demo")
+	c := NewClient("http://localhost:18080/")
 	if c.BaseURL != "http://localhost:18080" {
 		t.Errorf("expected trailing slash trimmed, got %q", c.BaseURL)
-	}
-	if c.Tenant != "demo" {
-		t.Errorf("expected tenant 'demo', got %q", c.Tenant)
 	}
 	c.SetToken("tok123")
 	if c.GetToken() != "tok123" {
 		t.Errorf("expected token 'tok123', got %q", c.GetToken())
 	}
-	if path := c.TenantPath("/orders"); path != "/api/t/demo/orders" {
-		t.Errorf("expected /api/t/demo/orders, got %q", path)
+	if path := c.APIPath("/orders"); path != "/api/orders" {
+		t.Errorf("expected /api/orders, got %q", path)
 	}
 }
 

@@ -1,36 +1,96 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
-import { Menu, X, Search, ShoppingBag, Heart, User, ChevronDown, Globe, LogOut, Package, RotateCcw, LayoutDashboard } from "lucide-react";
+import { Menu, X, Search, ShoppingBag, Heart, User, ChevronDown, LogOut, Package, RotateCcw, LayoutDashboard, MapPin } from "lucide-react";
 import type { BootstrapResponse } from "@/types";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import { useAuth } from "@/lib/auth";
+import { useLocation } from "@/lib/location";
 
 interface HeaderProps {
-  tenant: string;
   bootstrap: BootstrapResponse;
   currency: string;
   setCurrency: (c: string) => void;
   lang: string;
   setLang: (l: string) => void;
+  appearance?: "default" | "organic";
 }
 
-export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang }: HeaderProps) {
+export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
   const settings = bootstrap.settings;
-  const brandColor = settings?.brand_color || "#4f46e5";
+  const brandColor = appearance === "organic" ? "#C9232C" : settings?.brand_color || "#C9232C";
+  const logoUrl = settings?.logo_url;
+  const storeName = bootstrap.store_name || "Store";
   const cart = useCart();
   const wishlist = useWishlist();
   const itemCount = cart?.itemCount ?? 0;
   const wishlistCount = wishlist?.itemCount ?? 0;
   const { customer, logout } = useAuth();
+  const { area: deliveryArea, openPicker } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
+
+  // Nav overflow ("More" dropdown) — measure items, fold what doesn't fit
+  const navItems = useMemo(
+    () => [
+      { label: "Home", href: `/` },
+      ...(bootstrap.categories || []).map((c) => ({
+        label: c.name,
+        href: `/shop?category=${c.slug}`,
+      })),
+    ],
+    [bootstrap.categories]
+  );
+  const navRef = useRef<HTMLElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number | null>(null);
+  const shown = visibleCount ?? navItems.length;
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const measure = measureRef.current;
+    if (!nav || !measure) return;
+
+    const compute = () => {
+      const itemEls = Array.from(measure.querySelectorAll<HTMLElement>("[data-nav-item]"));
+      const widths = itemEls.map((el) => el.getBoundingClientRect().width);
+      if (widths.length === 0) return;
+      const gap = 4; // matches gap-1
+      const total = widths.reduce((a, b) => a + b, 0) + gap * (widths.length - 1);
+      const avail = nav.clientWidth;
+      if (total <= avail) {
+        setVisibleCount(widths.length);
+        return;
+      }
+      const moreEl = measure.querySelector<HTMLElement>("[data-nav-more]");
+      const moreW = (moreEl?.getBoundingClientRect().width ?? 80) + gap;
+      let used = 0;
+      let count = 0;
+      for (const w of widths) {
+        if (used + w > avail - moreW) break;
+        used += w + gap;
+        count++;
+      }
+      setVisibleCount(Math.max(count, 1));
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(nav);
+    window.addEventListener("resize", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", compute);
+    };
+  }, [navItems.length]);
 
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -63,14 +123,10 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    window.location.href = `/${tenant}?view=shop&search=${encodeURIComponent(searchQuery.trim())}`;
+    window.location.href = `/shop?search=${encodeURIComponent(searchQuery.trim())}`;
     setSearchOpen(false);
     setSearchQuery("");
   }
-
-  const languages = bootstrap.settings?.supported_languages?.length
-    ? (bootstrap.languages || []).filter((l) => bootstrap.settings!.supported_languages!.includes(l.code))
-    : (bootstrap.languages || []);
 
   return (
     <>
@@ -79,8 +135,17 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
         className="text-center text-xs font-medium py-2 px-4 text-white transition-all duration-300"
         style={{ backgroundColor: brandColor }}
       >
-        <span className="hidden sm:inline">✦ Free shipping on orders over $50 — Shop the Autumn/Winter 2026 collection ✦</span>
-        <span className="sm:hidden">✦ Free shipping over $50 ✦</span>
+        {appearance === "organic" ? (
+          <>
+            <span className="hidden sm:inline">Fresh cuts. Thoughtful choices. Meals to look forward to.</span>
+            <span className="sm:hidden">Good food starts with good chicken.</span>
+          </>
+        ) : (
+          <>
+            <span className="hidden sm:inline">✦ Free delivery on orders over ₹4,000 — Farm-fresh chicken, delivered chilled ✦</span>
+            <span className="sm:hidden">✦ Free delivery over ₹4,000 ✦</span>
+          </>
+        )}
       </div>
 
       {/* Main navbar — sticky */}
@@ -96,7 +161,7 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
+            className="xl:hidden p-2 -ml-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5 text-gray-700" strokeWidth={1.8} />
@@ -104,41 +169,105 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
 
           {/* Logo */}
           <Link
-            href={`/${tenant}`}
+            href={`/`}
             className="flex items-center gap-2.5 font-bold flex-shrink-0 min-w-0 group"
           >
-            <span
-              className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
-              style={{ background: brandColor }}
-            >
-              <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-white" strokeWidth={2} />
-            </span>
-            <span className="truncate text-lg sm:text-xl tracking-tight" style={{ color: brandColor }}>
-              {bootstrap.store_name || "Store"}
-            </span>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="block max-h-10 w-auto max-w-[145px] sm:max-w-[190px] object-contain"
+              />
+            ) : (
+              <BrandLogo storeName={storeName} className="w-[118px] min-[380px]:w-[145px] sm:w-[190px] overflow-hidden" />
+            )}
           </Link>
 
-          {/* Desktop navigation */}
-          <nav className="hidden lg:flex items-center gap-1 text-sm font-medium ml-2">
-            <Link
-              href={`/${tenant}`}
-              className="px-3 py-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-stone-100 transition-all duration-200"
+          {/* Delivery location — opens area picker */}
+          <button
+            onClick={openPicker}
+            className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 hover:bg-stone-100 hover:border-stone-300 px-3 py-2 text-xs font-medium text-gray-700 transition-colors flex-shrink-0"
+            aria-label="Change delivery area"
+          >
+            <MapPin className="w-3.5 h-3.5 text-brand" strokeWidth={2} />
+            <span className="max-w-[140px] truncate">
+              {deliveryArea ? `Deliver to ${deliveryArea}` : "Select location"}
+            </span>
+            <ChevronDown className="w-3 h-3 text-gray-400" />
+          </button>
+
+          {/* Desktop navigation — overflowing items fold into "More" */}
+          <nav ref={navRef} className="hidden xl:flex items-center gap-1 text-sm font-medium ml-2 flex-1 min-w-0 relative">
+            {/* invisible measurement row */}
+            <div
+              ref={measureRef}
+              aria-hidden
+              className="absolute top-0 left-0 h-0 overflow-visible invisible flex items-center gap-1 whitespace-nowrap"
             >
-              Home
-            </Link>
-            {(bootstrap.categories || []).slice(0, 6).map((cat) => (
+              {navItems.map((it) => (
+                <span key={it.label} data-nav-item className="px-3 py-2">
+                  {it.label}
+                </span>
+              ))}
+              <span data-nav-more className="px-3 py-2 inline-flex items-center gap-1">
+                More
+                <ChevronDown className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
+            {navItems.slice(0, shown).map((it) => (
               <Link
-                key={cat.id}
-                href={`/${tenant}?category=${cat.slug}`}
+                key={it.label}
+                href={it.href}
                 className="px-3 py-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-stone-100 whitespace-nowrap transition-all duration-200"
               >
-                {cat.name}
+                {it.label}
               </Link>
             ))}
+
+            {shown < navItems.length && (
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setMoreOpen(!moreOpen)}
+                  className="px-3 py-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-stone-100 whitespace-nowrap transition-all duration-200 inline-flex items-center gap-1"
+                  aria-haspopup="menu"
+                  aria-expanded={moreOpen}
+                >
+                  More
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {moreOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-50 overflow-hidden"
+                      >
+                        {navItems.slice(shown).map((it) => (
+                          <Link
+                            key={it.label}
+                            href={it.href}
+                            onClick={() => setMoreOpen(false)}
+                            className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 hover:text-gray-900 transition-colors"
+                          >
+                            {it.label}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </nav>
 
-          {/* Search bar — desktop */}
-          <div className="hidden md:flex flex-1 max-w-xs ml-auto">
+          {/* Search bar — desktop (fixed width) */}
+          <div className="hidden xl:block w-64 flex-shrink-0 ml-auto">
             <form onSubmit={handleSearch} className="relative w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -156,41 +285,13 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
             {/* Search icon — mobile */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="md:hidden p-2.5 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
+              className="xl:hidden p-2.5 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
               aria-label="Search"
             >
               <Search className="w-5 h-5 text-gray-700" strokeWidth={1.8} />
             </button>
 
-            {/* Language & currency — desktop */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              <div className="relative">
-                <select
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value)}
-                  className="appearance-none text-sm bg-stone-100 rounded-lg pl-7 pr-7 py-2 text-gray-700 cursor-pointer hover:bg-stone-200 transition-colors focus:outline-none"
-                  aria-label="Language"
-                >
-                  {languages.map((l) => (
-                    <option key={l.code} value={l.code}>{l.name}</option>
-                  ))}
-                </select>
-                <Globe className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-              </div>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="appearance-none text-sm bg-stone-100 rounded-lg px-2.5 py-2 pr-7 text-gray-700 cursor-pointer hover:bg-stone-200 transition-colors focus:outline-none relative"
-                aria-label="Currency"
-              >
-                {(bootstrap.currencies || []).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} {c.symbol}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Language & currency selectors hidden — store runs English / INR only */}
 
             {/* Account — desktop */}
             {customer ? (
@@ -219,16 +320,16 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
                           <p className="text-xs text-gray-400">Signed in as</p>
                           <p className="text-sm font-semibold text-gray-900 truncate">{customer.full_name || customer.email}</p>
                         </div>
-                        <Link href={`/${tenant}/account/dashboard`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
+                        <Link href={`/account/dashboard`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <LayoutDashboard className="w-4 h-4 text-gray-400" /> My Account
                         </Link>
-                        <Link href={`/${tenant}/orders`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
+                        <Link href={`/orders`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <Package className="w-4 h-4 text-gray-400" /> Order History
                         </Link>
-                        <Link href={`/${tenant}/orders/returns`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
+                        <Link href={`/orders/returns`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <RotateCcw className="w-4 h-4 text-gray-400" /> My Returns
                         </Link>
-                        <Link href={`/${tenant}/wishlist`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
+                        <Link href={`/wishlist`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <Heart className="w-4 h-4 text-gray-400" /> Wishlist
                         </Link>
                         <hr className="my-1 border-stone-100" />
@@ -243,13 +344,13 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
             ) : (
               <div className="hidden sm:flex items-center gap-2">
                 <Link
-                  href={`/${tenant}/account/login`}
+                  href={`/account/login`}
                   className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-stone-100 transition-all"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href={`/${tenant}/account/register`}
+                  href={`/account/register`}
                   className="text-sm font-medium text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all"
                   style={{ background: brandColor }}
                 >
@@ -313,7 +414,7 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="md:hidden overflow-hidden border-t border-stone-200"
+              className="xl:hidden overflow-hidden border-t border-stone-200"
             >
               <form onSubmit={handleSearch} className="px-4 py-3">
                 <div className="relative">
@@ -334,11 +435,11 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
       </div>
 
       {/* Mobile category strip — shown on md and below */}
-      <div className="lg:hidden bg-white/80 backdrop-blur-md border-b border-stone-200">
+      <div className="xl:hidden bg-white/80 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2.5 flex gap-5 overflow-x-auto no-scrollbar text-sm font-medium text-gray-600">
-          <Link href={`/${tenant}`} className="whitespace-nowrap hover:text-gray-900 transition-colors">Home</Link>
+          <Link href={`/`} className="whitespace-nowrap hover:text-gray-900 transition-colors">Home</Link>
           {(bootstrap.categories || []).map((cat) => (
-            <Link key={cat.id} href={`/${tenant}?category=${cat.slug}`} className="whitespace-nowrap hover:text-gray-900 transition-colors">
+            <Link key={cat.id} href={`/shop?category=${cat.slug}`} className="whitespace-nowrap hover:text-gray-900 transition-colors">
               {cat.name}
             </Link>
           ))}
@@ -354,7 +455,7 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 lg:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 xl:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.div
@@ -362,23 +463,26 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-white z-50 shadow-2xl flex flex-col lg:hidden pt-safe pb-safe"
+              className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-white z-50 shadow-2xl flex flex-col xl:hidden pt-safe pb-safe"
             >
               {/* Drawer header */}
               <div className="flex items-center justify-between p-5 border-b border-stone-200">
                 <Link
-                  href={`/${tenant}`}
+                  href={`/`}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 font-bold text-lg"
+                  className="flex items-center"
                   style={{ color: brandColor }}
                 >
-                  <span
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
-                    style={{ background: brandColor }}
-                  >
-                    <ShoppingBag className="w-4 h-4 text-white" strokeWidth={2} />
-                  </span>
-                  {bootstrap.store_name || "Store"}
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt={storeName}
+                      className="block max-h-10 w-auto max-w-[145px] object-contain"
+                    />
+                  ) : (
+                    <BrandLogo storeName={storeName} className="w-[145px]" />
+                  )}
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
@@ -391,10 +495,25 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
 
               {/* Drawer content */}
               <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                {/* Delivery location */}
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openPicker();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-sm font-medium text-gray-700 hover:bg-stone-100 transition-colors"
+                >
+                  <MapPin className="w-4 h-4 text-brand shrink-0" strokeWidth={2} />
+                  <span className="truncate">
+                    {deliveryArea ? `Deliver to ${deliveryArea}` : "Select delivery location"}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-400 ml-auto shrink-0" />
+                </button>
+
                 {/* Navigation links */}
                 <nav className="space-y-1">
                   <Link
-                    href={`/${tenant}`}
+                    href={`/`}
                     onClick={() => setMobileMenuOpen(false)}
                     className="block px-4 py-3 rounded-xl text-base font-medium text-gray-900 hover:bg-stone-100 transition-colors"
                   >
@@ -403,7 +522,7 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
                   {(bootstrap.categories || []).map((cat) => (
                     <Link
                       key={cat.id}
-                      href={`/${tenant}?category=${cat.slug}`}
+                      href={`/shop?category=${cat.slug}`}
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors"
                     >
@@ -412,41 +531,6 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
                   ))}
                 </nav>
 
-                {/* Language & currency selectors */}
-                <div className="space-y-3 pt-4 border-t border-stone-200">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Language</label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <select
-                        value={lang}
-                        onChange={(e) => setLang(e.target.value)}
-                        className="w-full text-sm border border-stone-200 rounded-xl pl-10 pr-3 py-3 bg-stone-50 focus:outline-none focus:border-gray-900 transition-colors"
-                        aria-label="Language"
-                      >
-                        {languages.map((l) => (
-                          <option key={l.code} value={l.code}>{l.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Currency</label>
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full text-sm border border-stone-200 rounded-xl px-3 py-3 bg-stone-50 focus:outline-none focus:border-gray-900 transition-colors"
-                      aria-label="Currency"
-                    >
-                      {(bootstrap.currencies || []).map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
                 {/* Account section */}
                 <div className="pt-4 border-t border-stone-200">
                   {customer ? (
@@ -454,16 +538,16 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
                       <div className="px-4 py-3 text-sm text-gray-500">
                         Signed in as <span className="font-semibold text-gray-900">{customer.full_name || customer.email}</span>
                       </div>
-                      <Link href={`/${tenant}/account/dashboard`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
+                      <Link href={`/account/dashboard`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <LayoutDashboard className="w-5 h-5 text-gray-400" /> My Account
                       </Link>
-                      <Link href={`/${tenant}/orders`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
+                      <Link href={`/orders`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <Package className="w-5 h-5 text-gray-400" /> Order History
                       </Link>
-                      <Link href={`/${tenant}/orders/returns`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
+                      <Link href={`/orders/returns`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <RotateCcw className="w-5 h-5 text-gray-400" /> My Returns
                       </Link>
-                      <Link href={`/${tenant}/wishlist`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
+                      <Link href={`/wishlist`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <Heart className="w-5 h-5 text-gray-400" /> Wishlist
                       </Link>
                       <button
@@ -476,14 +560,14 @@ export function Header({ tenant, bootstrap, currency, setCurrency, lang, setLang
                   ) : (
                     <div className="space-y-2.5">
                       <Link
-                        href={`/${tenant}/account/login`}
+                        href={`/account/login`}
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-stone-300 font-medium text-gray-700 hover:bg-stone-50 transition-colors"
                       >
                         <User className="w-4 h-4" /> Sign In
                       </Link>
                       <Link
-                        href={`/${tenant}/account/register`}
+                        href={`/account/register`}
                         onClick={() => setMobileMenuOpen(false)}
                         className="block w-full text-center py-3 rounded-xl text-white font-medium shadow-sm transition-all"
                         style={{ background: brandColor }}

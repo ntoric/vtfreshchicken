@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton, Spinner } from "@/components/Skeletons";
@@ -13,6 +14,7 @@ import type { User, CustomerDetail } from "@/types";
 
 export function Customers() {
   const { tenant } = useAuth();
+  const { formatMoney } = useCurrency();
   const qc = useQueryClient();
   const confirmDlg = useConfirmState();
   const toast = useToast();
@@ -136,7 +138,7 @@ export function Customers() {
         <StatCard label="Total Customers" value={stats?.total_customers ?? "—"} />
         <StatCard label="Active" value={stats?.active_customers ?? "—"} />
         <StatCard label="New This Month" value={stats?.new_this_month ?? "—"} />
-        <StatCard label="Total Revenue" value={stats ? `$${stats.total_spent.toFixed(2)}` : "—"} />
+        <StatCard label="Total Revenue" value={stats ? formatMoney(stats.total_spent) : "—"} />
       </div>
 
       {/* Filters */}
@@ -246,7 +248,7 @@ export function Customers() {
                 </div>
                 <div className="bg-slate-50 rounded-lg p-3">
                   <p className="text-xs text-slate-500">Total Spent</p>
-                  <p className="text-lg font-semibold text-slate-900">${detailQ.data.total_spent.toFixed(2)}</p>
+                  <p className="text-lg font-semibold text-slate-900">{formatMoney(detailQ.data.total_spent)}</p>
                 </div>
               </div>
 
@@ -295,8 +297,7 @@ export function Customers() {
                         <div className="bg-indigo-50 rounded-lg p-3 mb-2">
                           <p className="text-xs text-indigo-500">Current Balance</p>
                           <p className="text-lg font-bold text-indigo-700">
-                            {walletQ.data.currency_code}{" "}
-                            {walletQ.data.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(walletQ.data.balance, walletQ.data.currency_code)}
                           </p>
                         </div>
 
@@ -316,7 +317,7 @@ export function Customers() {
                                 const amt = parseFloat(walletAdjustAmount);
                                 if (!amt || amt === 0) return;
                                 confirmDlg.open({
-                                  message: `${amt > 0 ? "Credit" : "Debit"} ${walletQ.data.currency_code} ${Math.abs(amt).toFixed(2)} from this customer's wallet?`,
+                                  message: `${amt > 0 ? "Credit" : "Debit"} ${formatMoney(Math.abs(amt), walletQ.data.currency_code)} from this customer's wallet?`,
                                   variant: amt < 0 ? "danger" : "info",
                                   confirmLabel: "Confirm",
                                   onConfirm: () => walletAdjustMut.mutate({ amount: amt, description: walletAdjustNote || undefined }),
@@ -352,7 +353,7 @@ export function Customers() {
                                   </p>
                                 </div>
                                 <p className={`font-semibold flex-shrink-0 ml-2 ${t.type === "credit" ? "text-emerald-600" : "text-rose-600"}`}>
-                                  {t.type === "credit" ? "+" : "−"}{t.currency_code} {t.amount.toFixed(2)}
+                                  {t.type === "credit" ? "+" : "−"}{formatMoney(t.amount, t.currency_code)}
                                 </p>
                               </div>
                             ))

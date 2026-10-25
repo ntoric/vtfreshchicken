@@ -29,12 +29,28 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.orderBranchAllowed(c, tid, orderID) {
+		errResponse(c, http.StatusNotFound, "order not found")
+		return
+	}
 	order, err := h.store.GetOrderWithDetails(c.Request.Context(), tid, orderID)
 	if err != nil {
 		notFoundOrErr(c, err, "order not found")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"order": order})
+}
+
+// orderBranchAllowed reports whether the caller may access the order: a
+// branch-bound user (branch_manager/staff with an assigned branch) can only
+// reach orders assigned to their branch.
+func (h *OrderHandler) orderBranchAllowed(c *gin.Context, tid, orderID uuid.UUID) bool {
+	scope := branchFilter(c)
+	if scope == nil || !branchRestricted(c) {
+		return true
+	}
+	ok, err := h.store.OrderInBranch(c.Request.Context(), tid, orderID, *scope)
+	return err == nil && ok
 }
 
 // ListOrders returns a filtered, paginated list of orders for the backoffice.
@@ -47,9 +63,10 @@ func (h *OrderHandler) ListOrders(c *gin.Context) {
 	search := c.Query("search")
 
 	f := services.OrderListFilter{
-		Status: status,
-		Search: search,
-		Dr:     services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
+		Status:   status,
+		Search:   search,
+		BranchID: branchFilter(c),
+		Dr:       services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
 	}
 	items, total, err := h.store.ListOrdersFiltered(c.Request.Context(), tid, f, limit, offset)
 	if err != nil {
@@ -79,6 +96,10 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	uid := userID(c)
 	orderID, ok := pathUUID(c, "orderId")
 	if !ok {
+		return
+	}
+	if !h.orderBranchAllowed(c, tid, orderID) {
+		errResponse(c, http.StatusNotFound, "order not found")
 		return
 	}
 
@@ -137,6 +158,10 @@ func (h *OrderHandler) UpdateNotes(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.orderBranchAllowed(c, tid, orderID) {
+		errResponse(c, http.StatusNotFound, "order not found")
+		return
+	}
 
 	var req UpdateNotesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -154,7 +179,7 @@ func (h *OrderHandler) UpdateNotes(c *gin.Context) {
 // OrderCounts returns order counts grouped by status (for the backoffice dashboard/tabs).
 func (h *OrderHandler) OrderCounts(c *gin.Context) {
 	tid := tenantID(c)
-	counts, err := h.store.OrderCountsByStatus(c.Request.Context(), tid)
+	counts, err := h.store.OrderCountsByStatus(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

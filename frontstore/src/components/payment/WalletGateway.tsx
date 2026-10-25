@@ -3,7 +3,6 @@
 import { useEffect, FC } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Wallet, ArrowRight } from "lucide-react";
-import { useParams } from "next/navigation";
 import type { PaymentGatewayMeta, PaymentComponentProps, RegisteredGateway } from "@/lib/paymentRegistry";
 import { getWallet } from "@/lib/api";
 
@@ -16,13 +15,9 @@ const meta: PaymentGatewayMeta = {
 };
 
 const WalletGatewayForm: FC<PaymentComponentProps> = ({ amount, currencySymbol, onDetailsChange }) => {
-  const params = useParams<{ tenant: string }>();
-  const tenant = params.tenant;
-
   const walletQ = useQuery({
-    queryKey: ["wallet", tenant],
-    queryFn: () => getWallet(tenant),
-    enabled: !!tenant,
+    queryKey: ["wallet"],
+    queryFn: () => getWallet(),
   });
 
   const balance = walletQ.data?.balance ?? 0;
@@ -97,7 +92,7 @@ const WalletGatewayForm: FC<PaymentComponentProps> = ({ amount, currencySymbol, 
                 more. Please top up your wallet or choose another payment method.
               </p>
               <a
-                href={`/${tenant}/account/wallet`}
+                href={`/account/wallet`}
                 className="inline-flex items-center gap-1 mt-2 text-indigo-600 hover:underline text-xs font-medium"
               >
                 <ArrowRight className="w-3 h-3" /> Top up your wallet

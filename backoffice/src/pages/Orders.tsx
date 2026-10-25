@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -24,8 +25,11 @@ const STATUS_TABS = [
 
 export function Orders() {
   const { tenant } = useAuth();
+  const { formatMoney } = useCurrency();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get("status") ?? "";
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -49,6 +53,12 @@ export function Orders() {
     queryKey: ["order-counts", tenant],
     queryFn: () => api.orderCounts(tenant),
   });
+
+  // Deep links like /orders?status=pending (e.g. from the dashboard)
+  useEffect(() => {
+    setStatusFilter(urlStatus);
+    setPage(0);
+  }, [urlStatus]);
 
   const counts = countsQ.data?.counts || {};
   const total = q.data?.total ?? 0;
@@ -166,8 +176,7 @@ export function Orders() {
                       {o.payment_method ? o.payment_method.replace(/_/g, " ") : "—"}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {o.currency_code === "USD" ? "$" : ""}{o.grand_total.toFixed(2)}
-                      {o.currency_code !== "USD" && <span className="text-xs text-slate-400 ml-1">{o.currency_code}</span>}
+                      {formatMoney(o.grand_total, o.currency_code)}
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {new Date(o.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}

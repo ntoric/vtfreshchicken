@@ -14,9 +14,11 @@ import {
   ChevronUp, ChevronDown, Copy, Star, Search,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { FullPageLoader } from "@/components/Skeletons";
 import { useToast } from "@/components/Toast";
+import { Toggle } from "@/components/Toggle";
 import { BLOCK_TYPES, PAGE_TYPES, PAGE_STATUSES } from "@/types";
 import type { StorePage, PageBlock, StorePageRequest, Product, Category } from "@/types";
 
@@ -721,6 +723,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const { formatMoney } = useCurrency();
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
@@ -814,7 +817,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
                         <img src={prod.image_url} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
                       )}
                       <span className="truncate">{prod.name}</span>
-                      <span className="text-slate-400 flex-shrink-0">{prod.currency_code} {prod.base_price}</span>
+                      <span className="text-slate-400 flex-shrink-0">{formatMoney(prod.base_price, prod.currency_code)}</span>
                     </div>
                     {isSelected && <span className="text-indigo-600 flex-shrink-0 ml-2">✓</span>}
                   </div>
@@ -999,7 +1002,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
           <div><label className={labelCls}>Image URL</label><input type="text" value={p.src ?? ""} onChange={(e) => set("src", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Alt Text</label><input type="text" value={p.alt ?? ""} onChange={(e) => set("alt", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Width</label><select value={p.width ?? "full"} onChange={(e) => set("width", e.target.value)} className={inputCls}><option value="full">Full width</option><option value="contained">Contained</option></select></div>
-          <div><label className={labelCls}>Rounded Corners</label><input type="checkbox" checked={p.rounded ?? true} onChange={(e) => set("rounded", e.target.checked)} /></div>
+          <div><Toggle label="Rounded Corners" checked={p.rounded ?? true} onChange={(v) => set("rounded", v)} /></div>
           <div><label className={labelCls}>Caption</label><input type="text" value={p.caption ?? ""} onChange={(e) => set("caption", e.target.value)} className={inputCls} /></div>
         </>
       );
@@ -1144,22 +1147,21 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
             <label className={labelCls}>Form Fields</label>
             <div className="space-y-1.5 border rounded-md p-3">
               {(["name", "email", "phone", "subject", "message"] as const).map((field) => (
-                <label key={field} className="flex items-center gap-2 text-sm capitalize cursor-pointer">
-                  <input
-                    type="checkbox"
+                <span key={field} className="flex items-center gap-2 text-sm capitalize">
+                  <Toggle
+                    size="sm"
                     checked={p.fields?.[field] ?? (field === "phone" ? false : true)}
-                    onChange={(e) => set("fields", { ...(p.fields || {}), [field]: e.target.checked })}
-                    className="rounded"
+                    onChange={(v) => set("fields", { ...(p.fields || {}), [field]: v })}
                   />
                   {field}
-                </label>
+                </span>
               ))}
             </div>
           </div>
           <div><label className={labelCls}>Button Text</label><input type="text" value={p.buttonText ?? "Send Message"} onChange={(e) => set("buttonText", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Success Message</label><input type="text" value={p.successMessage ?? "Thank you! Your message has been sent."} onChange={(e) => set("successMessage", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Background Color (optional)</label><input type="color" value={p.backgroundColor ?? "#ffffff"} onChange={(e) => set("backgroundColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
-          <div><label className={labelCls}>Show Map</label><input type="checkbox" checked={p.showMap ?? false} onChange={(e) => set("showMap", e.target.checked)} /></div>
+          <div><Toggle label="Show Map" checked={p.showMap ?? false} onChange={(v) => set("showMap", v)} /></div>
         </>
       );
     case "map":
@@ -1320,10 +1322,9 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
 
           {/* Social Media */}
           <div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
-              <input type="checkbox" checked={p.showSocial ?? true} onChange={(e) => set("showSocial", e.target.checked)} className="rounded" />
-              Show Social Media Icons
-            </label>
+            <div className="mb-2">
+              <Toggle label="Show Social Media Icons" checked={p.showSocial ?? true} onChange={(v) => set("showSocial", v)} />
+            </div>
             {p.showSocial !== false && (
               <div className="space-y-2 border rounded-md p-3 bg-slate-50">
                 {socialFields.map((s) => (
@@ -1338,10 +1339,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
 
           {/* Payment badges */}
           <div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={p.showPayment ?? true} onChange={(e) => set("showPayment", e.target.checked)} className="rounded" />
-              Show Payment Method Badges
-            </label>
+            <Toggle label="Show Payment Method Badges" checked={p.showPayment ?? true} onChange={(v) => set("showPayment", v)} />
           </div>
         </>
       );

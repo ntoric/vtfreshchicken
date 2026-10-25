@@ -37,6 +37,7 @@ func VerifyPassword(hash, pw string) error {
 type Claims struct {
 	UserID   uuid.UUID       `json:"uid"`
 	TenantID *uuid.UUID      `json:"tid,omitempty"`
+	BranchID *uuid.UUID      `json:"bid,omitempty"`
 	Email    string          `json:"email"`
 	Role     models.UserRole `json:"role"`
 	jwt.RegisteredClaims
@@ -47,6 +48,7 @@ func (s *Service) IssueAccessToken(u *models.User) (string, error) {
 	claims := Claims{
 		UserID:   u.ID,
 		TenantID: u.TenantID,
+		BranchID: u.BranchID,
 		Email:    u.Email,
 		Role:     u.Role,
 		RegisteredClaims: jwt.RegisteredClaims{

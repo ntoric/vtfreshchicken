@@ -19,36 +19,39 @@ ON CONFLICT (code) DO NOTHING;
 
 -- Demo tenant
 INSERT INTO tenants (id, slug, name, description)
-VALUES ('11111111-1111-1111-1111-111111111111', 'demo', 'Demo Store', 'A demo multitenant storefront')
+VALUES ('11111111-1111-1111-1111-111111111111', 'demo', 'VT Fresh Chicken', 'Farm-fresh & frozen chicken, delivered daily')
 ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO tenant_settings (tenant_id, default_currency_id, default_language, supported_languages, brand_color)
-SELECT '11111111-1111-1111-1111-111111111111', c.id, 'en', ARRAY['en','es','ar'], '#4f46e5'
-FROM currencies c WHERE c.code = 'USD'
+SELECT '11111111-1111-1111-1111-111111111111', c.id, 'en', ARRAY['en'], '#dc2626'
+FROM currencies c WHERE c.code = 'INR'
 ON CONFLICT (tenant_id) DO NOTHING;
 
 -- Demo categories
 INSERT INTO categories (tenant_id, slug, name, description, sort_order) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'apparel', 'Apparel', 'Clothing and accessories', 1),
-    ('11111111-1111-1111-1111-111111111111', 'electronics', 'Electronics', 'Gadgets and devices', 2),
-    ('11111111-1111-1111-1111-111111111111', 'home', 'Home & Living', 'Everything for your home', 3),
-    ('11111111-1111-1111-1111-111111111111', 'footwear', 'Footwear', 'Shoes for every occasion', 4)
+    ('11111111-1111-1111-1111-111111111111', 'fresh-chicken', 'Fresh Chicken', 'Chilled whole birds and fresh cuts, delivered daily', 1),
+    ('11111111-1111-1111-1111-111111111111', 'frozen-chicken', 'Frozen Chicken', 'Flash-frozen chicken and crispy snacks for your freezer', 2),
+    ('11111111-1111-1111-1111-111111111111', 'marinated', 'Marinated', 'Pre-marinated chicken, ready for the pan or grill', 3),
+    ('11111111-1111-1111-1111-111111111111', 'eggs-extras', 'Eggs & Extras', 'Farm eggs and specialty items to complete your order', 4)
 ON CONFLICT (tenant_id, slug) DO NOTHING;
 
 -- Variant attributes for demo tenant
 INSERT INTO attributes (tenant_id, slug, name, type, is_filterable, is_variant) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'size', 'Size', 'select', TRUE, TRUE),
-    ('11111111-1111-1111-1111-111111111111', 'color', 'Color', 'color', TRUE, TRUE),
-    ('11111111-1111-1111-1111-111111111111', 'material', 'Material', 'select', TRUE, FALSE),
-    ('11111111-1111-1111-1111-111111111111', 'brand', 'Brand', 'text', TRUE, FALSE)
+    ('11111111-1111-1111-1111-111111111111', 'pack-size', 'Pack Size', 'select', TRUE, TRUE),
+    ('11111111-1111-1111-1111-111111111111', 'cut', 'Cut', 'select', TRUE, FALSE),
+    ('11111111-1111-1111-1111-111111111111', 'storage', 'Storage', 'select', TRUE, FALSE),
+    ('11111111-1111-1111-1111-111111111111', 'farming', 'Farming', 'select', TRUE, FALSE)
 ON CONFLICT (tenant_id, slug) DO NOTHING;
 
 INSERT INTO attribute_options (attribute_id, value, label, sort_order)
 SELECT a.id, v.value, v.label, v.sort_order FROM attributes a
 JOIN (VALUES
-    ('size','xs','XS',1),('size','s','S',2),('size','m','M',3),('size','l','L',4),('size','xl','XL',5),('size','xxl','XXL',6),
-    ('color','red','Red',1),('color','blue','Blue',2),('color','green','Green',3),('color','black','Black',4),('color','white','White',5),('color','navy','Navy',6),
-    ('material','cotton','Cotton',1),('material','polyester','Polyester',2),('material','leather','Leather',3),('material','wool','Wool',4)
+    ('pack-size','500g','500 g',1),('pack-size','1kg','1 kg',2),('pack-size','1-5kg','1.5 kg',3),('pack-size','2kg','2 kg',4),
+    ('pack-size','6pcs','6 pcs',5),('pack-size','12pcs','12 pcs',6),('pack-size','30pcs','30 pcs',7),
+    ('cut','whole-bird','Whole Bird',1),('cut','breast','Breast',2),('cut','thigh','Thigh',3),('cut','drumstick','Drumstick',4),
+    ('cut','wings','Wings',5),('cut','keema','Keema / Mince',6),('cut','curry-cut','Curry Cut',7),
+    ('storage','chilled','Chilled (0–4°C)',1),('storage','frozen','Frozen (-18°C)',2),
+    ('farming','free-range','Free-Range',1),('farming','farm-raised','Farm-Raised',2),('farming','antibiotic-free','Antibiotic-Free',3)
 ) AS v(attr, value, label, sort_order) ON v.attr = a.slug
 WHERE a.tenant_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT (attribute_id, value) DO NOTHING;
@@ -59,16 +62,23 @@ SELECT '11111111-1111-1111-1111-111111111111', c.id, p.slug, p.name, p.descripti
 FROM currencies cur
 JOIN categories c ON c.tenant_id = '11111111-1111-1111-1111-111111111111'
 JOIN (VALUES
-    ('apparel','classic-cotton-tshirt','Classic Cotton T-Shirt','A soft, breathable everyday tee.','TSHIRT-001', 19.99, TRUE, 120, 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600', 4.50),
-    ('apparel','denim-jacket','Vintage Denim Jacket','Timeless denim with a modern fit.','JACKET-001', 79.99, TRUE, 45, 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600', 4.70),
-    ('apparel','wool-sweater','Cozy Wool Sweater','Warm and stylish for the winter.','SWEATER-001', 59.99, FALSE, 60, 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600', 4.30),
-    ('electronics','wireless-headphones','Wireless Noise-Cancelling Headphones','Immersive sound, 30h battery.','HEAD-001', 149.99, TRUE, 80, 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600', 4.80),
-    ('electronics','smart-watch','Smart Watch Series 5','Health tracking and notifications.','WATCH-001', 199.99, TRUE, 50, 'https://images.unsplash.com/photo-1546868871-7041f2a55e0f?w=600', 4.60),
-    ('electronics','bluetooth-speaker','Portable Bluetooth Speaker','Waterproof with deep bass.','SPEAKER-001', 39.99, FALSE, 200, 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600', 4.40),
-    ('home','ceramic-mug','Handmade Ceramic Mug','Crafted by artisans, 350ml.','MUG-001', 14.99, FALSE, 300, 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600', 4.90),
-    ('home','scented-candle','Lavender Scented Candle','Soy wax, 45h burn time.','CANDLE-001', 12.99, TRUE, 150, 'https://images.unsplash.com/photo-1602874801006-7d99b0f2793e?w=600', 4.70),
-    ('footwear','running-sneakers','Air Running Sneakers','Lightweight, breathable mesh.','SHOE-001', 89.99, TRUE, 70, 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600', 4.60),
-    ('footwear','leather-boots','Premium Leather Boots','Full-grain leather, durable.','BOOT-001', 159.99, FALSE, 35, 'https://images.unsplash.com/photo-1605812860427-4024433b70df?w=600', 4.50)
+    ('fresh-chicken','whole-chicken','Whole Chicken (Skin-On)','Farm-fresh whole broiler, cleaned and ready to roast. Approx. 1.2 kg.','CHK-WHL-001', 8.99, TRUE, 60, 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=600', 4.80),
+    ('fresh-chicken','chicken-breast-boneless','Chicken Breast (Boneless)','Lean, high-protein boneless breast fillets, trimmed fresh daily.','CHK-BRS-002', 9.49, TRUE, 80, 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=600', 4.70),
+    ('fresh-chicken','chicken-drumsticks','Chicken Drumsticks','Meaty drumsticks — perfect for frying, grilling or slow curries.','CHK-DRM-003', 6.99, FALSE, 90, 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600', 4.60),
+    ('fresh-chicken','chicken-wings','Chicken Wings','Plump wings, great for buffalo, BBQ or tandoori style.','CHK-WNG-004', 7.49, TRUE, 75, 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600', 4.70),
+    ('fresh-chicken','chicken-keema','Chicken Keema (Mince)','Finely ground chicken — ideal for kebabs, kofta and bolognese.','CHK-KEM-005', 8.49, FALSE, 50, 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=600', 4.50),
+    ('fresh-chicken','chicken-curry-cut','Chicken Curry Cut (Bone-In)','Bone-in pieces cut to size for rich curries and biryani.','CHK-CRC-006', 7.99, FALSE, 70, 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600', 4.60),
+    ('frozen-chicken','frozen-whole-chicken','Frozen Whole Chicken','Flash-frozen whole bird — stock the freezer and save.','FRZ-WHL-007', 5.99, FALSE, 40, 'https://images.unsplash.com/photo-1501200291289-c5a76c232e5f?w=600', 4.40),
+    ('frozen-chicken','chicken-nuggets','Crispy Chicken Nuggets','Golden, ready-to-fry nuggets. A family favourite.','FRZ-NUG-008', 5.49, TRUE, 120, 'https://images.unsplash.com/photo-1562967916-eb82221dfb92?w=600', 4.80),
+    ('frozen-chicken','chicken-strips','Crispy Chicken Strips','Breaded tenderloin strips — fry or bake in minutes.','FRZ-STR-009', 6.49, FALSE, 100, 'https://images.unsplash.com/photo-1585325701956-60dd9c8553bc?w=600', 4.60),
+    ('frozen-chicken','chicken-lollipop','Chicken Lollipop (Frozen)','Frenched wingettes, lightly seasoned and ready to fry.','FRZ-LOL-010', 7.99, FALSE, 60, 'https://images.unsplash.com/photo-1614398751058-eb2e0bf63e53?w=600', 4.70),
+    ('marinated','tandoori-chicken','Tandoori Chicken (Marinated)','Classic tandoori masala marinade — just roast or grill.','MAR-TND-011', 10.99, TRUE, 35, 'https://images.unsplash.com/photo-1617692855027-33b14f061079?w=600', 4.90),
+    ('marinated','peri-peri-wings','Peri-Peri Chicken Wings','Fiery peri-peri glazed wings, ready for the pan.','MAR-PER-012', 9.49, FALSE, 45, 'https://images.unsplash.com/photo-1606502973842-f64bc2785fe5?w=600', 4.70),
+    ('marinated','bbq-chicken-skewers','BBQ Chicken Skewers','Smoky BBQ-marinated cubes on skewers — grill and serve.','MAR-BBQ-013', 9.99, FALSE, 40, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=600', 4.60),
+    ('marinated','chicken-tikka','Chicken Tikka (Marinated)','Yogurt & spice tikka marinade — pan, grill or air-fry.','MAR-TIK-014', 10.49, FALSE, 38, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=600', 4.80),
+    ('marinated','chicken-shawarma','Chicken Shawarma Strips','Middle-Eastern spiced strips for wraps and bowls.','MAR-SHW-015', 9.99, FALSE, 42, 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=600', 4.50),
+    ('eggs-extras','farm-eggs','Farm Fresh Eggs','Free-range eggs, collected daily from partner farms.','EGG-016', 3.49, FALSE, 150, 'https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?w=600', 4.80),
+    ('eggs-extras','country-eggs','Country Eggs (12 pcs)','Desi country eggs with rich, deep-orange yolks.','EGG-017', 8.99, FALSE, 80, 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=600', 4.90)
 ) AS p(cat_slug, slug, name, description, sku, price, featured, stock, image, rating)
 ON p.cat_slug = c.slug
 WHERE cur.code = 'USD'
@@ -79,22 +89,45 @@ INSERT INTO product_translations (product_id, language, name, description)
 SELECT p.id, 'es', t.name, t.description
 FROM products p
 JOIN (VALUES
-    ('classic-cotton-tshirt','Camiseta de algodón clásica','Una camiseta suave y transpirable para todos los días.'),
-    ('denim-jacket','Chaqueta vaquera vintage','Denim atemporal con un ajuste moderno.'),
-    ('wireless-headphones','Auriculares inalámbricos','Sonido inmersivo, batería de 30h.')
+    ('whole-chicken','Pollo entero (con piel)','Pollo broiler fresco de granja, limpio y listo para asar.'),
+    ('chicken-breast-boneless','Pechuga de pollo (sin hueso)','Filetes de pechuga magros y ricos en proteína.'),
+    ('chicken-wings','Alitas de pollo','Alitas carnosas — ideales estilo buffalo, BBQ o tandoori.')
 ) AS t(slug, name, description) ON t.slug = p.slug
 WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT (product_id, language) DO NOTHING;
 
--- Variants for the t-shirt (size x color combos)
+-- Variants for the whole chicken (pack sizes)
 INSERT INTO variants (product_id, sku, name, price, stock, image_url)
 SELECT p.id, v.sku, v.name, v.price, v.stock, p.image_url
 FROM products p
 JOIN (VALUES
-    ('classic-cotton-tshirt','TSHIRT-001-S-RED','S / Red', 19.99, 20),
-    ('classic-cotton-tshirt','TSHIRT-001-M-BLU','M / Blue', 19.99, 30),
-    ('classic-cotton-tshirt','TSHIRT-001-L-BLK','L / Black', 19.99, 40),
-    ('classic-cotton-tshirt','TSHIRT-001-XL-WHT','XL / White', 19.99, 30)
+    ('whole-chicken','CHK-WHL-001-1KG','1 kg', 8.99, 25),
+    ('whole-chicken','CHK-WHL-001-15KG','1.5 kg', 12.49, 20),
+    ('whole-chicken','CHK-WHL-001-2KG','2 kg', 15.99, 15)
+) AS v(slug, sku, name, price, stock) ON v.slug = p.slug
+WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
+ON CONFLICT DO NOTHING;
+
+-- Variants for the chicken breast (pack sizes)
+INSERT INTO variants (product_id, sku, name, price, stock, image_url)
+SELECT p.id, v.sku, v.name, v.price, v.stock, p.image_url
+FROM products p
+JOIN (VALUES
+    ('chicken-breast-boneless','CHK-BRS-002-500G','500 g', 4.99, 30),
+    ('chicken-breast-boneless','CHK-BRS-002-1KG','1 kg', 9.49, 30),
+    ('chicken-breast-boneless','CHK-BRS-002-2KG','2 kg', 18.49, 20)
+) AS v(slug, sku, name, price, stock) ON v.slug = p.slug
+WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
+ON CONFLICT DO NOTHING;
+
+-- Variants for farm eggs (pack sizes)
+INSERT INTO variants (product_id, sku, name, price, stock, image_url)
+SELECT p.id, v.sku, v.name, v.price, v.stock, p.image_url
+FROM products p
+JOIN (VALUES
+    ('farm-eggs','EGG-016-6','6 pcs', 3.49, 60),
+    ('farm-eggs','EGG-016-12','12 pcs', 6.49, 50),
+    ('farm-eggs','EGG-016-30','30 pcs', 15.49, 40)
 ) AS v(slug, sku, name, price, stock) ON v.slug = p.slug
 WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT DO NOTHING;
@@ -105,58 +138,53 @@ SELECT v.id, a.id, o.id
 FROM variants v
 JOIN products p ON p.id = v.product_id
 JOIN (VALUES
-    ('TSHIRT-001-S-RED','size','s'),('TSHIRT-001-S-RED','color','red'),
-    ('TSHIRT-001-M-BLU','size','m'),('TSHIRT-001-M-BLU','color','blue'),
-    ('TSHIRT-001-L-BLK','size','l'),('TSHIRT-001-L-BLK','color','black'),
-    ('TSHIRT-001-XL-WHT','size','xl'),('TSHIRT-001-XL-WHT','color','white')
+    ('CHK-WHL-001-1KG','pack-size','1kg'),('CHK-WHL-001-15KG','pack-size','1-5kg'),('CHK-WHL-001-2KG','pack-size','2kg'),
+    ('CHK-BRS-002-500G','pack-size','500g'),('CHK-BRS-002-1KG','pack-size','1kg'),('CHK-BRS-002-2KG','pack-size','2kg'),
+    ('EGG-016-6','pack-size','6pcs'),('EGG-016-12','pack-size','12pcs'),('EGG-016-30','pack-size','30pcs')
 ) AS vv(sku, attr, val) ON vv.sku = v.sku
 JOIN attributes a ON a.tenant_id = p.tenant_id AND a.slug = vv.attr
 JOIN attribute_options o ON o.attribute_id = a.id AND o.value = vv.val
 WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT DO NOTHING;
 
--- Product attribute values (brand, material)
-INSERT INTO product_attribute_values (product_id, attribute_id, value_text)
-SELECT p.id, a.id, vv.brand
+-- Product attribute values (cut / storage / farming / pack-size) so storefront filters work
+INSERT INTO product_attribute_values (product_id, attribute_id, value_text, option_id)
+SELECT p.id, a.id, o.value, o.id
 FROM products p
-JOIN attributes a ON a.tenant_id = p.tenant_id AND a.slug = 'brand'
 JOIN (VALUES
-    ('classic-cotton-tshirt','TruBasics'),
-    ('denim-jacket','DenimCo'),
-    ('wool-sweater','WoolCraft'),
-    ('wireless-headphones','SoundMax'),
-    ('smart-watch','TechWear'),
-    ('bluetooth-speaker','SoundMax'),
-    ('ceramic-mug','ArtisanHome'),
-    ('scented-candle','CozyScents'),
-    ('running-sneakers','RunPro'),
-    ('leather-boots','BootWorks')
-) AS vv(slug, brand) ON vv.slug = p.slug
+    ('whole-chicken','cut','whole-bird'),('whole-chicken','storage','chilled'),('whole-chicken','farming','free-range'),
+    ('chicken-breast-boneless','cut','breast'),('chicken-breast-boneless','storage','chilled'),('chicken-breast-boneless','farming','antibiotic-free'),
+    ('chicken-drumsticks','cut','drumstick'),('chicken-drumsticks','storage','chilled'),('chicken-drumsticks','farming','farm-raised'),('chicken-drumsticks','pack-size','1kg'),
+    ('chicken-wings','cut','wings'),('chicken-wings','storage','chilled'),('chicken-wings','farming','farm-raised'),('chicken-wings','pack-size','1kg'),
+    ('chicken-keema','cut','keema'),('chicken-keema','storage','chilled'),('chicken-keema','farming','antibiotic-free'),('chicken-keema','pack-size','500g'),
+    ('chicken-curry-cut','cut','curry-cut'),('chicken-curry-cut','storage','chilled'),('chicken-curry-cut','farming','farm-raised'),('chicken-curry-cut','pack-size','1kg'),
+    ('frozen-whole-chicken','cut','whole-bird'),('frozen-whole-chicken','storage','frozen'),('frozen-whole-chicken','farming','farm-raised'),('frozen-whole-chicken','pack-size','1-5kg'),
+    ('chicken-nuggets','storage','frozen'),('chicken-nuggets','farming','farm-raised'),('chicken-nuggets','pack-size','500g'),
+    ('chicken-strips','storage','frozen'),('chicken-strips','farming','farm-raised'),('chicken-strips','pack-size','500g'),
+    ('chicken-lollipop','cut','wings'),('chicken-lollipop','storage','frozen'),('chicken-lollipop','farming','farm-raised'),('chicken-lollipop','pack-size','1kg'),
+    ('tandoori-chicken','cut','curry-cut'),('tandoori-chicken','storage','chilled'),('tandoori-chicken','farming','free-range'),('tandoori-chicken','pack-size','1kg'),
+    ('peri-peri-wings','cut','wings'),('peri-peri-wings','storage','chilled'),('peri-peri-wings','farming','farm-raised'),('peri-peri-wings','pack-size','1kg'),
+    ('bbq-chicken-skewers','cut','breast'),('bbq-chicken-skewers','storage','chilled'),('bbq-chicken-skewers','farming','antibiotic-free'),('bbq-chicken-skewers','pack-size','500g'),
+    ('chicken-tikka','cut','breast'),('chicken-tikka','storage','chilled'),('chicken-tikka','farming','free-range'),('chicken-tikka','pack-size','500g'),
+    ('chicken-shawarma','cut','thigh'),('chicken-shawarma','storage','chilled'),('chicken-shawarma','farming','farm-raised'),('chicken-shawarma','pack-size','500g'),
+    ('farm-eggs','farming','free-range'),
+    ('country-eggs','farming','antibiotic-free'),('country-eggs','pack-size','12pcs')
+) AS vv(slug, attr, val) ON vv.slug = p.slug
+JOIN attributes a ON a.tenant_id = p.tenant_id AND a.slug = vv.attr
+JOIN attribute_options o ON o.attribute_id = a.id AND o.value = vv.val
 WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT (product_id, attribute_id) DO NOTHING;
 
-INSERT INTO product_attribute_values (product_id, attribute_id, value_text)
-SELECT p.id, a.id, vv.material
-FROM products p
-JOIN attributes a ON a.tenant_id = p.tenant_id AND a.slug = 'material'
-JOIN (VALUES
-    ('classic-cotton-tshirt','cotton'),
-    ('wool-sweater','wool'),
-    ('denim-jacket','cotton')
-) AS vv(slug, material) ON vv.slug = p.slug
-WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'
-ON CONFLICT (product_id, attribute_id) DO NOTHING;
-
--- An offer: 10% off all apparel
+-- An offer: 10% off all fresh chicken
 INSERT INTO offers (tenant_id, name, description, offer_type, value, is_active)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Apparel Sale', '10% off all apparel', 'percentage', 10, TRUE)
+VALUES ('11111111-1111-1111-1111-111111111111', 'Fresh Week Sale', '10% off all fresh chicken', 'percentage', 10, TRUE)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO offer_targets (offer_id, target_type, target_id)
 SELECT o.id, 'category', c.id
 FROM offers o
-JOIN categories c ON c.tenant_id = o.tenant_id AND c.slug = 'apparel'
-WHERE o.tenant_id = '11111111-1111-1111-1111-111111111111' AND o.name = 'Apparel Sale'
+JOIN categories c ON c.tenant_id = o.tenant_id AND c.slug = 'fresh-chicken'
+WHERE o.tenant_id = '11111111-1111-1111-1111-111111111111' AND o.name = 'Fresh Week Sale'
 ON CONFLICT DO NOTHING;
 
 -- A discount code

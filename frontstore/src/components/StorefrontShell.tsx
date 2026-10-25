@@ -5,21 +5,22 @@ import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { WishlistProvider } from "@/lib/wishlist";
 import { CurrencyLangProvider, useCurrencyLang } from "@/lib/currency-lang";
+import { BootstrapProvider } from "@/lib/bootstrap";
+import { LocationProvider } from "@/lib/location";
+import { LocationPicker } from "@/components/LocationPicker";
 import { CartDrawer } from "@/components/CartDrawer";
 import { WishlistDrawer } from "@/components/WishlistDrawer";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import type { BootstrapResponse } from "@/types";
 
 export function StorefrontShell({
-  tenant,
   bootstrap,
   children,
 }: {
-  tenant: string;
   bootstrap: BootstrapResponse;
   children: ReactNode;
 }) {
-  // Resolve the tenant's default currency code from bootstrap settings
+  // Resolve the store's default currency code from bootstrap settings
   const defaultCurrency =
     (bootstrap.currencies || []).find(
       (c) => c.id === bootstrap.settings?.default_currency_id
@@ -29,28 +30,29 @@ export function StorefrontShell({
 
   return (
     <CurrencyLangProvider
-      tenant={tenant}
       defaultCurrency={defaultCurrency}
       defaultLang={defaultLang}
     >
-      <StorefrontInner
-        tenant={tenant}
-        bootstrap={bootstrap}
-        allowAnonymous={allowAnonymous}
-      >
-        {children}
-      </StorefrontInner>
+      <BootstrapProvider bootstrap={bootstrap}>
+        <LocationProvider>
+          <StorefrontInner
+            bootstrap={bootstrap}
+            allowAnonymous={allowAnonymous}
+          >
+            {children}
+            <LocationPicker />
+          </StorefrontInner>
+        </LocationProvider>
+      </BootstrapProvider>
     </CurrencyLangProvider>
   );
 }
 
 function StorefrontInner({
-  tenant,
   bootstrap,
   allowAnonymous,
   children,
 }: {
-  tenant: string;
   bootstrap: BootstrapResponse;
   allowAnonymous: boolean;
   children: ReactNode;
@@ -60,12 +62,12 @@ function StorefrontInner({
 
   return (
     <AuthProvider allowAnonymous={allowAnonymous}>
-      <CartProvider tenant={tenant} currency={currency}>
-        <WishlistProvider tenant={tenant}>
+      <CartProvider currency={currency}>
+        <WishlistProvider>
           {children}
-          <CartDrawer tenant={tenant} currency={currencyObj} />
-          <WishlistDrawer tenant={tenant} currency={currencyObj} />
-          <CookieConsentBanner tenant={tenant} />
+          <CartDrawer currency={currencyObj} />
+          <WishlistDrawer currency={currencyObj} />
+          <CookieConsentBanner />
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>

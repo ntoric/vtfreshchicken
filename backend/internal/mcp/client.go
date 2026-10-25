@@ -14,20 +14,18 @@ import (
 )
 
 // Client is an HTTP client for the TruCommerce backend API.
-// It handles JWT authentication and tenant scoping.
+// It handles JWT authentication for the single store.
 type Client struct {
 	BaseURL    string // e.g. "http://localhost:18080"
-	Tenant     string // tenant slug (empty = platform-level)
 	Token      string // JWT access token
 	HTTPClient *http.Client
 	mu         sync.RWMutex
 }
 
 // NewClient creates a new API client.
-func NewClient(baseURL, tenant string) *Client {
+func NewClient(baseURL string) *Client {
 	return &Client{
 		BaseURL:    strings.TrimRight(baseURL, "/"),
-		Tenant:     tenant,
 		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -60,13 +58,14 @@ func (c *Client) Login(ctx context.Context, email, password string) error {
 	return nil
 }
 
-// TenantLogin authenticates with a tenant and stores the token.
-func (c *Client) TenantLogin(ctx context.Context, tenant, email, password string) error {
+// StoreLogin authenticates a store user (business_admin, staff, or customer)
+// and stores the token.
+func (c *Client) StoreLogin(ctx context.Context, email, password string) error {
 	body := map[string]string{"email": email, "password": password}
 	var resp struct {
 		AccessToken string `json:"access_token"`
 	}
-	if err := c.do(ctx, "POST", fmt.Sprintf("/api/t/%s/auth/login", tenant), body, nil, &resp); err != nil {
+	if err := c.do(ctx, "POST", "/api/auth/login", body, nil, &resp); err != nil {
 		return err
 	}
 	c.SetToken(resp.AccessToken)
@@ -153,7 +152,7 @@ func (c *Client) Delete(ctx context.Context, path string, out interface{}) error
 	return c.do(ctx, "DELETE", path, nil, nil, out)
 }
 
-// TenantPath returns a tenant-scoped API path.
-func (c *Client) TenantPath(path string) string {
-	return fmt.Sprintf("/api/t/%s%s", c.Tenant, path)
+// APIPath returns a store-scoped API path.
+func (c *Client) APIPath(path string) string {
+	return "/api" + path
 }

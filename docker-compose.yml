@@ -67,6 +67,8 @@ services:
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
       SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-admin@trucommerce.app}
       SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-admin12345}
+      # Single-store resolution: optionally pin the store to a specific tenant slug
+      STORE_SLUG: ${STORE_SLUG:-}
       # CORS
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:13000}
       CORS_MAX_AGE: ${CORS_MAX_AGE:-12h}
@@ -128,6 +130,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:13000}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:13000}
       INTERNAL_API_BASE_URL: http://backend:8080
       INTERNAL_BACKOFFICE_URL: http://backoffice:5173
     ports:
@@ -170,13 +173,13 @@ services:
     command: ["sh", "-c", "go run ./cmd/mcp-server --transport sse --addr :9100"]
     environment:
       MCP_API_BASE_URL: http://backend:8080
-      MCP_DEFAULT_TENANT: ${MCP_DEFAULT_TENANT:-demo}
       MCP_TRANSPORT: sse
       MCP_ADDR: ":9100"
       # Optional auto-login (leave empty to require per-session login via tools)
       MCP_AUTH_EMAIL: ${MCP_AUTH_EMAIL:-}
       MCP_AUTH_PASSWORD: ${MCP_AUTH_PASSWORD:-}
-      MCP_AUTH_TENANT: ${MCP_AUTH_TENANT:-}
+      # Set to "true" to auto-login as platform superadmin instead of a store user
+      MCP_AUTH_PLATFORM: ${MCP_AUTH_PLATFORM:-}
     ports:
       - "${MCP_HOST_PORT:-9100}:9100"
     depends_on:
@@ -186,6 +189,8 @@ services:
       - ./backend:/app
     networks:
       - trucommerce
+    profiles:
+      - mcp
 
 volumes:
   postgres_data:

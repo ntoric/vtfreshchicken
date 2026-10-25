@@ -5,7 +5,6 @@ import { Header } from "@/components/Header";
 import type { BootstrapResponse } from "@/types";
 
 interface LegalPageProps {
-  tenant: string;
   bootstrap: BootstrapResponse;
   currency: string;
   setCurrency: (c: string) => void;
@@ -17,8 +16,7 @@ interface LegalPageProps {
 }
 
 export function LegalPage({
-  tenant,
-  bootstrap,
+    bootstrap,
   currency,
   setCurrency,
   lang,
@@ -30,7 +28,7 @@ export function LegalPage({
   return (
     <div className="min-h-screen bg-white">
       <Header
-        tenant={tenant}
+       
         bootstrap={bootstrap}
         currency={currency}
         setCurrency={setCurrency}
@@ -57,25 +55,25 @@ export function LegalPage({
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Related Documents</h3>
           <div className="flex flex-wrap gap-3">
             <Link
-              href={`/${tenant}/privacy-policy`}
+              href={`/privacy-policy`}
               className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition text-gray-600"
             >
               Privacy Policy
             </Link>
             <Link
-              href={`/${tenant}/cookie-policy`}
+              href={`/cookie-policy`}
               className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition text-gray-600"
             >
               Cookie Policy
             </Link>
             <Link
-              href={`/${tenant}/terms`}
+              href={`/terms`}
               className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition text-gray-600"
             >
               Terms of Service
             </Link>
             <Link
-              href={`/${tenant}/account/data`}
+              href={`/account/data`}
               className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 transition text-gray-600"
             >
               Your Data & Privacy
@@ -87,11 +85,11 @@ export function LegalPage({
       {/* Footer */}
       <footer className="border-t mt-12">
         <div className="max-w-7xl mx-auto px-4 py-8 text-sm text-gray-400 flex flex-col md:flex-row justify-between gap-4">
-          <p>© {new Date().getFullYear()} {tenant}. Powered by TruCommerce.</p>
+          <p>© {new Date().getFullYear()} {bootstrap.store_name}. Powered by TruCommerce.</p>
           <div className="flex gap-4">
-            <Link href={`/${tenant}/privacy-policy`} className="hover:text-gray-600">Privacy</Link>
-            <Link href={`/${tenant}/cookie-policy`} className="hover:text-gray-600">Cookies</Link>
-            <Link href={`/${tenant}/terms`} className="hover:text-gray-600">Terms</Link>
+            <Link href={`/privacy-policy`} className="hover:text-gray-600">Privacy</Link>
+            <Link href={`/cookie-policy`} className="hover:text-gray-600">Cookies</Link>
+            <Link href={`/terms`} className="hover:text-gray-600">Terms</Link>
           </div>
         </div>
       </footer>

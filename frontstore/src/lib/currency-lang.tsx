@@ -4,8 +4,8 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 
 // ---- Currency + Language context ----
 // Persists the selected currency and language across page navigations and
-// refreshes using localStorage (keyed per tenant). Falls back to the tenant's
-// default currency/language from bootstrap, then to "USD"/"en".
+// refreshes using localStorage. Falls back to the store's default
+// currency/language from bootstrap, then to "USD"/"en".
 
 interface CurrencyLangCtx {
   currency: string;
@@ -16,16 +16,14 @@ interface CurrencyLangCtx {
 
 const Ctx = createContext<CurrencyLangCtx | null>(null);
 
-const STORAGE_KEY_PREFIX = "tc_currency_";
-const LANG_STORAGE_KEY_PREFIX = "tc_lang_";
+const CURRENCY_STORAGE_KEY = "tc_currency";
+const LANG_STORAGE_KEY = "tc_lang";
 
 export function CurrencyLangProvider({
-  tenant,
   defaultCurrency,
   defaultLang,
   children,
 }: {
-  tenant: string;
   defaultCurrency: string;
   defaultLang: string;
   children: ReactNode;
@@ -37,44 +35,44 @@ export function CurrencyLangProvider({
   // On mount, read from localStorage (client-side only)
   useEffect(() => {
     try {
-      const savedCur = localStorage.getItem(STORAGE_KEY_PREFIX + tenant);
+      const savedCur = localStorage.getItem(CURRENCY_STORAGE_KEY);
       if (savedCur) setCurrencyState(savedCur);
-      const savedLang = localStorage.getItem(LANG_STORAGE_KEY_PREFIX + tenant);
+      const savedLang = localStorage.getItem(LANG_STORAGE_KEY);
       if (savedLang) setLangState(savedLang);
     } catch {
       // localStorage not available (SSR / privacy mode) — ignore
     }
     setHydrated(true);
-  }, [tenant]);
+  }, []);
 
-  // Keep currency in sync if the tenant default changes (e.g. admin updates it)
+  // Keep currency in sync if the store default changes (e.g. admin updates it)
   useEffect(() => {
     if (!hydrated) return;
     try {
-      const savedCur = localStorage.getItem(STORAGE_KEY_PREFIX + tenant);
+      const savedCur = localStorage.getItem(CURRENCY_STORAGE_KEY);
       if (!savedCur) setCurrencyState(defaultCurrency);
     } catch {
       // ignore
     }
-  }, [defaultCurrency, tenant, hydrated]);
+  }, [defaultCurrency, hydrated]);
 
   const setCurrency = useCallback((c: string) => {
     setCurrencyState(c);
     try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + tenant, c);
+      localStorage.setItem(CURRENCY_STORAGE_KEY, c);
     } catch {
       // ignore
     }
-  }, [tenant]);
+  }, []);
 
   const setLang = useCallback((l: string) => {
     setLangState(l);
     try {
-      localStorage.setItem(LANG_STORAGE_KEY_PREFIX + tenant, l);
+      localStorage.setItem(LANG_STORAGE_KEY, l);
     } catch {
       // ignore
     }
-  }, [tenant]);
+  }, []);
 
   return (
     <Ctx.Provider value={{ currency, setCurrency, lang, setLang }}>

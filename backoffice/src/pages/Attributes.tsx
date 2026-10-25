@@ -46,7 +46,7 @@ export function Attributes() {
 
   function startEdit(a: Attribute) {
     setEditingId(a.id);
-    setEditing({ slug: a.slug, name: a.name, type: a.type, is_filterable: a.is_filterable, is_variant: a.is_variant });
+    setEditing({ slug: a.slug, name: a.name, type: a.type, is_filterable: a.is_filterable, is_variant: a.is_variant, is_batch: a.is_batch });
     setOptions(a.options?.map(o => ({ ...o })) ?? []);
   }
 
@@ -68,7 +68,7 @@ export function Attributes() {
         title="Attributes"
         subtitle={`${q.data?.items.length ?? 0} attributes`}
         action={
-          <button onClick={() => { setEditingId(null); setEditing({ slug: "", name: "", type: "text", is_filterable: false, is_variant: false }); setOptions([]); }} className="bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-brand-dark">
+          <button onClick={() => { setEditingId(null); setEditing({ slug: "", name: "", type: "text", is_filterable: false, is_variant: false, is_batch: false }); setOptions([]); }} className="bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-brand-dark">
             + New Attribute
           </button>
         }
@@ -86,6 +86,7 @@ export function Attributes() {
               <option value="color">Color</option>
               <option value="number">Number</option>
               <option value="boolean">Boolean</option>
+              <option value="datetime">Date &amp; Time</option>
             </select>
           </div>
           <div className="flex gap-6">
@@ -98,6 +99,11 @@ export function Attributes() {
               checked={editing.is_variant || false}
               onChange={(val) => setEditing({ ...editing, is_variant: val })}
               label="Used for variants"
+            />
+            <Toggle
+              checked={editing.is_batch || false}
+              onChange={(val) => setEditing({ ...editing, is_batch: val })}
+              label="Used for batches"
             />
           </div>
 
@@ -151,7 +157,8 @@ export function Attributes() {
                 <td className="px-4 py-3 text-slate-500">{a.options?.length ?? 0}</td>
                 <td className="px-4 py-3 text-xs">
                   {a.is_filterable && <span className="text-blue-600 mr-2">filter</span>}
-                  {a.is_variant && <span className="text-purple-600">variant</span>}
+                  {a.is_variant && <span className="text-purple-600 mr-2">variant</span>}
+                  {a.is_batch && <span className="text-emerald-600">batch</span>}
                 </td>
                 <td className="px-4 py-3">
                   <ActionMenu

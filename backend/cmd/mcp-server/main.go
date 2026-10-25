@@ -15,10 +15,10 @@
 //
 // Environment variables:
 //   MCP_API_BASE_URL  - backend API URL (default: http://localhost:18080)
-//   MCP_DEFAULT_TENANT - default tenant slug for tenant-scoped calls (default: demo)
 //   MCP_AUTH_EMAIL    - optional: auto-login email at startup
 //   MCP_AUTH_PASSWORD - optional: auto-login password at startup
-//   MCP_AUTH_TENANT   - optional: tenant slug for auto-login (empty = superadmin)
+//   MCP_AUTH_PLATFORM - optional: "true" to auto-login as platform superadmin
+//                       (default: store user login)
 //   MCP_TRANSPORT     - transport: "stdio" or "sse" (default: stdio)
 //   MCP_ADDR          - listen address for SSE transport (default: :9100)
 package main
@@ -46,27 +46,24 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
 	baseURL := envOrDefault("MCP_API_BASE_URL", "http://localhost:18080")
-	defaultTenant := envOrDefault("MCP_DEFAULT_TENANT", "demo")
 
-	client := trumcp.NewClient(baseURL, defaultTenant)
-	slog.Info("MCP server starting", "api_url", baseURL, "default_tenant", defaultTenant, "transport", *transport)
+	client := trumcp.NewClient(baseURL)
+	slog.Info("MCP server starting", "api_url", baseURL, "transport", *transport)
 
 	// Optional auto-login
 	if email := os.Getenv("MCP_AUTH_EMAIL"); email != "" {
 		password := os.Getenv("MCP_AUTH_PASSWORD")
-		tenant := os.Getenv("MCP_AUTH_TENANT")
 		ctx := context.Background()
 		var err error
-		if tenant != "" {
-			err = client.TenantLogin(ctx, tenant, email, password)
-			client.Tenant = tenant
-		} else {
+		if os.Getenv("MCP_AUTH_PLATFORM") == "true" {
 			err = client.Login(ctx, email, password)
+		} else {
+			err = client.StoreLogin(ctx, email, password)
 		}
 		if err != nil {
 			slog.Warn("auto-login failed", "err", err)
 		} else {
-			slog.Info("auto-login succeeded", "tenant", tenant)
+			slog.Info("auto-login succeeded")
 		}
 	}
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -44,6 +45,7 @@ function fromISO(s?: string): string {
 
 export function Discounts() {
   const { tenant } = useAuth();
+  const { formatMoney, currency } = useCurrency();
   const qc = useQueryClient();
   const confirmDlg = useConfirmState();
   const toast = useToast();
@@ -156,7 +158,7 @@ export function Discounts() {
         <StatCard label="Total Codes" value={stats?.total_codes ?? "—"} />
         <StatCard label="Active" value={stats?.active_codes ?? "—"} />
         <StatCard label="Redemptions" value={stats?.total_redemptions ?? "—"} />
-        <StatCard label="Total Discount" value={stats ? `$${stats.total_discount.toFixed(2)}` : "—"} />
+        <StatCard label="Total Discount" value={stats ? formatMoney(stats.total_discount) : "—"} />
       </div>
 
       <ReportFilters
@@ -191,7 +193,7 @@ export function Discounts() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <select value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })} className={inp}>
               <option value="percentage">Percentage (%)</option>
-              <option value="fixed">Fixed ($)</option>
+              <option value="fixed">Fixed ({currency.code})</option>
             </select>
             <input type="number" step="0.01" placeholder="Value" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} className={inp} />
             <input type="number" step="0.01" placeholder="Min subtotal" value={form.min_subtotal} onChange={(e) => setForm({ ...form, min_subtotal: Number(e.target.value) })} className={inp} />
@@ -245,8 +247,8 @@ export function Discounts() {
                     {d.description && <p className="text-xs text-slate-400">{d.description}</p>}
                   </td>
                   <td className="px-4 py-3 capitalize">{d.discount_type}</td>
-                  <td className="px-4 py-3">{d.discount_type === "percentage" ? `${d.value}%` : `$${d.value}`}</td>
-                  <td className="px-4 py-3 text-slate-500">${d.min_subtotal}</td>
+                  <td className="px-4 py-3">{d.discount_type === "percentage" ? `${d.value}%` : formatMoney(d.value)}</td>
+                  <td className="px-4 py-3 text-slate-500">{formatMoney(d.min_subtotal)}</td>
                   <td className="px-4 py-3">{d.used_count}{d.max_uses ? ` / ${d.max_uses}` : " / Unlimited"}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">
                     {d.starts_at && <p>From: {new Date(d.starts_at).toLocaleDateString()}</p>}

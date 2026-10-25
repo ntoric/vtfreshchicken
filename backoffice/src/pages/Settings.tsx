@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
-import type { Currency, Language, SMTPSettings, LandingPageContent, LandingFeature, LandingTestimonial, TenantSettings, BrandStoryContent, LookbookContent, LookbookItem, TrendReportContent, TrendItem, SustainabilityContent, SustainabilityValue, StyleGuideContent, StyleGuideArticle, StatsContent, StatsItem, JournalContent, JournalArticle, InstagramContent, FAQContent, FAQItem, NewsletterContent, TrustBadgeContent, SplashContent } from "@/types";
+import type { Currency, Language, SMTPSettings, LandingPageContent, LandingFeature, LandingTestimonial, TenantSettings, ServiceArea, BrandStoryContent, LookbookContent, LookbookItem, TrendReportContent, TrendItem, SustainabilityContent, SustainabilityValue, StyleGuideContent, StyleGuideArticle, StatsContent, StatsItem, JournalContent, JournalArticle, InstagramContent, FAQContent, FAQItem, NewsletterContent, TrustBadgeContent, SplashContent } from "@/types";
 
 // Mini live preview of the loading animation, rendered inside the backoffice
 function MiniSplashPreview({ style, background, subtitle, showLogo, showProgress, showDots }: { style: string; background: string; subtitle: string; showLogo: boolean; showProgress: boolean; showDots: boolean }) {
@@ -347,6 +347,16 @@ export function Settings() {
   const [logoUrl, setLogoUrl] = useState("");
   const [landingEnabled, setLandingEnabled] = useState(false);
   const [anonymousCheckout, setAnonymousCheckout] = useState(true);
+  // Delivery service area (circle range + named areas)
+  const [saEnabled, setSaEnabled] = useState(false);
+  const [saLabel, setSaLabel] = useState("");
+  const [saState, setSaState] = useState("");
+  const [saCountry, setSaCountry] = useState("");
+  const [saCenterLat, setSaCenterLat] = useState("");
+  const [saCenterLng, setSaCenterLng] = useState("");
+  const [saRadiusKm, setSaRadiusKm] = useState("");
+  const [saAreas, setSaAreas] = useState("");
+  const [returnsEnabled, setReturnsEnabled] = useState(true);
   const [returnPeriodDays, setReturnPeriodDays] = useState(30);
   const [refundPeriodDays, setRefundPeriodDays] = useState(30);
   const [replacementPeriodDays, setReplacementPeriodDays] = useState(15);
@@ -410,6 +420,7 @@ export function Settings() {
       setLogoUrl(settingsQ.data.logo_url || "");
       setLandingEnabled(settingsQ.data.landing_page_enabled || false);
       setAnonymousCheckout(settingsQ.data.anonymous_checkout ?? true);
+      setReturnsEnabled(settingsQ.data.returns_enabled ?? true);
       setReturnPeriodDays(settingsQ.data.return_period_days ?? 30);
       setRefundPeriodDays(settingsQ.data.refund_period_days ?? 30);
       setReplacementPeriodDays(settingsQ.data.replacement_period_days ?? 15);
@@ -429,6 +440,15 @@ export function Settings() {
       if (settingsQ.data.landing_page_content) {
         setContent({ ...DEFAULT_CONTENT, ...settingsQ.data.landing_page_content });
       }
+      const sa = settingsQ.data.service_area;
+      setSaEnabled(sa?.enabled ?? false);
+      setSaLabel(sa?.label || "");
+      setSaState(sa?.state || "");
+      setSaCountry(sa?.country || "");
+      setSaCenterLat(sa?.center_lat ? String(sa.center_lat) : "");
+      setSaCenterLng(sa?.center_lng ? String(sa.center_lng) : "");
+      setSaRadiusKm(sa?.radius_km ? String(sa.radius_km) : "");
+      setSaAreas((sa?.areas || []).join("\n"));
     }
   }, [settingsQ.data, currencies]);
 
@@ -455,8 +475,30 @@ export function Settings() {
     saveMut.mutate({ anonymous_checkout: anonymousCheckout });
   };
 
+  const handleSaveServiceArea = () => {
+    const lat = parseFloat(saCenterLat);
+    const lng = parseFloat(saCenterLng);
+    const radius = parseFloat(saRadiusKm);
+    if (saEnabled && (Number.isNaN(lat) || Number.isNaN(lng) || Number.isNaN(radius) || radius <= 0)) {
+      toast.error("Invalid service area", "Center latitude, longitude and a positive radius (km) are required when enabled.");
+      return;
+    }
+    const service_area: ServiceArea = {
+      enabled: saEnabled,
+      label: saLabel.trim(),
+      state: saState.trim(),
+      country: saCountry.trim(),
+      center_lat: lat || 0,
+      center_lng: lng || 0,
+      radius_km: radius || 0,
+      areas: saAreas.split("\n").map((s) => s.trim()).filter(Boolean),
+    };
+    saveMut.mutate({ service_area });
+  };
+
   const handleSaveReturnPolicy = () => {
     saveMut.mutate({
+      returns_enabled: returnsEnabled,
       return_period_days: returnPeriodDays,
       refund_period_days: refundPeriodDays,
       replacement_period_days: replacementPeriodDays,
@@ -1005,9 +1047,115 @@ export function Settings() {
           </div>
         </Section>
 
+        {/* Delivery Service Area */}
+        <Section title="Delivery Service Area" description="Restrict orders to a delivery circle (center point + radius) and a list of named areas shown in the storefront location picker">
+          <div className="space-y-4">
+            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-900">Restrict Delivery Area</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  When enabled, customers must choose a location inside the service circle or a listed area to place an order.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaEnabled(!saEnabled)}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${saEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${saEnabled ? "translate-x-7" : ""}`} />
+              </button>
+            </div>
+
+            {saEnabled && (
+              <div className="space-y-4">
+                <TextInput label="Area Label" value={saLabel} onChange={setSaLabel} placeholder="e.g. Malappuram district, Kerala" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextInput label="Default State" value={saState} onChange={setSaState} placeholder="Kerala" />
+                  <TextInput label="Default Country" value={saCountry} onChange={setSaCountry} placeholder="India" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Center Latitude</label>
+                    <p className="text-xs text-slate-500 mb-2">Service circle centre</p>
+                    <input
+                      type="number"
+                      step="any"
+                      value={saCenterLat}
+                      onChange={(e) => setSaCenterLat(e.target.value)}
+                      placeholder="11.051"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Center Longitude</label>
+                    <p className="text-xs text-slate-500 mb-2">Service circle centre</p>
+                    <input
+                      type="number"
+                      step="any"
+                      value={saCenterLng}
+                      onChange={(e) => setSaCenterLng(e.target.value)}
+                      placeholder="76.071"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Radius (km)</label>
+                    <p className="text-xs text-slate-500 mb-2">Circle range around the centre</p>
+                    <input
+                      type="number"
+                      min={1}
+                      step="any"
+                      value={saRadiusKm}
+                      onChange={(e) => setSaRadiusKm(e.target.value)}
+                      placeholder="50"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+                <TextArea
+                  label="Serviceable Areas (one per line)"
+                  value={saAreas}
+                  onChange={setSaAreas}
+                  placeholder={"Malappuram\nManjeri\nPerinthalmanna"}
+                  rows={6}
+                />
+                <p className="text-xs text-slate-400">
+                  A location counts as deliverable when it is inside the circle <em>or</em> matches a listed area name. The circle is shown on the storefront map picker.
+                </p>
+              </div>
+            )}
+            <button
+              onClick={handleSaveServiceArea}
+              disabled={saveMut.isPending}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+            >
+              {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Save Service Area
+            </button>
+          </div>
+        </Section>
+
         {/* Return & Refund Policy */}
         <Section title="Return & Refund Policy" description="Set how many days after delivery customers can request returns, refunds, or replacements">
           <div className="space-y-4">
+            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-900">Enable Returns & Refunds</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  When disabled, customers cannot request returns, refunds, or replacements on the storefront. Existing requests remain manageable under Orders → Returns.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReturnsEnabled(!returnsEnabled)}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${returnsEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${returnsEnabled ? "translate-x-7" : ""}`} />
+              </button>
+            </div>
+
+            {returnsEnabled && (
+              <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-slate-50 rounded-xl p-4">
                 <label className="block text-sm font-medium text-slate-900 mb-1">Return Period (days)</label>
@@ -1049,6 +1197,8 @@ export function Settings() {
             <p className="text-xs text-slate-400">
               These periods start from the order&apos;s delivery date. Options for expired periods are automatically hidden from the customer dashboard and order page.
             </p>
+              </>
+            )}
             <button
               onClick={handleSaveReturnPolicy}
               disabled={saveMut.isPending}
@@ -1347,7 +1497,7 @@ export function Settings() {
                           <TextArea label="Subtitle" value={content.journal.subtitle} onChange={(v) => updateJournal({ subtitle: v })} rows={2} />
                           {content.journal.articles.map((a, i) => (
                             <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Article {i + 1}</span><div className="flex items-center gap-2"><label className="flex items-center gap-1 text-xs text-slate-600"><input type="checkbox" checked={a.featured} onChange={(e) => updateJournalArticle(i, { featured: e.target.checked })} /> Featured</label><button onClick={() => removeJournalArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div></div>
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Article {i + 1}</span><div className="flex items-center gap-2"><Toggle label="Featured" checked={a.featured} onChange={(v) => updateJournalArticle(i, { featured: v })} /><button onClick={() => removeJournalArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div></div>
                               <TextInput label="Image URL" value={a.image_url} onChange={(v) => updateJournalArticle(i, { image_url: v })} placeholder="https://..." />
                               <div className="grid grid-cols-2 gap-2"><TextInput label="Category" value={a.category} onChange={(v) => updateJournalArticle(i, { category: v })} /><TextInput label="Read Time" value={a.read_time} onChange={(v) => updateJournalArticle(i, { read_time: v })} /></div>
                               <TextInput label="Title" value={a.title} onChange={(v) => updateJournalArticle(i, { title: v })} />

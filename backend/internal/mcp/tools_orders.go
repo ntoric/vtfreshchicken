@@ -22,7 +22,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/orders/admin"), q)
+		return callGet(ctx, c, c.APIPath("/orders/admin"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_order",
@@ -30,13 +30,13 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/admin/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/admin/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_order_counts",
 		mcp.WithDescription("Get order counts grouped by status. Requires orders.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/orders/counts"), nil)
+		return callGet(ctx, c, c.APIPath("/orders/counts"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("update_order_status",
@@ -47,7 +47,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "status", "note")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/orders/admin/%s/status", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/orders/admin/%s/status", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_order_notes",
@@ -57,7 +57,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "notes")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/orders/admin/%s/notes", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/orders/admin/%s/notes", argString(args, "id"))), body)
 	})
 
 	// ---- Returns (admin) ----
@@ -73,7 +73,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/returns"), q)
+		return callGet(ctx, c, c.APIPath("/returns"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_return",
@@ -81,13 +81,13 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Return UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/returns/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/returns/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_return_counts",
 		mcp.WithDescription("Get return counts grouped by status. Requires orders.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/returns/counts"), nil)
+		return callGet(ctx, c, c.APIPath("/returns/counts"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_order_returns",
@@ -95,7 +95,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/admin/%s/returns", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/admin/%s/returns", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_return",
@@ -105,7 +105,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "return")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/orders/admin/%s/returns", argString(args, "order_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/orders/admin/%s/returns", argString(args, "order_id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_return_status",
@@ -115,6 +115,6 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "status")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/returns/%s/status", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/returns/%s/status", argString(args, "id"))), body)
 	})
 }

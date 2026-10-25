@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { ProductEditSkeleton, Spinner } from "@/components/Skeletons";
@@ -30,6 +31,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 export function ProductEdit() {
   const { tenant } = useAuth();
+  const { currency, currencies } = useCurrency();
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -43,7 +45,7 @@ export function ProductEdit() {
 
   const [form, setForm] = useState<Partial<Product>>({
     slug: "", name: "", description: "", sku: "", status: "draft",
-    base_price: 0, currency_code: "USD", is_featured: false, stock: 0, image_url: "",
+    base_price: 0, currency_code: "", is_featured: false, stock: 0, image_url: "",
     category_id: "", variants: [], attributes: [], images: [],
     track_inventory: true, requires_shipping: true,
     weight: 0, length: 0, width: 0, height: 0, free_shipping: false,
@@ -84,7 +86,7 @@ export function ProductEdit() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const body = { ...form, variants, images, attributes: productAttrs };
+      const body = { ...form, currency_code: form.currency_code || currency.code, variants, images, attributes: productAttrs };
       if (isNew) return api.createProduct(tenant, body);
       return api.updateProduct(tenant, id!, body);
     },
@@ -229,7 +231,7 @@ export function ProductEdit() {
   }
 
   const variantAttrs = attrsQ.data?.items.filter((a) => a.is_variant) || [];
-  const nonVariantAttrs = attrsQ.data?.items.filter((a) => !a.is_variant) || [];
+  const nonVariantAttrs = attrsQ.data?.items.filter((a) => !a.is_variant && !a.is_batch) || [];
 
   // Show skeleton while loading existing product in edit mode
   if (!isNew && existingQ.isLoading) {
@@ -336,7 +338,14 @@ export function ProductEdit() {
                 </select>
               </Field>
               <Field label="Currency">
-                <input value={form.currency_code || "USD"} onChange={(e) => set("currency_code", e.target.value)} className={inputCls} />
+                <select value={form.currency_code || currency.code} onChange={(e) => set("currency_code", e.target.value)} className={inputCls}>
+                  {!currencies.some((c) => c.code === (form.currency_code || currency.code)) && (
+                    <option value={form.currency_code || currency.code}>{form.currency_code || currency.code}</option>
+                  )}
+                  {currencies.filter((c) => c.is_active).map((c) => (
+                    <option key={c.code} value={c.code}>{c.code} — {c.name} ({c.symbol})</option>
+                  ))}
+                </select>
               </Field>
               <Toggle
                 checked={form.is_featured || false}
@@ -631,6 +640,8 @@ export function ProductEdit() {
                     </select>
                   ) : attr && attr.type === "number" ? (
                     <input type="number" step="0.01" value={pa.value_number ?? ""} onChange={(e) => updateProductAttr(i, { value_number: Number(e.target.value) })} className={inputCls} />
+                  ) : attr && attr.type === "datetime" ? (
+                    <input type="datetime-local" value={pa.value_text || ""} onChange={(e) => updateProductAttr(i, { value_text: e.target.value })} className={inputCls} />
                   ) : (
                     <input value={pa.value_text || ""} onChange={(e) => updateProductAttr(i, { value_text: e.target.value })} className={inputCls} />
                   )}
@@ -671,12 +682,9 @@ export function ProductEdit() {
                   </Field>
                 </div>
                 <div className="mt-3">
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" checked={form.free_shipping ?? false}
-                      onChange={(e) => set("free_shipping", e.target.checked)}
-                      className="rounded border-gray-300" />
-                    <span>Free shipping — this product ships free regardless of order total</span>
-                  </label>
+                  <Toggle label="Free shipping" description="This product ships free regardless of order total"
+                    checked={form.free_shipping ?? false}
+                    onChange={(v) => set("free_shipping", v)} />
                 </div>
               </>
             )}

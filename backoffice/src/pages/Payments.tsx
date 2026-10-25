@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, ArrowLeft, ArrowRight, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -26,12 +27,6 @@ const TYPE_STYLES: Record<string, string> = {
   refund: "bg-purple-50 text-purple-600",
   void: "bg-slate-100 text-slate-500",
 };
-
-function fmt(n: number, currency = "USD") {
-  const abs = Math.abs(n);
-  const sign = n < 0 ? "−" : "";
-  return currency === "USD" ? `${sign}$${abs.toFixed(2)}` : `${sign}${abs.toFixed(2)} ${currency}`;
-}
 
 function fmtDate(s: string) {
   const d = new Date(s);
@@ -72,6 +67,7 @@ export function Payments() {
 // ---------------- Transactions Tab ----------------
 
 function TransactionsTab({ tenant }: { tenant: string }) {
+  const { formatMoney: fmt } = useCurrency();
   const qc = useQueryClient();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
@@ -349,6 +345,7 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 }
 
 function DetailModal({ txn, onClose, onRefund }: { txn: PaymentTransaction; onClose: () => void; onRefund: () => void }) {
+  const { formatMoney: fmt } = useCurrency();
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -404,6 +401,7 @@ function RefundModal({
   isPending: boolean;
   error?: string;
 }) {
+  const { formatMoney: fmt } = useCurrency();
   const remaining = txn.amount - txn.refunded_amount;
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>

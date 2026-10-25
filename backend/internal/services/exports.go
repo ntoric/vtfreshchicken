@@ -407,14 +407,14 @@ var ExportRegistry = map[string]ExportType{
 		Description: "All tenant users with roles and status",
 		Headers:     []string{"ID", "Email", "Full Name", "Role", "Active", "Phone", "Created At", "Last Login"},
 		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string) (int, error) {
-			items, err := s.ListTenantUsers(ctx, tid)
+			items, err := s.ListTenantUsers(ctx, tid, nil)
 			if err != nil {
 				return 0, err
 			}
 			return len(items), nil
 		},
 		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string, limit, offset int) ([][]string, error) {
-			items, err := s.ListTenantUsers(ctx, tid)
+			items, err := s.ListTenantUsers(ctx, tid, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -662,7 +662,7 @@ func (s *Store) sendExportEmail(to, exportType, fileName, relPath string, cfg *c
 		slog.Warn("export: SMTP not configured, skipping email", "to", to)
 		return
 	}
-	downloadURL := fmt.Sprintf("%s/api/t/%s/exports/download/%s", cfg.AppBaseURL, tid.String(), filepath.Base(relPath))
+	downloadURL := fmt.Sprintf("%s/api/exports/download/%s", cfg.AppBaseURL, filepath.Base(relPath))
 	subject := fmt.Sprintf("Your %s export is ready", exportType)
 	body := fmt.Sprintf(`<html><body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
 <h2>Your export is ready</h2>

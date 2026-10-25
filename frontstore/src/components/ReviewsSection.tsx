@@ -77,7 +77,7 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-function ReviewForm({ tenant, productId }: { tenant: string; productId: string }) {
+function ReviewForm({ productId }: { productId: string }) {
   const qc = useQueryClient();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -87,9 +87,9 @@ function ReviewForm({ tenant, productId }: { tenant: string; productId: string }
   const [showForm, setShowForm] = useState(false);
 
   const mut = useMutation({
-    mutationFn: () => createReview(tenant, productId, { rating, title, body, author_name: authorName }),
+    mutationFn: () => createReview(productId, { rating, title, body, author_name: authorName }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews", tenant, productId] });
+      qc.invalidateQueries({ queryKey: ["reviews", productId] });
       setRating(0); setTitle(""); setBody(""); setAuthorName(""); setShowForm(false);
     },
   });
@@ -184,10 +184,10 @@ function ReviewForm({ tenant, productId }: { tenant: string; productId: string }
   );
 }
 
-export function ReviewsSection({ tenant, productId }: { tenant: string; productId: string }) {
+export function ReviewsSection({ productId }: { productId: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["reviews", tenant, productId],
-    queryFn: () => fetchReviews(tenant, productId),
+    queryKey: ["reviews", productId],
+    queryFn: () => fetchReviews(productId),
   });
 
   const reviews = data?.items ?? [];
@@ -229,7 +229,7 @@ export function ReviewsSection({ tenant, productId }: { tenant: string; productI
       </div>
 
       {/* Write review form */}
-      <ReviewForm tenant={tenant} productId={productId} />
+      <ReviewForm productId={productId} />
 
       {/* Reviews list */}
       {isLoading ? (

@@ -17,6 +17,7 @@ const inp = "w-full border rounded-lg px-3 py-2 text-sm";
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super Admin",
   business_admin: "Business Admin",
+  branch_manager: "Branch Manager",
   staff: "Staff",
   customer: "Customer",
 };
@@ -26,8 +27,9 @@ export function Users() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["users", tenant], queryFn: () => api.listUsers(tenant) });
   const statsQ = useQuery({ queryKey: ["user-stats", tenant], queryFn: () => api.userStats(tenant) });
+  const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "staff" });
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "staff", branch_id: "" });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -46,7 +48,7 @@ export function Users() {
       qc.invalidateQueries({ queryKey: ["users", tenant] });
       qc.invalidateQueries({ queryKey: ["user-stats", tenant] });
       setShowForm(false);
-      setForm({ email: "", full_name: "", password: "", role: "staff" });
+      setForm({ email: "", full_name: "", password: "", role: "staff", branch_id: "" });
     },
   });
 
@@ -104,9 +106,18 @@ export function Users() {
             <input type="password" placeholder="Password (min 6 chars)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inp} />
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inp}>
               <option value="staff">Staff</option>
+              <option value="branch_manager">Branch Manager</option>
               <option value="business_admin">Business Admin</option>
             </select>
           </div>
+          {(form.role === "staff" || form.role === "branch_manager") && (
+            <select value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })} className={inp}>
+              <option value="">No branch (store-wide)</option>
+              {(branchesQ.data?.items ?? []).map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          )}
           <button onClick={() => create.mutate()} disabled={!form.email || !form.full_name || form.password.length < 6 || create.isPending} className="inline-flex items-center gap-2 bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50">
             {create.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Create
@@ -120,6 +131,7 @@ export function Users() {
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={inp + " max-w-[180px]"}>
           <option value="">All roles</option>
           <option value="business_admin">Business Admin</option>
+          <option value="branch_manager">Branch Manager</option>
           <option value="staff">Staff</option>
           <option value="customer">Customer</option>
         </select>
@@ -198,7 +210,9 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
     role: user.role,
     admin_notes: user.admin_notes || "",
     is_active: user.is_active,
+    branch_id: user.branch_id || "",
   });
+  const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
 
   const canManage = currentUser?.role === "superadmin" || currentUser?.role === "business_admin";
   const isSelf = currentUser?.id === user.id;
@@ -277,7 +291,16 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
               <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })} className={inp}>
                 <option value="customer">Customer</option>
                 <option value="staff">Staff</option>
+                <option value="branch_manager">Branch Manager</option>
                 <option value="business_admin">Business Admin</option>
+              </select>
+            </Field>
+            <Field label="Branch">
+              <select value={editForm.branch_id} onChange={(e) => setEditForm({ ...editForm, branch_id: e.target.value })} className={inp}>
+                <option value="">No branch (store-wide)</option>
+                {(branchesQ.data?.items ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
               </select>
             </Field>
             <Field label="Active">
@@ -302,6 +325,7 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
             <DetailRow label="Email" value={user.email} />
             <DetailRow label="Phone" value={user.phone || "—"} />
             <DetailRow label="Role" value={ROLE_LABELS[user.role] || user.role} />
+            <DetailRow label="Branch" value={user.branch_name || "—"} />
             <DetailRow label="Status" value={user.is_active ? "Active" : "Disabled"} />
             <DetailRow label="Admin Notes" value={user.admin_notes || "—"} />
             <DetailRow label="Marketing Consent" value={user.marketing_consent ? "Yes" : "No"} />

@@ -1,7 +1,7 @@
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ShoppingCart, CreditCard, Store, Package, TrendingUp, Users,
+  ShoppingCart, CreditCard, Package, TrendingUp, Users,
   Receipt, Truck, Boxes, ArrowLeftRight, UserCog, Wallet,
   ArrowLeftRight as Transactions, Percent, Tag, MapPin, ArrowLeft,
   Download,
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
@@ -28,7 +29,6 @@ interface ReportMeta {
 const REPORTS: ReportMeta[] = [
   { key: "orders", title: "Orders Report", description: "Order counts by status, revenue, recent orders", icon: ShoppingCart, color: "bg-blue-50 text-blue-600" },
   { key: "payments", title: "Payments Report", description: "Collected, refunded, net revenue by gateway", icon: CreditCard, color: "bg-emerald-50 text-emerald-600" },
-  { key: "stores", title: "Stores Report", description: "Platform-wide tenant/store statistics", icon: Store, color: "bg-purple-50 text-purple-600" },
   { key: "products", title: "Products Report", description: "Product catalog overview and inventory", icon: Package, color: "bg-indigo-50 text-indigo-600" },
   { key: "sales", title: "Sales Report", description: "Revenue, order trends, top products", icon: TrendingUp, color: "bg-amber-50 text-amber-600" },
   { key: "customers", title: "Customers Report", description: "Customer stats, acquisition, spend", icon: Users, color: "bg-pink-50 text-pink-600" },
@@ -141,7 +141,6 @@ function ReportContent({ type }: { type: string }) {
   switch (type) {
     case "orders": return <OrdersReport />;
     case "payments": return <PaymentsReport />;
-    case "stores": return <StoresReport />;
     case "products": return <ProductsReport />;
     case "sales": return <SalesReport />;
     case "customers": return <CustomersReport />;
@@ -199,11 +198,10 @@ function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][]
   );
 }
 
-const money = (n: number) => `$${(n || 0).toFixed(2)}`;
-
 // ===== Orders Report =====
 function OrdersReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-orders", tenant, filters.from, filters.to],
@@ -243,7 +241,7 @@ function OrdersReport() {
           rows={(s.recent_orders || []).map((o) => [
             <span className="font-mono text-xs">{o.id.slice(0, 8)}</span>,
             <span className="capitalize">{o.status}</span>,
-            <span className="font-semibold">{money(o.total)}</span>,
+            <span className="font-semibold">{money(o.total, o.currency)}</span>,
             <span className="text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>,
           ])}
         />
@@ -255,6 +253,7 @@ function OrdersReport() {
 // ===== Payments Report =====
 function PaymentsReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-payments", tenant, filters.from, filters.to],
@@ -293,54 +292,11 @@ function PaymentsReport() {
   );
 }
 
-// ===== Stores Report =====
-function StoresReport() {
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "superadmin";
-  const q = useQuery({
-    queryKey: ["r-stores", isSuperAdmin],
-    queryFn: () => api.platformStats(),
-    enabled: isSuperAdmin,
-  });
-  if (!isSuperAdmin) {
-    return <ErrorBox message="The Stores Report is only available to superadmins. It shows platform-wide tenant statistics." />;
-  }
-  if (q.isLoading) return <Loading />;
-  if (q.error) return <ErrorBox message="Failed to load stores report." />;
-  const s = q.data!
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <StatCard label="Total Stores" value={s.tenant_count} icon={<Store className="w-6 h-6" />} color="bg-purple-50 text-purple-600" />
-        <StatCard label="Active Stores" value={s.active_tenants} icon={<Store className="w-6 h-6" />} color="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Total Products" value={s.total_products} icon={<Package className="w-6 h-6" />} color="bg-indigo-50 text-indigo-600" />
-        <StatCard label="Total Revenue" value={money(s.total_revenue)} icon={<TrendingUp className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard label="Total Orders" value={s.total_orders} icon={<ShoppingCart className="w-6 h-6" />} color="bg-blue-50 text-blue-600" />
-        <StatCard label="Total Customers" value={s.total_customers} icon={<Users className="w-6 h-6" />} color="bg-pink-50 text-pink-600" />
-        <StatCard label="Total Staff" value={s.total_staff} icon={<UserCog className="w-6 h-6" />} color="bg-slate-50 text-slate-600" />
-      </div>
-      <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Top Stores by Revenue</h3>
-        <Table
-          headers={["Store", "Slug", "Plan", "Active", "Revenue"]}
-          rows={(s.top_tenants || []).map((t) => [
-            t.name,
-            <span className="font-mono text-xs">{t.slug}</span>,
-            <span className="capitalize">{t.plan}</span>,
-            t.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-rose-600">No</span>,
-            <span className="font-semibold">{money(t.revenue)}</span>,
-          ])}
-        />
-      </div>
-    </div>
-  );
-}
 
 // ===== Products Report =====
 function ProductsReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-products", tenant, filters.search, filters.status],
@@ -379,7 +335,7 @@ function ProductsReport() {
             p.name,
             <span className="font-mono text-xs">{p.slug}</span>,
             <span className="capitalize">{p.status}</span>,
-            <span className="font-semibold">{money(p.base_price)}</span>,
+            <span className="font-semibold">{money(p.base_price, p.currency_code)}</span>,
           ])}
         />
         {items.length > 50 && <p className="text-xs text-slate-400 mt-2">Showing first 50 of {items.length} products.</p>}
@@ -391,6 +347,7 @@ function ProductsReport() {
 // ===== Sales Report =====
 function SalesReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-sales", tenant, filters.from, filters.to],
@@ -439,7 +396,7 @@ function SalesReport() {
           rows={(s.recent_orders || []).map((o) => [
             <span className="font-mono text-xs">{o.id.slice(0, 8)}</span>,
             <span className="capitalize">{o.status}</span>,
-            <span className="font-semibold">{money(o.total)}</span>,
+            <span className="font-semibold">{money(o.total, o.currency)}</span>,
             <span className="text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>,
           ])}
         />
@@ -451,6 +408,7 @@ function SalesReport() {
 // ===== Customers Report =====
 function CustomersReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const statsQ = useQuery({
     queryKey: ["r-cust-stats", tenant, filters.from, filters.to],
@@ -522,6 +480,7 @@ function TaxesReport() {
 // ===== Shipping Report =====
 function ShippingReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const methodsQ = useQuery({ queryKey: ["r-ship-methods", tenant], queryFn: () => api.listShippingMethods(tenant) });
   const zonesQ = useQuery({ queryKey: ["r-ship-zones", tenant], queryFn: () => api.listShippingZones(tenant) });
   const ratesQ = useQuery({ queryKey: ["r-ship-rates", tenant], queryFn: () => api.listShippingRates(tenant) });
@@ -553,6 +512,7 @@ function ShippingReport() {
 // ===== Inventory Report =====
 function InventoryReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const statsQ = useQuery({ queryKey: ["r-inv-stats", tenant], queryFn: () => api.inventoryStats(tenant) });
   const itemsQ = useQuery({ queryKey: ["r-inv-list", tenant], queryFn: () => api.listInventory(tenant) });
@@ -743,6 +703,7 @@ function UsersReport() {
 // ===== Wallet Report =====
 function WalletReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const statsQ = useQuery({ queryKey: ["r-wallet-stats", tenant], queryFn: () => api.walletStats(tenant) });
   const txnsQ = useQuery({
@@ -796,7 +757,7 @@ function WalletReport() {
             <span className="capitalize">{t.type}</span>,
             <span className="capitalize">{t.source}</span>,
             <span className={`font-semibold ${t.type === "credit" ? "text-emerald-600" : "text-rose-600"}`}>
-              {t.type === "credit" ? "+" : "-"}{money(t.amount)}
+              {t.type === "credit" ? "+" : "-"}{money(t.amount, t.currency_code)}
             </span>,
             <span className="text-slate-500">{new Date(t.created_at).toLocaleString()}</span>,
           ])}
@@ -809,6 +770,7 @@ function WalletReport() {
 // ===== Transactions Report =====
 function TransactionsReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-txns", tenant, filters.from, filters.to, filters.status, filters.gateway, filters.type, filters.search],
@@ -866,7 +828,7 @@ function TransactionsReport() {
           rows={items.map((t) => [
             <span className="font-mono text-xs">{t.id.slice(0, 8)}</span>,
             <span className="capitalize">{t.gateway}</span>,
-            <span className="font-semibold">{money(t.amount)}</span>,
+            <span className="font-semibold">{money(t.amount, t.currency_code)}</span>,
             <span className={`capitalize ${t.status === "succeeded" || t.status === "captured" || t.status === "success" ? "text-emerald-600" : t.status === "failed" ? "text-rose-600" : "text-amber-600"}`}>{t.status}</span>,
             <span className="text-slate-500">{new Date(t.created_at).toLocaleString()}</span>,
           ])}
@@ -879,6 +841,7 @@ function TransactionsReport() {
 // ===== Discounts Report =====
 function DiscountsReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const statsQ = useQuery({ queryKey: ["r-disc-stats", tenant], queryFn: () => api.discountStats(tenant) });
   const listQ = useQuery({ queryKey: ["r-disc-list", tenant], queryFn: () => api.listDiscounts(tenant) });
@@ -940,6 +903,7 @@ function DiscountsReport() {
 // ===== Offers Report =====
 function OffersReport() {
   const { tenant } = useAuth();
+  const { formatMoney: money } = useCurrency();
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({ queryKey: ["r-offers", tenant], queryFn: () => api.listOffers(tenant) });
   if (q.isLoading) return <Loading />;

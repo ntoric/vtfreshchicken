@@ -1,10 +1,12 @@
 export type UUID = string;
 
-export type UserRole = "superadmin" | "business_admin" | "staff" | "customer";
+export type UserRole = "superadmin" | "business_admin" | "branch_manager" | "staff" | "customer";
 
 export interface User {
   id: UUID;
   tenant_id?: UUID;
+  branch_id?: UUID;
+  branch_name?: string;
   email: string;
   full_name: string;
   role: UserRole;
@@ -130,6 +132,7 @@ export interface TenantSettings {
   landing_page_enabled: boolean;
   landing_page_content?: LandingPageContent;
   anonymous_checkout?: boolean;
+  returns_enabled?: boolean;
   return_period_days?: number;
   refund_period_days?: number;
   replacement_period_days?: number;
@@ -138,6 +141,21 @@ export interface TenantSettings {
   og_image?: string;
   site_url?: string;
   social_links?: string[];
+  service_area?: ServiceArea;
+}
+
+// ServiceArea configures where the store delivers. A customer location is
+// serviceable when it falls inside the circle (center + radius) or matches
+// one of the named areas.
+export interface ServiceArea {
+  enabled: boolean;
+  label: string;
+  state: string;
+  country: string;
+  center_lat: number;
+  center_lng: number;
+  radius_km: number;
+  areas: string[];
 }
 
 export interface Currency {
@@ -147,6 +165,8 @@ export interface Currency {
   symbol: string;
   decimals: number;
   is_active: boolean;
+  /** USD->code exchange rate (units of this currency per 1 USD). */
+  rate?: number;
 }
 
 export interface Language {
@@ -391,6 +411,7 @@ export interface Attribute {
   type: string;
   is_filterable: boolean;
   is_variant: boolean;
+  is_batch: boolean;
   options?: AttributeOption[];
 }
 
@@ -518,12 +539,34 @@ export interface DashboardStats {
   products: number;
   orders: number;
   revenue: number;
+  avg_order_value: number;
+  customers: number;
+  new_customers: number;
+  currency: string;
   orders_by_status: Record<string, number>;
+  today?: { orders: number; revenue: number };
+  yesterday?: { orders: number; revenue: number };
+  week?: { orders: number; revenue: number };
+  prev_week?: { orders: number; revenue: number };
+  comparison?: { orders: number; revenue: number; avg_order_value: number };
+  revenue_series?: Array<{ date: string; revenue: number; orders: number }>;
+  top_products?: Array<{ product_id?: UUID; name: string; slug: string; image: string; qty: number; revenue: number }>;
+  top_categories?: Array<{ name: string; revenue: number; qty: number }>;
+  payment_methods?: Array<{ method: string; orders: number; revenue: number }>;
+  inventory?: InventoryStats;
+  low_stock_items?: Array<{ product_id: UUID; name: string; variant: string; stock: number; threshold: number }>;
+  pending_returns: number;
+  active_offers: number;
+  active_discounts: number;
+  avg_rating: number;
+  reviews: number;
+  unread_messages: number;
   recent_orders?: Array<{
     id: UUID;
     status: string;
     total: number;
     currency: string;
+    customer_name?: string;
     created_at: string;
   }>;
 }
@@ -544,6 +587,7 @@ export interface OrderItem {
   variant_id?: UUID;
   name: string;
   sku: string;
+  image_url?: string;
   quantity: number;
   unit_price: number;
   line_total: number;
@@ -578,6 +622,8 @@ export interface Order {
   id: UUID;
   tenant_id: UUID;
   user_id?: UUID;
+  branch_id?: UUID;
+  branch_name?: string;
   status: string;
   subtotal: number;
   discount_total: number;
@@ -1042,6 +1088,7 @@ export interface InventoryItem {
   variant_id?: UUID;
   variant_name?: string;
   stock: number;
+  branch_managed?: boolean;
   low_stock_threshold: number;
   track_inventory: boolean;
   is_low_stock: boolean;
@@ -1075,33 +1122,17 @@ export interface StockMovement {
 
 export interface SetupStatus {
   needs_setup: boolean;
-  needs_tenant: boolean;
+  has_store: boolean;
   has_superadmin: boolean;
-  has_tenants: boolean;
   superadmin_count: number;
   tenant_count: number;
   setup_complete: boolean;
 }
 
 export interface SetupCompleteRequest {
-  superadmin_email: string;
-  superadmin_password: string;
-  superadmin_name: string;
-  tenant_slug: string;
-  tenant_name: string;
-  tenant_description?: string;
-  admin_email: string;
-  admin_password: string;
-  admin_name: string;
-  default_language?: string;
-  supported_languages?: string[];
-  brand_color?: string;
-}
-
-export interface CreateFirstTenantRequest {
-  tenant_slug: string;
-  tenant_name: string;
-  tenant_description?: string;
+  store_name: string;
+  store_slug?: string;
+  store_description?: string;
   admin_email: string;
   admin_password: string;
   admin_name: string;
@@ -1521,4 +1552,29 @@ export interface ExportTypeMeta {
   key: string;
   name: string;
   description: string;
+}
+
+// Branch is a store outlet with its own delivery service area.
+export interface Branch {
+  id: UUID;
+  tenant_id: UUID;
+  name: string;
+  slug: string;
+  phone?: string;
+  email?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  center_lat: number;
+  center_lng: number;
+  radius_km: number;
+  areas: string[];
+  is_active: boolean;
+  is_default?: boolean;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
 }

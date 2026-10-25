@@ -4,49 +4,53 @@ INSERT INTO product_images (product_id, url, alt, sort_order)
 SELECT p.id, img.url, img.alt, img.sort_order
 FROM products p
 JOIN (VALUES
-    -- Classic Cotton T-Shirt
-    ('classic-cotton-tshirt', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900', 'Classic Cotton T-Shirt - Front', 0),
-    ('classic-cotton-tshirt', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900', 'Classic Cotton T-Shirt - Side', 1),
-    ('classic-cotton-tshirt', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=900', 'Classic Cotton T-Shirt - Detail', 2),
-    ('classic-cotton-tshirt', 'https://images.unsplash.com/photo-1622445275576-721325763afe?w=900', 'Classic Cotton T-Shirt - Back', 3),
-    -- Denim Jacket
-    ('denim-jacket', 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=900', 'Vintage Denim Jacket - Front', 0),
-    ('denim-jacket', 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=900', 'Vintage Denim Jacket - Back', 1),
-    ('denim-jacket', 'https://images.unsplash.com/photo-1576995853123-5a10305d93c7?w=900', 'Vintage Denim Jacket - Detail', 2),
-    -- Wool Sweater
-    ('wool-sweater', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=900', 'Cozy Wool Sweater - Front', 0),
-    ('wool-sweater', 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=900', 'Cozy Wool Sweater - Side', 1),
-    ('wool-sweater', 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=900', 'Cozy Wool Sweater - Detail', 2),
-    -- Wireless Headphones
-    ('wireless-headphones', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900', 'Wireless Headphones - Front', 0),
-    ('wireless-headphones', 'https://images.unsplash.com/photo-1484704849700-f032a568e965?w=900', 'Wireless Headphones - Side', 1),
-    ('wireless-headphones', 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=900', 'Wireless Headphones - Detail', 2),
-    ('wireless-headphones', 'https://images.unsplash.com/photo-1487215078519-e21cc028629e?w=900', 'Wireless Headphones - Case', 3),
-    -- Smart Watch
-    ('smart-watch', 'https://images.unsplash.com/photo-1546868871-7041f2a55e0f?w=900', 'Smart Watch - Front', 0),
-    ('smart-watch', 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=900', 'Smart Watch - Side', 1),
-    ('smart-watch', 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=900', 'Smart Watch - Wrist', 2),
-    -- Bluetooth Speaker
-    ('bluetooth-speaker', 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=900', 'Bluetooth Speaker - Front', 0),
-    ('bluetooth-speaker', 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=900&sat=-100', 'Bluetooth Speaker - Side', 1),
-    ('bluetooth-speaker', 'https://images.unsplash.com/photo-1589003077984-894e133d4ab2?w=900', 'Bluetooth Speaker - Detail', 2),
-    -- Ceramic Mug
-    ('ceramic-mug', 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=900', 'Ceramic Mug - Front', 0),
-    ('ceramic-mug', 'https://images.unsplash.com/photo-1577937927443-0ec6d22fc1fa?w=900', 'Ceramic Mug - Top', 1),
-    ('ceramic-mug', 'https://images.unsplash.com/photo-1514258252712-31e3919ec91a?w=900', 'Ceramic Mug - Detail', 2),
-    -- Scented Candle
-    ('scented-candle', 'https://images.unsplash.com/photo-1602874801006-7d99b0f2793e?w=900', 'Scented Candle - Front', 0),
-    ('scented-candle', 'https://images.unsplash.com/photo-1610557892470-55d9e80e0b12?w=900', 'Scented Candle - Lit', 1),
-    ('scented-candle', 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=900', 'Scented Candle - Detail', 2),
-    -- Running Sneakers
-    ('running-sneakers', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900', 'Running Sneakers - Side', 0),
-    ('running-sneakers', 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=900', 'Running Sneakers - Front', 1),
-    ('running-sneakers', 'https://images.unsplash.com/photo-1600185365483-52d8dbd6d4f4?w=900', 'Running Sneakers - Top', 2),
-    ('running-sneakers', 'https://images.unsplash.com/photo-1606107557195-0e88a8fd5daa?w=900', 'Running Sneakers - Detail', 3),
-    -- Leather Boots
-    ('leather-boots', 'https://images.unsplash.com/photo-1605812860427-4024433b70df?w=900', 'Leather Boots - Side', 0),
-    ('leather-boots', 'https://images.unsplash.com/photo-1542838132-7c790cd1d2ec?w=900', 'Leather Boots - Front', 1),
-    ('leather-boots', 'https://images.unsplash.com/photo-1608256246200-44e641a3c0a2?w=900', 'Leather Boots - Detail', 2)
+    -- Whole Chicken
+    ('whole-chicken', 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=900', 'Whole Chicken - Fresh', 0),
+    ('whole-chicken', 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=900', 'Whole Chicken - Roast in Skillet', 1),
+    ('whole-chicken', 'https://images.unsplash.com/photo-1606728035253-49e8a23146de?w=900', 'Whole Chicken - Roasted', 2),
+    -- Chicken Breast
+    ('chicken-breast-boneless', 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=900', 'Chicken Breast - Fresh Fillets', 0),
+    ('chicken-breast-boneless', 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=900', 'Chicken Breast - Cooked', 1),
+    -- Chicken Drumsticks
+    ('chicken-drumsticks', 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=900', 'Chicken Drumsticks - Crispy', 0),
+    ('chicken-drumsticks', 'https://images.unsplash.com/photo-1592011432621-f7f576f44484?w=900', 'Chicken Drumsticks - Grilled', 1),
+    -- Chicken Wings
+    ('chicken-wings', 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=900', 'Chicken Wings - Buffalo', 0),
+    ('chicken-wings', 'https://images.unsplash.com/photo-1602253057119-44d745d9b860?w=900', 'Chicken Wings - Glazed', 1),
+    -- Chicken Keema
+    ('chicken-keema', 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=900', 'Chicken Keema - Fresh Mince', 0),
+    ('chicken-keema', 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=900', 'Chicken Keema - Kebab', 1),
+    -- Chicken Curry Cut
+    ('chicken-curry-cut', 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=900', 'Chicken Curry Cut - Curry', 0),
+    ('chicken-curry-cut', 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=900', 'Chicken Curry Cut - Served', 1),
+    -- Frozen Whole Chicken
+    ('frozen-whole-chicken', 'https://images.unsplash.com/photo-1501200291289-c5a76c232e5f?w=900', 'Frozen Whole Chicken', 0),
+    -- Chicken Nuggets
+    ('chicken-nuggets', 'https://images.unsplash.com/photo-1562967916-eb82221dfb92?w=900', 'Chicken Nuggets - Golden', 0),
+    ('chicken-nuggets', 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=900', 'Chicken Nuggets - Served', 1),
+    -- Chicken Strips
+    ('chicken-strips', 'https://images.unsplash.com/photo-1585325701956-60dd9c8553bc?w=900', 'Chicken Strips - Breaded', 0),
+    -- Chicken Lollipop
+    ('chicken-lollipop', 'https://images.unsplash.com/photo-1614398751058-eb2e0bf63e53?w=900', 'Chicken Lollipop - Party Tray', 0),
+    -- Tandoori Chicken
+    ('tandoori-chicken', 'https://images.unsplash.com/photo-1617692855027-33b14f061079?w=900', 'Tandoori Chicken - Plated', 0),
+    ('tandoori-chicken', 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=900', 'Tandoori Chicken - Grill', 1),
+    -- Peri-Peri Wings
+    ('peri-peri-wings', 'https://images.unsplash.com/photo-1606502973842-f64bc2785fe5?w=900', 'Peri-Peri Wings - Glazed', 0),
+    ('peri-peri-wings', 'https://images.unsplash.com/photo-1602253057119-44d745d9b860?w=900', 'Peri-Peri Wings - Sticky', 1),
+    -- BBQ Chicken Skewers
+    ('bbq-chicken-skewers', 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=900', 'BBQ Chicken Skewers - Grill', 0),
+    ('bbq-chicken-skewers', 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=900', 'BBQ Chicken Skewers - Platter', 1),
+    -- Chicken Tikka
+    ('chicken-tikka', 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=900', 'Chicken Tikka - Masala', 0),
+    -- Chicken Shawarma
+    ('chicken-shawarma', 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=900', 'Chicken Shawarma - Wrap', 0),
+    -- Farm Eggs
+    ('farm-eggs', 'https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?w=900', 'Farm Eggs - Carton', 0),
+    ('farm-eggs', 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=900', 'Farm Eggs - Fresh', 1),
+    -- Country Eggs
+    ('country-eggs', 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=900', 'Country Eggs - Fresh', 0),
+    ('country-eggs', 'https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?w=900', 'Country Eggs - Carton', 1)
 ) AS img(slug, url, alt, sort_order)
 ON img.slug = p.slug
 WHERE p.tenant_id = '11111111-1111-1111-1111-111111111111'

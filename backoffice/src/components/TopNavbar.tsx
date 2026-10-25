@@ -15,11 +15,12 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
-import { TenantSelector } from "@/components/TenantSelector";
 
 export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const { user, tenant, tenantName, lang, setLang, logout } = useAuth();
+  const { formatMoney } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
@@ -31,9 +32,8 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const isSuperAdmin = user?.role === "superadmin";
 
-  const brandName = isSuperAdmin ? "TruCommerce" : (tenantName || "Store");
+  const brandName = tenantName || "Store";
 
   const langsQ = useQuery({
     queryKey: ["topnav-languages", tenant],
@@ -90,7 +90,6 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   // Derive page title from route
   const routeMap: Record<string, string> = {
     "/": "Dashboard",
-    "/platform-dashboard": "Platform Dashboard",
     "/products": "Products",
     "/categories": "Categories",
     "/attributes": "Attributes",
@@ -111,9 +110,6 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     "/users": "Users & Staff",
     "/permissions": "Permissions",
     "/settings": "Settings",
-    "/tenants": "Store Management",
-    "/platform-users": "Users & Roles",
-    "/dev-settings": "Developer Settings",
   };
   const pageTitle = routeMap[location.pathname] || (location.pathname.includes("/products/") ? "Edit Product" : location.pathname.includes("/orders/") ? "Order Detail" : "Admin");
 
@@ -139,7 +135,7 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           {/* Brand */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <span className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {isSuperAdmin ? "TC" : (brandName.charAt(0).toUpperCase() || "S")}
+              {brandName.charAt(0).toUpperCase() || "S"}
             </span>
             <div className="hidden sm:block">
               <span className="font-bold text-slate-900 text-sm tracking-tight">{brandName}</span>
@@ -171,14 +167,8 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           </form>
         </div>
 
-        {/* Right: tenant selector, notifications, language, profile */}
+        {/* Right: notifications, language, profile */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Tenant selector — superadmin only, desktop */}
-          {isSuperAdmin && (
-            <div className="hidden md:block w-52">
-              <TenantSelector />
-            </div>
-          )}
 
           {/* Mobile search button */}
           <button
@@ -213,7 +203,7 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {[
-                    { title: "New order received", desc: "Order #1024 — $249.00", time: "2 min ago", color: "bg-emerald-500" },
+                    { title: "New order received", desc: `Order #1024 — ${formatMoney(249)}`, time: "2 min ago", color: "bg-emerald-500" },
                     { title: "Low stock alert", desc: "3 products below threshold", time: "1 hour ago", color: "bg-amber-500" },
                     { title: "New customer registered", desc: "sarah@example.com", time: "3 hours ago", color: "bg-blue-500" },
                     { title: "Return request", desc: "Order #1018 — Size exchange", time: "5 hours ago", color: "bg-rose-500" },
@@ -319,23 +309,13 @@ export function TopNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                     Settings
                   </Link>
                   <Link
-                    to={isSuperAdmin ? "/platform-users" : "/users"}
+                    to="/users"
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                   >
                     <UserIcon className="w-4 h-4 text-slate-400" strokeWidth={1.8} />
                     My Profile
                   </Link>
-                  {isSuperAdmin && (
-                    <Link
-                      to="/tenants"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      <Building2 className="w-4 h-4 text-slate-400" strokeWidth={1.8} />
-                      Store Management
-                    </Link>
-                  )}
                 </div>
 
                 {/* Logout */}

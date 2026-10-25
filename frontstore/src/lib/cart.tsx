@@ -23,7 +23,7 @@ interface CartCtx {
 
 const Ctx = createContext<CartCtx>(null as any);
 
-export function CartProvider({ tenant, currency, children }: { tenant: string; currency: string; children: ReactNode }) {
+export function CartProvider({ currency, children }: { currency: string; children: ReactNode }) {
   const qc = useQueryClient();
   const router = useRouter();
   const { isAuthenticated, setPendingAction, allowAnonymous } = useAuth();
@@ -31,18 +31,18 @@ export function CartProvider({ tenant, currency, children }: { tenant: string; c
   const [isOpen, setIsOpen] = useState(false);
 
   const cartQ = useQuery<CartResponse>({
-    queryKey: ["cart", tenant, currency],
-    queryFn: () => fetchCart(tenant, currency),
+    queryKey: ["cart", currency],
+    queryFn: () => fetchCart(currency),
   });
 
   const invalidate = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["cart", tenant, currency] });
-    qc.invalidateQueries({ queryKey: ["cart-count", tenant] });
-  }, [qc, tenant, currency]);
+    qc.invalidateQueries({ queryKey: ["cart", currency] });
+    qc.invalidateQueries({ queryKey: ["cart-count"] });
+  }, [qc, currency]);
 
   const addMut = useMutation({
     mutationFn: (vars: { productId: string; variantId?: string; quantity: number; unitPrice?: number; currency?: string }) =>
-      apiAddToCart(tenant, {
+      apiAddToCart({
         product_id: vars.productId,
         variant_id: vars.variantId,
         quantity: vars.quantity,
@@ -55,19 +55,19 @@ export function CartProvider({ tenant, currency, children }: { tenant: string; c
 
   const updateMut = useMutation({
     mutationFn: ({ itemId, quantity }: { itemId: string; quantity: number }) =>
-      updateCartItem(tenant, itemId, quantity),
+      updateCartItem(itemId, quantity),
     onSuccess: invalidate,
     onError: (err) => { console.error("[Cart] updateItem error:", err); toast.error("Update failed", err.message || "Could not update cart item."); },
   });
 
   const removeMut = useMutation({
-    mutationFn: (itemId: string) => removeCartItem(tenant, itemId),
+    mutationFn: (itemId: string) => removeCartItem(itemId),
     onSuccess: () => { invalidate(); toast.info("Removed", "Item removed from your cart."); },
     onError: (err) => { console.error("[Cart] removeItem error:", err); toast.error("Remove failed", err.message || "Could not remove item."); },
   });
 
   const clearMut = useMutation({
-    mutationFn: () => clearCart(tenant),
+    mutationFn: () => clearCart(),
     onSuccess: () => { invalidate(); toast.info("Cart cleared", "All items removed from your cart."); },
     onError: (err) => { console.error("[Cart] clear error:", err); toast.error("Clear failed", err.message || "Could not clear cart."); },
   });
@@ -100,12 +100,12 @@ export function CartProvider({ tenant, currency, children }: { tenant: string; c
           returnPath: window.location.pathname,
         };
         setPendingAction(action);
-        router.push(`/${tenant}/account/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        router.push(`/account/login?redirect=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
       addMut.mutate({ productId, variantId, quantity, unitPrice, currency: cur });
     },
-    [isAuthenticated, allowAnonymous, setPendingAction, router, tenant, addMut],
+    [isAuthenticated, allowAnonymous, setPendingAction, router, addMut],
   );
 
   const itemCount = cartQ.data?.cart.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;

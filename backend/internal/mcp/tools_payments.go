@@ -24,7 +24,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/payments/transactions"), q)
+		return callGet(ctx, c, c.APIPath("/payments/transactions"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_payment_transaction",
@@ -32,7 +32,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Transaction UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/payments/transactions/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/payments/transactions/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_order_transactions",
@@ -40,7 +40,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/payments/orders/%s/transactions", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/payments/orders/%s/transactions", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("refund_transaction",
@@ -51,13 +51,13 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "amount", "reason")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/payments/transactions/%s/refund", argString(args, "id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/payments/transactions/%s/refund", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_payment_gateways",
 		mcp.WithDescription("List payment gateway configurations. Requires payments.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/payments/gateways"), nil)
+		return callGet(ctx, c, c.APIPath("/payments/gateways"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("update_payment_gateway",
@@ -67,7 +67,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "gateway")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/payments/gateways/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/payments/gateways/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("get_payment_stats",
@@ -77,14 +77,14 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "from", "to")
-		return callGet(ctx, c, c.TenantPath("/payments/stats"), q)
+		return callGet(ctx, c, c.APIPath("/payments/stats"), q)
 	})
 
 	// ---- Wallet (customer) ----
 	s.AddTool(mcp.NewTool("get_my_wallet",
 		mcp.WithDescription("Get the current user's wallet balance."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/wallet"), nil)
+		return callGet(ctx, c, c.APIPath("/wallet"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("topup_wallet",
@@ -95,7 +95,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "amount", "payment_method", "payment_details")
-		return callPost(ctx, c, c.TenantPath("/wallet/topup"), body)
+		return callPost(ctx, c, c.APIPath("/wallet/topup"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_wallet_transactions",
@@ -105,14 +105,14 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath("/wallet/transactions"), q)
+		return callGet(ctx, c, c.APIPath("/wallet/transactions"), q)
 	})
 
 	// ---- Wallet (admin) ----
 	s.AddTool(mcp.NewTool("get_wallet_stats",
 		mcp.WithDescription("Get aggregate wallet statistics (wallet count, total balance, topups, purchases). Requires payments.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/wallet/stats"), nil)
+		return callGet(ctx, c, c.APIPath("/wallet/stats"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_all_wallet_transactions",
@@ -127,7 +127,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQueryFromArgs(args)
-		return callGet(ctx, c, c.TenantPath("/wallet/all"), q)
+		return callGet(ctx, c, c.APIPath("/wallet/all"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_customer_wallet",
@@ -135,7 +135,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("user_id", mcp.Required(), mcp.Description("Customer UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/wallet/%s", argString(args, "user_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/wallet/%s", argString(args, "user_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_customer_wallet_transactions",
@@ -146,7 +146,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/wallet/%s/transactions", argString(args, "user_id"))), q)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/wallet/%s/transactions", argString(args, "user_id"))), q)
 	})
 
 	s.AddTool(mcp.NewTool("adjust_customer_wallet",
@@ -157,7 +157,7 @@ func RegisterPaymentTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "amount", "description")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/wallet/%s/adjust", argString(args, "user_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/wallet/%s/adjust", argString(args, "user_id"))), body)
 	})
 }
 
@@ -167,7 +167,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_shipping_methods",
 		mcp.WithDescription("List all shipping methods. Requires shipping.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/shipping/methods"), nil)
+		return callGet(ctx, c, c.APIPath("/shipping/methods"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_shipping_method",
@@ -176,7 +176,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "method")
-		return callPost(ctx, c, c.TenantPath("/shipping/methods"), body)
+		return callPost(ctx, c, c.APIPath("/shipping/methods"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_shipping_method",
@@ -186,7 +186,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "method")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/methods/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/shipping/methods/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_shipping_method",
@@ -194,14 +194,14 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Method UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/methods/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/shipping/methods/%s", argString(args, "id"))))
 	})
 
 	// ---- Shipping Zones ----
 	s.AddTool(mcp.NewTool("list_shipping_zones",
 		mcp.WithDescription("List all shipping zones. Requires shipping.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/shipping/zones"), nil)
+		return callGet(ctx, c, c.APIPath("/shipping/zones"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_shipping_zone",
@@ -210,7 +210,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "zone")
-		return callPost(ctx, c, c.TenantPath("/shipping/zones"), body)
+		return callPost(ctx, c, c.APIPath("/shipping/zones"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_shipping_zone",
@@ -220,7 +220,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "zone")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/zones/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/shipping/zones/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_shipping_zone",
@@ -228,14 +228,14 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Zone UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/zones/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/shipping/zones/%s", argString(args, "id"))))
 	})
 
 	// ---- Shipping Rates ----
 	s.AddTool(mcp.NewTool("list_shipping_rates",
 		mcp.WithDescription("List all shipping rates. Requires shipping.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/shipping/rates"), nil)
+		return callGet(ctx, c, c.APIPath("/shipping/rates"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_shipping_rate",
@@ -244,7 +244,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "rate")
-		return callPost(ctx, c, c.TenantPath("/shipping/rates"), body)
+		return callPost(ctx, c, c.APIPath("/shipping/rates"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_shipping_rate",
@@ -254,7 +254,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "rate")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/rates/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/shipping/rates/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_shipping_rate",
@@ -262,14 +262,14 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Rate UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/rates/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/shipping/rates/%s", argString(args, "id"))))
 	})
 
 	// ---- Shipping Providers ----
 	s.AddTool(mcp.NewTool("list_shipping_providers",
 		mcp.WithDescription("List shipping providers (Delhivery, etc.). Requires shipping.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/shipping/providers"), nil)
+		return callGet(ctx, c, c.APIPath("/shipping/providers"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_shipping_provider",
@@ -278,7 +278,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "provider")
-		return callPost(ctx, c, c.TenantPath("/shipping/providers"), body)
+		return callPost(ctx, c, c.APIPath("/shipping/providers"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_shipping_provider",
@@ -288,7 +288,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "provider")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/providers/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/shipping/providers/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_shipping_provider",
@@ -296,7 +296,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Provider UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/providers/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/shipping/providers/%s", argString(args, "id"))))
 	})
 
 	s.AddTool(mcp.NewTool("test_shipping_provider",
@@ -304,7 +304,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Provider UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/providers/%s/test", argString(args, "id"))), nil)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/shipping/providers/%s/test", argString(args, "id"))), nil)
 	})
 
 	// ---- Shipments ----
@@ -313,7 +313,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/orders/%s/shipments", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/shipping/orders/%s/shipments", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_order_shipment",
@@ -323,7 +323,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "shipment")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/orders/%s/shipments", argString(args, "order_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/shipping/orders/%s/shipments", argString(args, "order_id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("track_shipment",
@@ -331,7 +331,7 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Shipment UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/shipping/shipments/%s/track", argString(args, "id"))), nil)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/shipping/shipments/%s/track", argString(args, "id"))), nil)
 	})
 
 	// ---- Shipping Calculation (public) ----
@@ -343,6 +343,6 @@ func RegisterShippingTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "subtotal", "shipping_address", "items")
-		return callPost(ctx, c, c.TenantPath("/shipping/calculate"), body)
+		return callPost(ctx, c, c.APIPath("/shipping/calculate"), body)
 	})
 }

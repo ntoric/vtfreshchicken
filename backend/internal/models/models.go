@@ -155,7 +155,8 @@ type TenantSettings struct {
 	DefaultTaxClassID   *UUID  `json:"default_tax_class_id,omitempty"`
 	// Checkout settings
 	AnonymousCheckout   bool   `json:"anonymous_checkout"`
-	// Return / refund / replacement validity (days from delivery)
+	// Return / refund / replacement policy switch + validity (days from delivery)
+	ReturnsEnabled        bool `json:"returns_enabled"`
 	ReturnPeriodDays      int `json:"return_period_days"`
 	RefundPeriodDays      int `json:"refund_period_days"`
 	ReplacementPeriodDays int `json:"replacement_period_days"`
@@ -166,6 +167,67 @@ type TenantSettings struct {
 	OGImage         string   `json:"og_image"`
 	SiteURL         string   `json:"site_url"`
 	SocialLinks     []string `json:"social_links"`
+
+	// Delivery service area — circle range + named areas, configurable in the backoffice.
+	ServiceArea *ServiceArea `json:"service_area,omitempty"`
+}
+
+// ServiceArea configures where the store delivers. A customer location is
+// serviceable when it falls inside the circle (center + radius) or matches
+// one of the named areas.
+type ServiceArea struct {
+	Enabled   bool     `json:"enabled"`
+	Label     string   `json:"label"`
+	State     string   `json:"state"`
+	Country   string   `json:"country"`
+	CenterLat float64  `json:"center_lat"`
+	CenterLng float64  `json:"center_lng"`
+	RadiusKm  float64  `json:"radius_km"`
+	Areas     []string `json:"areas"`
+}
+
+// Branch is a physical outlet of the store. Each branch defines its own
+// delivery service area (a circle plus a list of named areas). When at least
+// one active branch exists, orders are only accepted inside a branch's
+// service area and are assigned to the nearest covering branch.
+type Branch struct {
+	ID         UUID      `json:"id"`
+	TenantID   UUID      `json:"tenant_id"`
+	Name       string    `json:"name"`
+	Slug       string    `json:"slug"`
+	Phone      string    `json:"phone"`
+	Email      string    `json:"email"`
+	Line1      string    `json:"line1"`
+	Line2      string    `json:"line2"`
+	City       string    `json:"city"`
+	State      string    `json:"state"`
+	PostalCode string    `json:"postal_code"`
+	Country    string    `json:"country"`
+	CenterLat  float64   `json:"center_lat"`
+	CenterLng  float64   `json:"center_lng"`
+	RadiusKm   float64   `json:"radius_km"`
+	Areas      []string  `json:"areas"`
+	IsActive   bool      `json:"is_active"`
+	IsDefault  bool      `json:"is_default"`
+	SortOrder  int       `json:"sort_order"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// BranchStock is the optional per-branch stock overlay for a product or
+// variant. When a row exists for (branch, product[, variant]) it is enforced
+// at checkout; otherwise the item draws from shared store-level stock.
+type BranchStock struct {
+	ID         UUID      `json:"id"`
+	TenantID   UUID      `json:"tenant_id"`
+	BranchID   UUID      `json:"branch_id"`
+	ProductID  UUID      `json:"product_id"`
+	VariantID  *UUID     `json:"variant_id,omitempty"`
+	Stock      int       `json:"stock"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	// Joined fields for admin display
+	ProductName string `json:"product_name,omitempty"`
+	VariantName string `json:"variant_name,omitempty"`
 }
 
 // TenantSMTPSettings holds per-tenant SMTP configuration for transactional emails.
@@ -426,6 +488,9 @@ type Currency struct {
 	Symbol    string   `json:"symbol"`
 	Decimals  int      `json:"decimals"`
 	IsActive  bool     `json:"is_active"`
+	// Rate is the USD->code exchange rate (units of this currency per 1 USD).
+	// Convert an amount in currency A to currency B with: amount / A.rate * B.rate.
+	Rate      float64  `json:"rate"`
 }
 
 type ExchangeRate struct {
@@ -447,6 +512,7 @@ type UserRole string
 const (
 	RoleSuperAdmin    UserRole = "superadmin"
 	RoleBusinessAdmin UserRole = "business_admin"
+	RoleBranchManager UserRole = "branch_manager"
 	RoleStaff         UserRole = "staff"
 	RoleCustomer      UserRole = "customer"
 )
@@ -454,6 +520,8 @@ const (
 type User struct {
 	ID               UUID       `json:"id"`
 	TenantID         *UUID      `json:"tenant_id,omitempty"`
+	BranchID         *UUID      `json:"branch_id,omitempty"`
+	BranchName       string     `json:"branch_name,omitempty"` // joined for admin lists
 	Email            string     `json:"email"`
 	PasswordHash     string     `json:"-"`
 	FullName         string     `json:"full_name"`
@@ -553,6 +621,7 @@ type Attribute struct {
 	Type         string             `json:"type"`
 	IsFilterable bool               `json:"is_filterable"`
 	IsVariant    bool               `json:"is_variant"`
+	IsBatch      bool               `json:"is_batch"`
 	Options      []AttributeOption  `json:"options,omitempty"`
 }
 
@@ -681,6 +750,7 @@ type InventoryItem struct {
 	VariantID         *UUID  `json:"variant_id,omitempty"`
 	VariantName       string `json:"variant_name,omitempty"`
 	Stock             int    `json:"stock"`
+	BranchManaged     bool   `json:"branch_managed,omitempty"` // stock comes from a branch_stock row
 	LowStockThreshold int    `json:"low_stock_threshold"`
 	TrackInventory    bool   `json:"track_inventory"`
 	IsLowStock        bool   `json:"is_low_stock"`
@@ -700,6 +770,7 @@ type InventoryStats struct {
 type Offer struct {
 	ID          UUID       `json:"id"`
 	TenantID    UUID       `json:"tenant_id"`
+	BranchID    *UUID      `json:"branch_id,omitempty"` // NULL = applies at all branches
 	Name        string     `json:"name"`
 	Description string     `json:"description"`
 	OfferType   string     `json:"offer_type"`
@@ -718,6 +789,7 @@ type OfferTarget struct {
 type DiscountCode struct {
 	ID           UUID       `json:"id"`
 	TenantID     UUID       `json:"tenant_id"`
+	BranchID     *UUID      `json:"branch_id,omitempty"` // NULL = valid at all branches
 	Code         string     `json:"code"`
 	Description  string     `json:"description"`
 	DiscountType string     `json:"discount_type"`
@@ -918,6 +990,8 @@ type Order struct {
 	ID              UUID       `json:"id"`
 	TenantID        UUID       `json:"tenant_id"`
 	UserID          *UUID      `json:"user_id,omitempty"`
+	BranchID        *UUID      `json:"branch_id,omitempty"`
+	BranchName      string     `json:"branch_name,omitempty"` // joined for admin display
 	Status          string     `json:"status"`
 	Subtotal        float64    `json:"subtotal"`
 	DiscountTotal   float64    `json:"discount_total"`
@@ -1011,6 +1085,7 @@ type OrderItem struct {
 	VariantID  *UUID   `json:"variant_id,omitempty"`
 	Name       string  `json:"name"`
 	SKU        string  `json:"sku"`
+	ImageURL   string  `json:"image_url,omitempty"`
 	Quantity   int     `json:"quantity"`
 	UnitPrice  float64 `json:"unit_price"`
 	LineTotal  float64 `json:"line_total"`
@@ -1060,6 +1135,14 @@ type CheckoutRequest struct {
 	// overrides the order-level ShippingMethod for that cart item. The cart item
 	// is identified by its index in the cart (0-based).
 	ItemShippingMethods []ItemShippingMethod `json:"item_shipping_methods,omitempty"`
+	// Delivery location used to resolve the fulfilling branch. Either the
+	// coordinates (map pin) or a named delivery area must match a branch's
+	// service area when branches are configured.
+	DeliveryArea string   `json:"delivery_area,omitempty"`
+	DeliveryLat  *float64 `json:"delivery_lat,omitempty"`
+	DeliveryLng  *float64 `json:"delivery_lng,omitempty"`
+	// BranchID is set server-side after branch resolution — client input ignored.
+	BranchID *UUID `json:"-"`
 }
 
 // ItemShippingMethod assigns a shipping method to a specific cart item at checkout.

@@ -20,7 +20,7 @@ func NewDashboardHandler(store *services.Store) *DashboardHandler {
 func (h *DashboardHandler) Stats(c *gin.Context) {
 	tid := tenantID(c)
 	dr := services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")}
-	stats, err := h.store.DashboardStats(c.Request.Context(), tid, dr)
+	stats, err := h.store.DashboardStats(c.Request.Context(), tid, dr, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

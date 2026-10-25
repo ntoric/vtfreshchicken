@@ -809,6 +809,7 @@ func (s *Store) OrderBelongsToUser(ctx context.Context, tenantID, orderID, userI
 // OrderReturnEligibility holds the computed return/refund/replacement eligibility for an order.
 type OrderReturnEligibility struct {
 	DeliveredAt          *time.Time `json:"delivered_at,omitempty"`
+	ReturnsEnabled       bool       `json:"returns_enabled"`
 	ReturnEligible       bool       `json:"return_eligible"`
 	RefundEligible       bool       `json:"refund_eligible"`
 	ReplacementEligible  bool       `json:"replacement_eligible"`
@@ -830,7 +831,9 @@ func (s *Store) GetOrderReturnEligibility(ctx context.Context, tenantID, orderID
 	tenantReturn := 30
 	tenantRefund := 30
 	tenantReplacement := 15
+	returnsEnabled := true
 	if ts, err := s.GetTenantSettings(ctx, tenantID); err == nil {
+		returnsEnabled = ts.ReturnsEnabled
 		if ts.ReturnPeriodDays > 0 {
 			tenantReturn = ts.ReturnPeriodDays
 		}
@@ -916,12 +919,14 @@ func (s *Store) GetOrderReturnEligibility(ctx context.Context, tenantID, orderID
 	}
 
 	// Allowed = at least one product enables it (or NULL = enabled).
-	// Only disallowed if all products explicitly disable it.
-	returnAllowed := !hasProducts || seenReturnEnabled || !anyExplicitReturnFalse
-	refundAllowed := !hasProducts || seenRefundEnabled || !anyExplicitRefundFalse
-	replacementAllowed := !hasProducts || seenReplacementEnabled || !anyExplicitReplacementFalse
+	// Only disallowed if all products explicitly disable it. The store-level
+	// returns_enabled switch overrides everything.
+	returnAllowed := returnsEnabled && (!hasProducts || seenReturnEnabled || !anyExplicitReturnFalse)
+	refundAllowed := returnsEnabled && (!hasProducts || seenRefundEnabled || !anyExplicitRefundFalse)
+	replacementAllowed := returnsEnabled && (!hasProducts || seenReplacementEnabled || !anyExplicitReplacementFalse)
 
 	e := &OrderReturnEligibility{
+		ReturnsEnabled:     returnsEnabled,
 		ReturnAllowed:      returnAllowed,
 		RefundAllowed:      refundAllowed,
 		ReplacementAllowed: replacementAllowed,

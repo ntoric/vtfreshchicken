@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { BadgePercent } from "lucide-react";
 import type { Offer } from "@/types";
 
 interface OfferBannerProps {
   offers: Offer[];
+  /** Render just the ticket, without the standalone section wrapper (for embedding inside another section). */
+  inline?: boolean;
 }
 
-export function OfferBanner({ offers }: OfferBannerProps) {
+export function OfferBanner({ offers, inline = false }: OfferBannerProps) {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
@@ -22,39 +25,76 @@ export function OfferBanner({ offers }: OfferBannerProps) {
 
   const offer = offers[idx];
   const isPercent = offer.offer_type === "percentage";
-  const badge = isPercent ? `${offer.value}% OFF` : `$${offer.value} OFF`;
+  const badge = isPercent ? `${offer.value}%` : `$${offer.value}`;
+
+  const ticket = (
+    <>
+      {/* Coupon ticket */}
+      <div className={`relative w-full ${inline ? "max-w-md" : "max-w-2xl"} flex items-stretch bg-white/85 backdrop-blur-sm border border-stone-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] overflow-hidden`}>
+          {/* value medallion */}
+          <div
+            className="flex flex-col items-center justify-center px-4 sm:px-5 text-white flex-shrink-0"
+            style={{ background: "var(--brand-color)" }}
+          >
+            <span className="font-display text-lg sm:text-xl font-bold leading-none">
+              {badge}
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase mt-1 opacity-90">
+              OFF
+            </span>
+          </div>
+
+          {/* perforation */}
+          <div className="w-px self-stretch border-l border-dashed border-stone-300" />
+
+          {/* copy */}
+          <div className="min-w-0 flex-1 px-4 sm:px-5 py-2.5 sm:py-3">
+            <p className="text-[10px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-brand">
+              This week&apos;s offer
+            </p>
+            <p className="font-display text-sm sm:text-lg font-semibold text-stone-900 truncate mt-0.5">
+              {offer.name}
+            </p>
+            {offer.description && (
+              <p className="text-[11px] sm:text-sm text-stone-500 truncate">
+                {offer.description}
+              </p>
+            )}
+          </div>
+
+          {/* auto-applied chip */}
+          <div className="hidden sm:flex items-center pr-4">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-stone-500 border border-stone-200 rounded-full px-3 py-1.5 bg-stone-50 whitespace-nowrap">
+              <BadgePercent className="w-3.5 h-3.5 text-brand" strokeWidth={1.9} />
+              Auto-applied
+            </span>
+          </div>
+        </div>
+
+      {/* rotation dots */}
+      {offers.length > 1 && (
+        <div className={`flex gap-1.5 mt-2.5 ${inline ? "" : "justify-center pb-1"}`}>
+          {offers.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`h-1.5 rounded-full transition-all ${
+                i === idx ? "w-6 bg-brand" : "w-1.5 bg-stone-300"
+              }`}
+              aria-label={`Offer ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+
+  if (inline) return ticket;
 
   return (
-    <section className="bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 border-b border-orange-100">
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide shadow-sm">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-            {badge}
-          </span>
-          <span className="font-semibold text-gray-800 text-sm md:text-base">
-            {offer.name}
-          </span>
-          {offer.description && (
-            <span className="text-gray-500 text-sm hidden sm:inline">— {offer.description}</span>
-          )}
-        </div>
-        {offers.length > 1 && (
-          <div className="flex justify-center gap-1.5 mt-3">
-            {offers.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIdx(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === idx ? "w-6 bg-rose-400" : "w-1.5 bg-rose-200"
-                }`}
-                aria-label={`Offer ${i + 1}`}
-              />
-            ))}
-          </div>
-        )}
+    <section className="bg-[#f4efe6] border-b border-stone-200">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex justify-center">
+        {ticket}
       </div>
     </section>
   );

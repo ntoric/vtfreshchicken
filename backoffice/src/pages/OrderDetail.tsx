@@ -1,11 +1,13 @@
 import { useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, X, Plus, RotateCcw, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Plus, RotateCcw, Loader2, Package } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
+import { Toggle } from "@/components/Toggle";
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_TRANSITIONS,
@@ -28,6 +30,7 @@ import {
 export function OrderDetail() {
   const { orderId } = useParams<{ orderId: string }>();
   const { tenant, user } = useAuth();
+  const { formatMoney } = useCurrency();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
@@ -326,16 +329,27 @@ export function OrderDetail() {
                 {items.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3">
-                      <div className="font-medium text-slate-800">{item.name}</div>
-                      {item.sku && <div className="text-xs text-slate-400 font-mono">{item.sku}</div>}
+                      <div className="flex items-center gap-3">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 flex-shrink-0 flex items-center justify-center text-slate-300">
+                            <Package className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-medium text-slate-800">{item.name}</div>
+                          {item.sku && <div className="text-xs text-slate-400 font-mono">{item.sku}</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-center text-slate-600">{item.quantity}</td>
                     <td className="px-5 py-3 text-right text-slate-600">
-                      {order.currency_code === "USD" ? "$" : ""}{item.unit_price.toFixed(2)}
+                      {formatMoney(item.unit_price, order.currency_code)}
                     </td>
                     <td className="px-5 py-3 text-right text-slate-500 text-xs">
                       {item.tax_amount && item.tax_amount > 0 ? (
-                        <span>{order.currency_code === "USD" ? "$" : ""}{item.tax_amount.toFixed(2)}
+                        <span>{formatMoney(item.tax_amount, order.currency_code)}
                         {item.tax_rate && item.tax_rate > 0 && <span className="text-slate-400"> ({item.tax_rate.toFixed(2)}%)</span>}
                         </span>
                       ) : "—"}
@@ -345,7 +359,7 @@ export function OrderDetail() {
                         <div>
                           <div className="capitalize">{item.shipping_method}</div>
                           {item.shipping_cost && item.shipping_cost > 0 && (
-                            <div>{order.currency_code === "USD" ? "$" : ""}{item.shipping_cost.toFixed(2)}</div>
+                            <div>{formatMoney(item.shipping_cost, order.currency_code)}</div>
                           )}
                           {item.shipping_weight && item.shipping_weight > 0 && (
                             <div className="text-slate-400">{item.shipping_weight.toFixed(2)} kg</div>
@@ -354,7 +368,7 @@ export function OrderDetail() {
                       ) : "—"}
                     </td>
                     <td className="px-5 py-3 text-right font-medium">
-                      {order.currency_code === "USD" ? "$" : ""}{item.line_total.toFixed(2)}
+                      {formatMoney(item.line_total, order.currency_code)}
                     </td>
                   </tr>
                 ))}
@@ -362,17 +376,17 @@ export function OrderDetail() {
               <tfoot className="bg-slate-50">
                 <tr>
                   <td colSpan={5} className="px-5 py-2 text-right text-slate-500 text-xs">Subtotal</td>
-                  <td className="px-5 py-2 text-right font-medium">{order.currency_code === "USD" ? "$" : ""}{order.subtotal.toFixed(2)}</td>
+                  <td className="px-5 py-2 text-right font-medium">{formatMoney(order.subtotal, order.currency_code)}</td>
                 </tr>
                 {order.discount_total > 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-2 text-right text-slate-500 text-xs">Discount</td>
-                    <td className="px-5 py-2 text-right text-emerald-600">−{order.currency_code === "USD" ? "$" : ""}{order.discount_total.toFixed(2)}</td>
+                    <td className="px-5 py-2 text-right text-emerald-600">−{formatMoney(order.discount_total, order.currency_code)}</td>
                   </tr>
                 )}
                 <tr>
                   <td colSpan={5} className="px-5 py-2 text-right text-slate-500 text-xs">Shipping ({order.shipping_method || "standard"})</td>
-                  <td className="px-5 py-2 text-right font-medium">{order.currency_code === "USD" ? "$" : ""}{order.shipping_total.toFixed(2)}</td>
+                  <td className="px-5 py-2 text-right font-medium">{formatMoney(order.shipping_total, order.currency_code)}</td>
                 </tr>
                 {order.tax_breakdown && order.tax_breakdown.length > 0 ? (
                   order.tax_breakdown.map((b, i) => (
@@ -380,18 +394,18 @@ export function OrderDetail() {
                       <td colSpan={5} className="px-5 py-1 text-right text-slate-400 text-xs">
                         Tax — {b.tax_class_name} ({b.rate_name}, {b.rate}%{b.compound ? ", compound" : ""})
                       </td>
-                      <td className="px-5 py-1 text-right text-slate-500 text-xs">{order.currency_code === "USD" ? "$" : ""}{b.tax_amount.toFixed(2)}</td>
+                      <td className="px-5 py-1 text-right text-slate-500 text-xs">{formatMoney(b.tax_amount, order.currency_code)}</td>
                     </tr>
                   ))
                 ) : null}
                 <tr>
                   <td colSpan={5} className="px-5 py-2 text-right text-slate-500 text-xs">Tax Total</td>
-                  <td className="px-5 py-2 text-right font-medium">{order.currency_code === "USD" ? "$" : ""}{order.tax_total.toFixed(2)}</td>
+                  <td className="px-5 py-2 text-right font-medium">{formatMoney(order.tax_total, order.currency_code)}</td>
                 </tr>
                 <tr className="border-t-2">
                   <td colSpan={5} className="px-5 py-3 text-right font-bold text-slate-800">Grand Total</td>
                   <td className="px-5 py-3 text-right font-bold text-lg text-brand">
-                    {order.currency_code === "USD" ? "$" : ""}{order.grand_total.toFixed(2)}
+                    {formatMoney(order.grand_total, order.currency_code)}
                   </td>
                 </tr>
               </tfoot>
@@ -467,7 +481,7 @@ export function OrderDetail() {
                       <div className="text-right">
                         {r.refund_amount > 0 && (
                           <div className="text-sm font-medium text-slate-700">
-                            {order.currency_code === "USD" ? "$" : ""}{r.refund_amount.toFixed(2)}
+                            {formatMoney(r.refund_amount, order.currency_code)}
                           </div>
                         )}
                         <div className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</div>
@@ -544,7 +558,7 @@ export function OrderDetail() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium text-slate-700">
-                          {txn.currency_code === "USD" ? "$" : ""}{Math.abs(txn.amount).toFixed(2)}
+                          {formatMoney(Math.abs(txn.amount), txn.currency_code)}
                         </span>
                         <span className={`px-1.5 py-0.5 rounded-full font-medium ${
                           txn.status === "success" ? "bg-emerald-50 text-emerald-600" :
@@ -675,18 +689,17 @@ export function OrderDetail() {
                             const sel = selectedShipItems[it.id] ?? 0;
                             return (
                               <div key={it.id} className="flex items-center gap-2 text-xs">
-                                <input
-                                  type="checkbox"
+                                <Toggle
+                                  size="sm"
                                   checked={sel > 0}
-                                  onChange={(e) => {
+                                  onChange={(v) => {
                                     setSelectedShipItems((prev) => {
                                       const next = { ...prev };
-                                      if (e.target.checked) next[it.id] = remaining;
+                                      if (v) next[it.id] = remaining;
                                       else delete next[it.id];
                                       return next;
                                     });
                                   }}
-                                  className="rounded"
                                 />
                                 <span className="flex-1 text-slate-600">{it.name}</span>
                                 <span className="text-slate-400">remaining {remaining}</span>
@@ -1132,6 +1145,7 @@ function CreateReturnModal({
   isPending: boolean;
   error: Error | null;
 }) {
+  const { formatMoney } = useCurrency();
   const items = order.items || [];
 
   const toggleItem = (itemId: string, checked: boolean) => {
@@ -1224,11 +1238,10 @@ function CreateReturnModal({
                     return (
                       <tr key={item.id}>
                         <td className="px-3 py-2 text-center">
-                          <input
-                            type="checkbox"
+                          <Toggle
+                            size="sm"
                             checked={ri?.selected || false}
-                            onChange={(e) => toggleItem(item.id, e.target.checked)}
-                            className="rounded border-slate-300"
+                            onChange={(v) => toggleItem(item.id, v)}
                           />
                         </td>
                         <td className="px-3 py-2">
@@ -1283,18 +1296,7 @@ function CreateReturnModal({
           )}
 
           {/* Restock toggle */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="restock"
-              checked={returnRestock}
-              onChange={(e) => setReturnRestock(e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            <label htmlFor="restock" className="text-sm text-slate-700">
-              Restock returned items
-            </label>
-          </div>
+          <Toggle label="Restock returned items" checked={returnRestock} onChange={setReturnRestock} />
 
           {/* Reason */}
           <div>
@@ -1313,7 +1315,7 @@ function CreateReturnModal({
             <div className="bg-purple-50 text-purple-700 rounded-lg px-4 py-3 text-sm flex items-center justify-between">
               <span>Estimated Refund Amount</span>
               <span className="font-bold text-lg">
-                {order.currency_code === "USD" ? "$" : ""}{estimatedRefund.toFixed(2)}
+                {formatMoney(estimatedRefund, order.currency_code)}
               </span>
             </div>
           )}
@@ -1367,8 +1369,8 @@ function OrderReturnDetailsModal({
     month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
   }) : "—";
 
-  const fmtMoney = (amount: number) =>
-    `${currencyCode === "USD" ? "$" : ""}${Math.abs(amount).toFixed(2)}`;
+  const { formatMoney } = useCurrency();
+  const fmtMoney = (amount: number) => formatMoney(Math.abs(amount), currencyCode);
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>

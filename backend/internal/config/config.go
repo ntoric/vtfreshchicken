@@ -39,6 +39,9 @@ type Config struct {
 	SeedSuperAdminEmail string
 	SeedSuperAdminPwd   string
 
+	// Single-store resolution
+	StoreSlug string // optional: pin the store to a specific tenant slug
+
 	// CORS
 	CORSAllowedOrigins []string
 	CORSMaxAge         time.Duration
@@ -108,6 +111,9 @@ func Load() (*Config, error) {
 		JWTSecret:           []byte(getEnv("JWT_SECRET", "dev-secret-change-me")),
 		SeedSuperAdminEmail: getEnv("SEED_SUPERADMIN_EMAIL", ""),
 		SeedSuperAdminPwd:   getEnv("SEED_SUPERADMIN_PASSWORD", ""),
+
+		// Single-store resolution
+		StoreSlug: getEnv("STORE_SLUG", ""),
 
 		// CORS
 		CORSMaxAge: getEnvDuration("CORS_MAX_AGE", "12h"),

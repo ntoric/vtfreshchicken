@@ -244,6 +244,7 @@ type createStaffReq struct {
 	Password string          `json:"password" binding:"required,min=6"`
 	FullName string          `json:"full_name" binding:"required"`
 	Role     models.UserRole `json:"role" binding:"required"`
+	BranchID string          `json:"branch_id"` // optional — binds staff/branch_manager to a branch
 }
 
 func (h *AuthHandler) CreateStaff(c *gin.Context) {
@@ -252,11 +253,24 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 		errResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	if req.Role != models.RoleBusinessAdmin && req.Role != models.RoleStaff {
-		errResponse(c, http.StatusBadRequest, "role must be business_admin or staff")
+	if req.Role != models.RoleBusinessAdmin && req.Role != models.RoleStaff && req.Role != models.RoleBranchManager {
+		errResponse(c, http.StatusBadRequest, "role must be business_admin, branch_manager or staff")
 		return
 	}
 	tid := tenantID(c)
+	var branchID *uuid.UUID
+	if req.BranchID != "" {
+		bid, err := uuid.Parse(req.BranchID)
+		if err != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+		if _, bErr := h.store.GetBranch(c.Request.Context(), tid, bid); bErr != nil {
+			errResponse(c, http.StatusBadRequest, "branch not found")
+			return
+		}
+		branchID = &bid
+	}
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
@@ -267,10 +281,11 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 		u, err = h.store.CreateBusinessAdmin(c.Request.Context(), tid, req.Email, req.FullName, hash)
 	} else {
 		u, err = h.store.CreateCustomer(c.Request.Context(), tid, req.Email, req.FullName, hash)
-		// staff uses customer row but with staff role; update role
+		// staff/branch_manager uses customer row but with their role; update role + branch
 		if err == nil {
-			_, _ = h.store.Pool.Exec(c.Request.Context(), `UPDATE users SET role='staff' WHERE id=$1`, u.ID)
-			u.Role = models.RoleStaff
+			_, _ = h.store.Pool.Exec(c.Request.Context(), `UPDATE users SET role=$2, branch_id=$3 WHERE id=$1`, u.ID, req.Role, branchID)
+			u.Role = req.Role
+			u.BranchID = branchID
 		}
 	}
 	if err != nil {
@@ -282,7 +297,7 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 
 func (h *AuthHandler) ListUsers(c *gin.Context) {
 	tid := tenantID(c)
-	users, err := h.store.ListTenantUsers(c.Request.Context(), tid)
+	users, err := h.store.ListTenantUsers(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -306,11 +321,12 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 }
 
 type updateUserReq struct {
-	FullName   string `json:"full_name" binding:"required"`
-	Phone      string `json:"phone"`
-	Role       string `json:"role"`
-	AdminNotes string `json:"admin_notes"`
-	IsActive   bool   `json:"is_active"`
+	FullName   string  `json:"full_name" binding:"required"`
+	Phone      string  `json:"phone"`
+	Role       string  `json:"role"`
+	AdminNotes string  `json:"admin_notes"`
+	IsActive   bool    `json:"is_active"`
+	BranchID   *string `json:"branch_id"` // nil = keep; "" = clear; uuid = assign
 }
 
 func (h *AuthHandler) UpdateUser(c *gin.Context) {
@@ -327,7 +343,7 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	// Validate role if provided
 	if req.Role != "" {
 		switch models.UserRole(req.Role) {
-		case models.RoleCustomer, models.RoleStaff, models.RoleBusinessAdmin:
+		case models.RoleCustomer, models.RoleStaff, models.RoleBusinessAdmin, models.RoleBranchManager:
 			// allowed
 		default:
 			errResponse(c, http.StatusBadRequest, "invalid role")
@@ -336,7 +352,28 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	} else {
 		req.Role = string(models.RoleStaff)
 	}
-	u, err := h.store.UpdateUser(c.Request.Context(), tid, uid, req.FullName, req.Phone, req.Role, req.AdminNotes, req.IsActive)
+	// Branch assignment: when the key is present, "" clears and a uuid assigns.
+	// When absent, the user's existing branch is preserved.
+	var branchID *uuid.UUID
+	if req.BranchID != nil {
+		if *req.BranchID != "" {
+			bid, perr := uuid.Parse(*req.BranchID)
+			if perr != nil {
+				errResponse(c, http.StatusBadRequest, "invalid branch_id")
+				return
+			}
+			if _, bErr := h.store.GetBranch(c.Request.Context(), tid, bid); bErr != nil {
+				errResponse(c, http.StatusBadRequest, "branch not found")
+				return
+			}
+			branchID = &bid
+		}
+	} else {
+		if existing, gErr := h.store.GetTenantUser(c.Request.Context(), tid, uid); gErr == nil {
+			branchID = existing.BranchID
+		}
+	}
+	u, err := h.store.UpdateUser(c.Request.Context(), tid, uid, req.FullName, req.Phone, req.Role, req.AdminNotes, req.IsActive, branchID)
 	if err != nil {
 		notFoundOrErr(c, err, "user not found")
 		return
@@ -433,7 +470,7 @@ func (h *AuthHandler) ListCustomers(c *gin.Context) {
 	search := c.Query("search")
 	status := c.Query("status")
 
-	f := services.CustomerFilter{TenantID: tid, Limit: limit, Offset: offset}
+	f := services.CustomerFilter{TenantID: tid, Limit: limit, Offset: offset, BranchID: branchFilter(c)}
 	if search != "" {
 		f.Search = &search
 	}

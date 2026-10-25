@@ -14,7 +14,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_tax_classes",
 		mcp.WithDescription("List all tax classes. Requires tax.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/tax/classes"), nil)
+		return callGet(ctx, c, c.APIPath("/tax/classes"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_tax_class",
@@ -23,7 +23,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_class")
-		return callPost(ctx, c, c.TenantPath("/tax/classes"), body)
+		return callPost(ctx, c, c.APIPath("/tax/classes"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_tax_class",
@@ -33,7 +33,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_class")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/tax/classes/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/tax/classes/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_tax_class",
@@ -41,14 +41,14 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Tax class UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/tax/classes/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/tax/classes/%s", argString(args, "id"))))
 	})
 
 	// ---- Tax Zones ----
 	s.AddTool(mcp.NewTool("list_tax_zones",
 		mcp.WithDescription("List all tax zones. Requires tax.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/tax/zones"), nil)
+		return callGet(ctx, c, c.APIPath("/tax/zones"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_tax_zone",
@@ -57,7 +57,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_zone")
-		return callPost(ctx, c, c.TenantPath("/tax/zones"), body)
+		return callPost(ctx, c, c.APIPath("/tax/zones"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_tax_zone",
@@ -67,7 +67,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_zone")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/tax/zones/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/tax/zones/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_tax_zone",
@@ -75,14 +75,14 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Tax zone UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/tax/zones/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/tax/zones/%s", argString(args, "id"))))
 	})
 
 	// ---- Tax Rates ----
 	s.AddTool(mcp.NewTool("list_tax_rates",
 		mcp.WithDescription("List all tax rates. Requires tax.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/tax/rates"), nil)
+		return callGet(ctx, c, c.APIPath("/tax/rates"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_tax_rate",
@@ -91,7 +91,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_rate")
-		return callPost(ctx, c, c.TenantPath("/tax/rates"), body)
+		return callPost(ctx, c, c.APIPath("/tax/rates"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_tax_rate",
@@ -101,7 +101,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "tax_rate")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/tax/rates/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/tax/rates/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_tax_rate",
@@ -109,7 +109,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Tax rate UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/tax/rates/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/tax/rates/%s", argString(args, "id"))))
 	})
 
 	// ---- Tax Calculation (public) ----
@@ -120,7 +120,7 @@ func RegisterTaxTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "items", "shipping_address")
-		return callPost(ctx, c, c.TenantPath("/tax/calculate"), body)
+		return callPost(ctx, c, c.APIPath("/tax/calculate"), body)
 	})
 }
 
@@ -133,7 +133,7 @@ func RegisterDashboardTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "from", "to")
-		return callGet(ctx, c, c.TenantPath("/dashboard/stats"), q)
+		return callGet(ctx, c, c.APIPath("/dashboard/stats"), q)
 	})
 }
 
@@ -142,7 +142,7 @@ func RegisterExportTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_export_types",
 		mcp.WithDescription("List all available export types with CSV headers and descriptions."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/exports/types"), nil)
+		return callGet(ctx, c, c.APIPath("/exports/types"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("estimate_export_size",
@@ -162,7 +162,7 @@ func RegisterExportTools(s *server.MCPServer, c *Client) {
 				q.Set(k, s)
 			}
 		}
-		return callGet(ctx, c, c.TenantPath("/exports/estimate"), q)
+		return callGet(ctx, c, c.APIPath("/exports/estimate"), q)
 	})
 
 	s.AddTool(mcp.NewTool("create_export",
@@ -182,7 +182,7 @@ func RegisterExportTools(s *server.MCPServer, c *Client) {
 		if body["format"] == "" {
 			body["format"] = "csv"
 		}
-		return callPost(ctx, c, c.TenantPath("/exports"), body)
+		return callPost(ctx, c, c.APIPath("/exports"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_exports",
@@ -192,7 +192,7 @@ func RegisterExportTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath("/exports"), q)
+		return callGet(ctx, c, c.APIPath("/exports"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_export",
@@ -200,6 +200,6 @@ func RegisterExportTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Export job UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/exports/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/exports/%s", argString(args, "id"))), nil)
 	})
 }

@@ -12,19 +12,15 @@ func NewMCPServer(c *Client) *server.MCPServer {
 
 USAGE FLOW:
 1. Authenticate first:
-   - For platform/superadmin operations: call `+"`platform_login`"+` with superadmin credentials.
-   - For tenant operations: call `+"`tenant_login`"+` with tenant slug + user credentials. This sets the active tenant for all subsequent tenant-scoped calls.
-2. All tenant-scoped tools (list_orders, list_products_admin, etc.) operate on the tenant set by `+"`tenant_login`"+`.
-3. Public storefront tools (list_storefront_products, get_storefront_product, etc.) require an explicit `+"`tenant`"+` parameter.
+   - For store operations: call `+"`store_login`"+` with user credentials (business_admin, staff, or customer).
+   - For internal superadmin access: call `+"`platform_login`"+` with superadmin credentials.
+2. All store-scoped tools (list_orders, list_products_admin, etc.) operate on the single store.
+3. Public storefront tools (list_storefront_products, get_storefront_product, etc.) need no authentication.
 4. Tool results are JSON text. Errors are returned with isError=true.
 
-CREDENTIALS (development defaults):
-- Superadmin: admin@trucommerce.app / admin12345
-- Demo tenant admin: demo@trucommerce.app / admin123 (tenant slug: demo)
-
 TOOL CATEGORIES:
-- Auth: platform_login, tenant_login, register_customer, get_me, get_my_permissions, refresh_token, export_my_data, delete_my_account
-- Platform (superadmin): list_tenants, get_tenant, create_tenant, update_tenant, set_tenant_active, get_tenant_store_stats, list_all_users, get_platform_stats, get_developer_settings, get_platform_health, get_setup_status, complete_setup
+- Auth: store_login, platform_login, register_customer, get_me, get_my_permissions, refresh_token, export_my_data, delete_my_account
+- Setup: get_setup_status, complete_setup
 - Catalog: list_products_admin, get_product_admin, get_product_by_slug, create_product, update_product, delete_product, list_categories, create_category, update_category, delete_category, list_attributes, create_attribute, update_attribute, delete_attribute
 - Offers: list_offers, get_offer, create_offer, update_offer, delete_offer
 - Discounts: list_discounts, get_discount, get_discount_stats, create_discount, update_discount, delete_discount, validate_discount
@@ -42,21 +38,21 @@ TOOL CATEGORIES:
 - Pages: list_pages, get_page, create_page, update_page, delete_page, get_public_page
 - Notifications: list_notification_events, create_notification_event, update_notification_event, delete_notification_event, list_notification_templates, get_notification_template, create_notification_template, update_notification_template, delete_notification_template, preview_notification, send_notification, list_notification_logs
 - Vendors: list_vendors, get_vendor, create_vendor, update_vendor, delete_vendor
-- Storefront (public): get_storefront_bootstrap, list_storefront_products, get_storefront_product, get_tenant_public_info, list_storefront_currencies, list_storefront_languages, list_payment_methods
+- Storefront (public): get_storefront_bootstrap, list_storefront_products, get_storefront_product, get_store_public_info, list_storefront_currencies, list_storefront_languages, list_payment_methods
 - Reviews: list_reviews, get_review_summary, create_review, get_my_review, list_my_reviews, list_purchased_products
 - Cart: get_cart, add_cart_item, update_cart_item, remove_cart_item, clear_cart, get_cart_count
 - Wishlist: get_wishlist, add_wishlist_item, remove_wishlist_item, remove_wishlist_product, clear_wishlist, check_wishlist_product
 - Checkout: place_order, list_my_orders, get_my_order, list_my_order_shipments, track_my_shipment, list_my_returns, list_my_order_returns, get_my_return_eligibility, create_my_return, create_payment_order
 - Addresses: list_addresses, save_address, delete_address
 - Contact: submit_contact, list_contact_submissions, mark_contact_read, delete_contact_submission
-- Settings: get_tenant_settings, update_tenant_settings, get_smtp_settings, update_smtp_settings, test_smtp_settings
+- Settings: get_store_settings, update_store_settings, get_smtp_settings, update_smtp_settings, test_smtp_settings
 - Permissions: list_permissions, list_role_permissions, get_role_permissions, set_role_permissions, toggle_permission, seed_default_permissions
 `),
 	)
 
 	// Register all tool groups
 	RegisterAuthTools(s, c)
-	RegisterPlatformTools(s, c)
+	RegisterSetupTools(s, c)
 	RegisterCatalogTools(s, c)
 	RegisterOrderTools(s, c)
 	RegisterCustomerTools(s, c)

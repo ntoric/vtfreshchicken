@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -12,10 +13,6 @@ import { Toggle } from "@/components/Toggle";
 import { ActionMenu } from "@/components/ActionMenu";
 import type { ShippingMethod, ShippingZone, ShippingRate, ShippingProvider, ProviderTestResult } from "@/types";
 import { SUPPORTED_SHIPPING_PROVIDERS } from "@/types";
-
-function fmt(n: number, currency = "USD") {
-  return currency === "USD" ? `$${n.toFixed(2)}` : `${n.toFixed(2)} ${currency}`;
-}
 
 type Tab = "methods" | "zones" | "rates" | "providers";
 
@@ -58,6 +55,7 @@ export function Shipping() {
 // ---------------- Shipping Methods ----------------
 
 function ShippingMethodsTab({ tenant }: { tenant: string }) {
+  const { formatMoney: fmt, currency, currencies } = useCurrency();
   const qc = useQueryClient();
   const confirmDlg = useConfirmState();
   const toast = useToast();
@@ -71,7 +69,7 @@ function ShippingMethodsTab({ tenant }: { tenant: string }) {
     description: "",
     base_rate: 0,
     weight_rate: 0,
-    currency_code: "USD",
+    currency_code: currency.code,
     min_days: "",
     max_days: "",
     free_shipping_threshold: "",
@@ -108,7 +106,7 @@ function ShippingMethodsTab({ tenant }: { tenant: string }) {
   const resetForm = () => {
     setShowForm(false);
     setEditing(null);
-    setForm({ name: "", code: "", description: "", base_rate: 0, weight_rate: 0, currency_code: "USD", min_days: "", max_days: "", free_shipping_threshold: "", is_active: true, sort_order: 0 });
+    setForm({ name: "", code: "", description: "", base_rate: 0, weight_rate: 0, currency_code: currency.code, min_days: "", max_days: "", free_shipping_threshold: "", is_active: true, sort_order: 0 });
   };
 
   const startEdit = (sm: ShippingMethod) => {
@@ -119,7 +117,7 @@ function ShippingMethodsTab({ tenant }: { tenant: string }) {
       description: sm.description || "",
       base_rate: sm.base_rate,
       weight_rate: sm.weight_rate || 0,
-      currency_code: sm.currency_code || "USD",
+      currency_code: sm.currency_code || currency.code,
       min_days: sm.min_days?.toString() || "",
       max_days: sm.max_days?.toString() || "",
       free_shipping_threshold: sm.free_shipping_threshold?.toString() || "",
@@ -181,8 +179,12 @@ function ShippingMethodsTab({ tenant }: { tenant: string }) {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 block mb-1">Currency</label>
-              <input type="text" value={form.currency_code} onChange={(e) => setForm(f => ({ ...f, currency_code: e.target.value.toUpperCase() }))}
-                placeholder="USD" maxLength={3} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              <select value={form.currency_code} onChange={(e) => setForm(f => ({ ...f, currency_code: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
+                {currencies.filter((c) => c.is_active).map((c) => (
+                  <option key={c.code} value={c.code}>{c.code} — {c.name} ({c.symbol})</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 block mb-1">Min Delivery Days</label>
@@ -443,6 +445,7 @@ function ShippingZonesTab({ tenant }: { tenant: string }) {
 // ---------------- Shipping Rates ----------------
 
 function ShippingRatesTab({ tenant }: { tenant: string }) {
+  const { formatMoney: fmt } = useCurrency();
   const qc = useQueryClient();
   const confirmDlg = useConfirmState();
   const toast = useToast();

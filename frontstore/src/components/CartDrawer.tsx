@@ -10,7 +10,7 @@ import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatPrice } from "@/lib/format";
 import type { Currency } from "@/types";
 
-export function CartDrawer({ tenant, currency }: { tenant: string; currency?: Currency }) {
+export function CartDrawer({ currency }: { currency?: Currency }) {
   const { cart, isOpen, closeCart, updateItem, removeItem, isLoading } = useCart();
   const router = useRouter();
   const confirmDlg = useConfirmState();
@@ -22,7 +22,7 @@ export function CartDrawer({ tenant, currency }: { tenant: string; currency?: Cu
 
   const handleCheckout = () => {
     closeCart();
-    router.push(`/${tenant}/checkout`);
+    router.push(`/checkout`);
   };
 
   return (
@@ -58,7 +58,7 @@ export function CartDrawer({ tenant, currency }: { tenant: string; currency?: Cu
             </svg>
             <p className="text-lg font-medium">Your cart is empty</p>
             <Link
-              href={`/${tenant}`}
+              href={``}
               onClick={closeCart}
               className="mt-1 inline-flex items-center gap-1.5 bg-brand text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-brand-dark transition"
             >
@@ -118,7 +118,7 @@ export function CartDrawer({ tenant, currency }: { tenant: string; currency?: Cu
               <p className="text-xs text-gray-400">Shipping and taxes calculated at checkout.</p>
               <div className="flex gap-3">
                 <Link
-                  href={`/${tenant}/cart`}
+                  href={`/cart`}
                   onClick={closeCart}
                   className="flex-1 text-center border border-gray-300 rounded-xl py-3 font-medium text-gray-700 hover:bg-gray-50 transition"
                 >

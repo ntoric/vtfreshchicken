@@ -9,8 +9,6 @@ export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const [mode, setMode] = useState<"platform" | "tenant">("platform");
-  const [tenant, setTenant] = useState("demo");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -41,11 +39,19 @@ export function Login() {
     setError("");
     setLoading(true);
     try {
-      const res =
-        mode === "platform"
-          ? await api.platformLogin(email, password)
-          : await api.tenantLogin(tenant, email, password);
-      login(res.user, res.access_token, mode === "tenant" ? tenant : undefined, res.tenant_name);
+      const res = await api.storeLogin(email, password);
+      login(res.user, res.access_token, res.tenant_slug, res.tenant_name);
+      // Branch-bound staff land directly inside their branch backoffice.
+      if (res.user.branch_id) {
+        try {
+          const branches = await api.listBranches("");
+          const own = branches.items.find((b) => b.id === res.user.branch_id);
+          navigate(own ? `/b/${own.slug}` : "/");
+          return;
+        } catch {
+          // fall through to the global view
+        }
+      }
       navigate("/");
     } catch (err) {
       const msg = (err as Error).message;
@@ -75,37 +81,7 @@ export function Login() {
           <p className="text-slate-500 text-sm mt-1">Backoffice Sign In</p>
         </div>
 
-        <div className="flex gap-2 mb-6 p-1 bg-slate-100 rounded-lg">
-          <button
-            onClick={() => setMode("platform")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-              mode === "platform" ? "bg-white shadow text-brand" : "text-slate-500"
-            }`}
-          >
-            Superadmin
-          </button>
-          <button
-            onClick={() => setMode("tenant")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-              mode === "tenant" ? "bg-white shadow text-brand" : "text-slate-500"
-            }`}
-          >
-            Store Admin
-          </button>
-        </div>
-
         <form onSubmit={submit} className="space-y-4">
-          {mode === "tenant" && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Store</label>
-              <input
-                value={tenant}
-                onChange={(e) => setTenant(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand focus:border-brand"
-                placeholder="demo"
-              />
-            </div>
-          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
             <input
@@ -114,7 +90,7 @@ export function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand focus:border-brand"
-              placeholder="admin@trucommerce.app"
+              placeholder="admin@example.com"
             />
           </div>
           <div>
@@ -141,10 +117,6 @@ export function Login() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
-
-        <p className="text-xs text-slate-400 text-center mt-6">
-          Superadmin: <code>admin@trucommerce.app</code> / <code>admin12345</code>
-        </p>
       </div>
     </div>
   );

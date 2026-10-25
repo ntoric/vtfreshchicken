@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Toggle } from "@/components/Toggle";
 import type { Attribute } from "@/types";
 
 interface FilterSidebarProps {
@@ -64,11 +65,10 @@ export function FilterSidebar({
               const checked = (selected[attr.slug] || []).includes(opt.value);
               return (
                 <label key={opt.id} className="flex items-center gap-2 text-sm cursor-pointer group">
-                  <input
-                    type="checkbox"
+                  <Toggle
+                    size="sm"
                     checked={checked}
                     onChange={() => toggle(attr.slug, opt.value)}
-                    className="rounded border-gray-300 text-brand focus:ring-brand"
                   />
                   {attr.type === "color" ? (
                     <span className="flex items-center gap-2">

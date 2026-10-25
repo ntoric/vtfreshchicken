@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PackageOpen, X, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -28,10 +29,13 @@ const STATUS_TABS = [
 
 export function Returns() {
   const { tenant } = useAuth();
+  const { formatMoney: fmtMoney } = useCurrency();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get("status") ?? "";
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
   const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
@@ -62,6 +66,12 @@ export function Returns() {
     queryFn: () => api.returnCounts(tenant),
   });
 
+  // Deep links like /returns?status=requested (e.g. from the dashboard)
+  useEffect(() => {
+    setStatusFilter(urlStatus);
+    setPage(0);
+  }, [urlStatus]);
+
   const statusIdemKeyRef = useRef("");
   const statusMut = useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateReturnStatusRequest }) => {
@@ -88,9 +98,6 @@ export function Returns() {
   const fmtDate = (d?: string) => d ? new Date(d).toLocaleString(undefined, {
     month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
   }) : "—";
-
-  const fmtMoney = (amount: number, currency?: string) =>
-    `${currency === "USD" || !currency ? "$" : ""}${Math.abs(amount).toFixed(2)}`;
 
   const openStatusModal = (ret: OrderReturn) => {
     setSelectedReturn(ret);
@@ -424,8 +431,8 @@ function ReturnDetailsModal({
     month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
   }) : "—";
 
-  const fmtMoney = (amount: number) =>
-    `$${Math.abs(amount).toFixed(2)}`;
+  const { formatMoney } = useCurrency();
+  const fmtMoney = (amount: number) => formatMoney(Math.abs(amount));
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>

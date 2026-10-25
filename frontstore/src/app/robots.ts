@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/lib/seo";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const base = await getSiteUrl();
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/backoffice/", "/*/account/", "/*/cart", "/*/checkout", "/*/orders", "/*/wishlist"],
+      disallow: ["/api/", "/backoffice/", "/account/", "/cart", "/checkout", "/orders", "/wishlist"],
     },
-    sitemap: "/sitemap.xml",
+    sitemap: `${base}/sitemap.xml`,
   };
 }

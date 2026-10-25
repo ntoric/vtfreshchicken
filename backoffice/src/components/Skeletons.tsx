@@ -25,7 +25,7 @@ export function Spinner({ size = 20, className = "" }: { size?: number; classNam
 // ============ Stat card skeleton ============
 export function StatCardSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-5 ${count >= 4 ? "xl:grid-cols-4" : "md:grid-cols-3"}`}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white rounded-2xl border p-6 h-32 shimmer" />
       ))}
@@ -51,15 +51,23 @@ export function PanelSkeleton() {
 // ============ Dashboard skeleton ============
 export function DashboardSkeleton() {
   return (
-    <div>
-      <div className="mb-6">
-        <div className="h-8 w-48 bg-slate-100 rounded shimmer mb-2" />
-        <div className="h-4 w-32 bg-slate-100 rounded shimmer" />
+    <div className="space-y-5">
+      <StatCardSkeleton count={4} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className="xl:col-span-2 bg-white rounded-2xl border p-6">
+          <div className="h-5 w-32 bg-slate-100 rounded shimmer mb-4" />
+          <div className="h-[270px] bg-slate-50 rounded-xl shimmer" />
+        </div>
+        <PanelSkeleton />
       </div>
-      <StatCardSkeleton count={3} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <PanelSkeleton />
         <PanelSkeleton />
+        <PanelSkeleton />
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <PanelSkeleton />
+        <div className="xl:col-span-2"><PanelSkeleton /></div>
       </div>
     </div>
   );

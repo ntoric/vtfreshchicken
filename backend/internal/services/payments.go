@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/trucommerce/backend/internal/models"
@@ -314,6 +316,95 @@ func (s *Store) RefundPaymentTransaction(ctx context.Context, tenantID, txnID uu
 
 // ---------------- Payment Gateway Configs ----------------
 
+// GatewayConfigMask is the sentinel value returned in place of secret config
+// values (API secrets, passwords, private keys) when gateway configs are listed
+// through the admin API. On update, a value equal to the mask is treated as
+// "keep the stored value" so secrets are never exposed nor accidentally wiped.
+const GatewayConfigMask = "********"
+
+// isSecretGatewayConfigKey reports whether a config key holds a secret that
+// must be masked in API responses. Public identifiers (key_id, client_id,
+// publishable keys) are safe to return and are allowlisted separately when
+// exposing config to the storefront.
+func isSecretGatewayConfigKey(key string) bool {
+	k := strings.ToLower(key)
+	for _, pub := range []string{"key_id", "client_id", "publishable", "public_key"} {
+		if strings.Contains(k, pub) {
+			return false
+		}
+	}
+	for _, marker := range []string{"secret", "password", "private", "token", "api_key"} {
+		if strings.Contains(k, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// maskGatewayConfig returns a copy of cfg with secret values replaced by
+// GatewayConfigMask. Non-secret values are returned as-is.
+func maskGatewayConfig(cfg map[string]interface{}) map[string]interface{} {
+	if cfg == nil {
+		return nil
+	}
+	out := make(map[string]interface{}, len(cfg))
+	for k, v := range cfg {
+		if isSecretGatewayConfigKey(k) {
+			if s, ok := v.(string); ok && s != "" {
+				out[k] = GatewayConfigMask
+				continue
+			}
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// defaultGatewaySeeds mirrors the seeds in migration 0010 so that stores
+// created after that migration (via the setup wizard) get the same rows.
+var defaultGatewaySeeds = []struct {
+	code      string
+	name      string
+	testMode  bool
+	sortOrder int
+}{
+	{"card", "Credit / Debit Card", true, 10},
+	{"paypal", "PayPal", true, 20},
+	{"razorpay", "Razorpay", true, 30},
+	{"cod", "Cash on Delivery", false, 90},
+}
+
+// EnsureDefaultGatewayConfigs inserts config rows for any built-in gateway
+// that doesn't have one yet. Existing rows are never modified.
+func (s *Store) EnsureDefaultGatewayConfigs(ctx context.Context, tenantID uuid.UUID) error {
+	for _, g := range defaultGatewaySeeds {
+		if _, err := s.Pool.Exec(ctx,
+			`INSERT INTO payment_gateway_configs (tenant_id, gateway_code, display_name, is_enabled, is_test_mode, sort_order)
+			 VALUES ($1,$2,$3,TRUE,$4,$5)
+			 ON CONFLICT (tenant_id, gateway_code) DO NOTHING`,
+			tenantID, g.code, g.name, g.testMode, g.sortOrder); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) scanGatewayConfig(row interface{ Scan(...interface{}) error }) (*models.PaymentGatewayConfig, error) {
+	var pgc models.PaymentGatewayConfig
+	var configBytes []byte
+	if err := row.Scan(&pgc.ID, &pgc.TenantID, &pgc.GatewayCode, &pgc.DisplayName,
+		&pgc.IsEnabled, &pgc.IsTestMode, &pgc.SortOrder, &configBytes,
+		&pgc.CreatedAt, &pgc.UpdatedAt); err != nil {
+		return nil, err
+	}
+	if configBytes != nil {
+		_ = json.Unmarshal(configBytes, &pgc.Config)
+	}
+	return &pgc, nil
+}
+
+// ListPaymentGatewayConfigs returns all gateway configs for the tenant with
+// secret config values masked (see GatewayConfigMask).
 func (s *Store) ListPaymentGatewayConfigs(ctx context.Context, tenantID uuid.UUID) ([]models.PaymentGatewayConfig, error) {
 	rows, err := s.Pool.Query(ctx,
 		`SELECT id, tenant_id, gateway_code, display_name, is_enabled, is_test_mode,
@@ -326,29 +417,96 @@ func (s *Store) ListPaymentGatewayConfigs(ctx context.Context, tenantID uuid.UUI
 
 	out := make([]models.PaymentGatewayConfig, 0)
 	for rows.Next() {
-		var pgc models.PaymentGatewayConfig
-		var configBytes []byte
-		if err := rows.Scan(&pgc.ID, &pgc.TenantID, &pgc.GatewayCode, &pgc.DisplayName,
-			&pgc.IsEnabled, &pgc.IsTestMode, &pgc.SortOrder, &configBytes,
-			&pgc.CreatedAt, &pgc.UpdatedAt); err != nil {
+		pgc, err := s.scanGatewayConfig(rows)
+		if err != nil {
 			return nil, err
 		}
-		if configBytes != nil {
-			_ = json.Unmarshal(configBytes, &pgc.Config)
-		}
-		out = append(out, pgc)
+		pgc.Config = maskGatewayConfig(pgc.Config)
+		out = append(out, *pgc)
 	}
 	return out, nil
 }
 
+// GetPaymentGatewayConfig returns the full (unmasked) config for a gateway
+// code, or nil when no row exists. For internal use — never marshal directly
+// into an API response without masking.
+func (s *Store) GetPaymentGatewayConfig(ctx context.Context, tenantID uuid.UUID, gatewayCode string) (*models.PaymentGatewayConfig, error) {
+	row := s.Pool.QueryRow(ctx,
+		`SELECT id, tenant_id, gateway_code, display_name, is_enabled, is_test_mode,
+		        sort_order, COALESCE(config,'{}'::jsonb), created_at, updated_at
+		 FROM payment_gateway_configs WHERE tenant_id=$1 AND gateway_code=$2`, tenantID, gatewayCode)
+	pgc, err := s.scanGatewayConfig(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pgc, nil
+}
+
+// gatewayConfigMap returns all gateway configs keyed by gateway_code with
+// unmasked config values. For internal use (checkout, methods listing).
+func (s *Store) gatewayConfigMap(ctx context.Context, tenantID uuid.UUID) (map[string]*models.PaymentGatewayConfig, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT id, tenant_id, gateway_code, display_name, is_enabled, is_test_mode,
+		        sort_order, COALESCE(config,'{}'::jsonb), created_at, updated_at
+		 FROM payment_gateway_configs WHERE tenant_id=$1`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string]*models.PaymentGatewayConfig)
+	for rows.Next() {
+		pgc, err := s.scanGatewayConfig(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[pgc.GatewayCode] = pgc
+	}
+	return out, nil
+}
+
+// GatewayConfigMap exposes the unmasked config map for handlers that need to
+// resolve enabled state and credentials for every gateway in one query.
+func (s *Store) GatewayConfigMap(ctx context.Context, tenantID uuid.UUID) (map[string]*models.PaymentGatewayConfig, error) {
+	return s.gatewayConfigMap(ctx, tenantID)
+}
+
 func (s *Store) UpdatePaymentGatewayConfig(ctx context.Context, pgc *models.PaymentGatewayConfig) error {
-	var configBytes []byte
-	if pgc.Config != nil {
-		configBytes, _ = json.Marshal(pgc.Config)
+	// Preserve stored secret values: incoming values equal to GatewayConfigMask
+	// keep the stored value, and an omitted config keeps the whole stored map.
+	var stored map[string]interface{}
+	var storedBytes []byte
+	err := s.Pool.QueryRow(ctx,
+		`SELECT COALESCE(config,'{}'::jsonb) FROM payment_gateway_configs WHERE id=$1 AND tenant_id=$2`,
+		pgc.ID, pgc.TenantID).Scan(&storedBytes)
+	if err != nil {
+		return err
+	}
+	_ = json.Unmarshal(storedBytes, &stored)
+
+	var merged map[string]interface{}
+	if pgc.Config == nil {
+		merged = stored
 	} else {
+		merged = make(map[string]interface{}, len(pgc.Config))
+		for k, v := range pgc.Config {
+			if s2, ok := v.(string); ok && s2 == GatewayConfigMask {
+				if old, exists := stored[k]; exists {
+					merged[k] = old
+					continue
+				}
+			}
+			merged[k] = v
+		}
+	}
+	configBytes, _ := json.Marshal(merged)
+	if merged == nil {
 		configBytes = []byte(`{}`)
 	}
-	_, err := s.Pool.Exec(ctx,
+	_, err = s.Pool.Exec(ctx,
 		`UPDATE payment_gateway_configs SET display_name=$1, is_enabled=$2, is_test_mode=$3,
 		          sort_order=$4, config=$5
 		 WHERE id=$6 AND tenant_id=$7`,

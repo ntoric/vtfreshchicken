@@ -101,10 +101,10 @@ describe("downloadFile", () => {
     vi.spyOn(document.body, "appendChild").mockImplementation(() => null as any);
     vi.spyOn(document.body, "removeChild").mockImplementation(() => null as any);
 
-    await downloadFile("/api/t/demo/exports/download/123", "fallback.csv");
+    await downloadFile("/api/exports/download/123", "fallback.csv");
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/t/demo/exports/download/123",
+      "/api/exports/download/123",
       expect.objectContaining({ headers: {} }),
     );
     expect(clickSpy).toHaveBeenCalled();
@@ -127,10 +127,10 @@ describe("downloadFile", () => {
     vi.spyOn(document.body, "appendChild").mockImplementation(() => null as any);
     vi.spyOn(document.body, "removeChild").mockImplementation(() => null as any);
 
-    await downloadFile("/api/t/demo/exports/download/123");
+    await downloadFile("/api/exports/download/123");
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/t/demo/exports/download/123",
+      "/api/exports/download/123",
       expect.objectContaining({
         headers: { Authorization: "Bearer my-token" },
       }),
@@ -142,7 +142,7 @@ describe("downloadFile", () => {
     const mockResponse = new Response("{}", { status: 401 });
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
 
-    await expect(downloadFile("/api/t/demo/exports/download/123")).rejects.toThrow("unauthorized");
+    await expect(downloadFile("/api/exports/download/123")).rejects.toThrow("unauthorized");
     expect(getToken()).toBeNull(); // clearAuth should have been called
     fetchSpy.mockRestore();
   });
@@ -154,7 +154,7 @@ describe("downloadFile", () => {
     });
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
 
-    await expect(downloadFile("/api/t/demo/exports/download/123")).rejects.toThrow("file not found");
+    await expect(downloadFile("/api/exports/download/123")).rejects.toThrow("file not found");
     fetchSpy.mockRestore();
   });
 });

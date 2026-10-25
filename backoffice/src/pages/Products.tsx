@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -15,6 +16,7 @@ import { ExportDialog } from "@/components/ExportDialog";
 
 export function Products() {
   const { tenant } = useAuth();
+  const { formatMoney } = useCurrency();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const confirmDlg = useConfirmState();
@@ -104,7 +106,7 @@ export function Products() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{p.sku || "—"}</td>
-                <td className="px-4 py-3 font-medium">${p.base_price.toFixed(2)}</td>
+                <td className="px-4 py-3 font-medium">{formatMoney(p.base_price, p.currency_code)}</td>
                 <td className="px-4 py-3">{p.stock}</td>
                 <td className="px-4 py-3">{p.variants?.length ?? 0}</td>
                 <td className="px-4 py-3">

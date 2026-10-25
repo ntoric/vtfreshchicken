@@ -122,6 +122,7 @@ type attributeReq struct {
 	Type         string                  `json:"type"`
 	IsFilterable bool                    `json:"is_filterable"`
 	IsVariant    bool                    `json:"is_variant"`
+	IsBatch      bool                    `json:"is_batch"`
 	Options      []models.AttributeOption `json:"options"`
 }
 
@@ -135,7 +136,7 @@ func (h *CatalogHandler) CreateAttribute(c *gin.Context) {
 	if req.Type == "" {
 		req.Type = "text"
 	}
-	a := &models.Attribute{TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type, IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, Options: req.Options}
+	a := &models.Attribute{TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type, IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, Options: req.Options}
 	if err := h.store.CreateAttribute(c.Request.Context(), a); err != nil {
 		errResponse(c, http.StatusConflict, err.Error())
 		return
@@ -172,7 +173,7 @@ func (h *CatalogHandler) UpdateAttribute(c *gin.Context) {
 	}
 	a := &models.Attribute{
 		ID: id, TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type,
-		IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, Options: req.Options,
+		IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, Options: req.Options,
 	}
 	if err := h.store.UpdateAttribute(c.Request.Context(), a); err != nil {
 		notFoundOrErr(c, err, "attribute not found")
@@ -362,7 +363,7 @@ func (h *CatalogHandler) GetProductByID(c *gin.Context) {
 
 func (h *CatalogHandler) ListOffers(c *gin.Context) {
 	tid := tenantID(c)
-	offers, err := h.store.ListOffers(c.Request.Context(), tid)
+	offers, err := h.store.ListOffersScoped(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -392,6 +393,7 @@ type offerReq struct {
 	EndsAt      *string              `json:"ends_at"`
 	IsActive    bool                 `json:"is_active"`
 	Targets     []models.OfferTarget `json:"targets"`
+	BranchID    *string              `json:"branch_id"` // nil/"" = all branches
 }
 
 func parseTimePtr(s *string) *time.Time {
@@ -417,6 +419,14 @@ func (h *CatalogHandler) CreateOffer(c *gin.Context) {
 		Value: req.Value, StartsAt: parseTimePtr(req.StartsAt), EndsAt: parseTimePtr(req.EndsAt),
 		IsActive: req.IsActive, Targets: req.Targets,
 	}
+	if req.BranchID != nil && *req.BranchID != "" {
+		bid, perr := uuid.Parse(*req.BranchID)
+		if perr != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+		o.BranchID = &bid
+	}
 	if err := h.store.CreateOffer(c.Request.Context(), o); err != nil {
 		errResponse(c, http.StatusBadRequest, err.Error())
 		return
@@ -439,9 +449,18 @@ func (h *CatalogHandler) UpdateOffer(c *gin.Context) {
 	if targets == nil {
 		targets = []models.OfferTarget{{TargetType: "all"}}
 	}
+	var branchID *uuid.UUID
+	if req.BranchID != nil && *req.BranchID != "" {
+		bid, perr := uuid.Parse(*req.BranchID)
+		if perr != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+		branchID = &bid
+	}
 	if err := h.store.UpdateOffer(c.Request.Context(), tid, id,
 		req.Name, req.Description, req.OfferType, req.Value,
-		parseTimePtr(req.StartsAt), parseTimePtr(req.EndsAt), req.IsActive, targets); err != nil {
+		parseTimePtr(req.StartsAt), parseTimePtr(req.EndsAt), req.IsActive, targets, branchID); err != nil {
 		notFoundOrErr(c, err, "offer not found")
 		return
 	}
@@ -465,7 +484,7 @@ func (h *CatalogHandler) DeleteOffer(c *gin.Context) {
 
 func (h *CatalogHandler) ListDiscountCodes(c *gin.Context) {
 	tid := tenantID(c)
-	codes, err := h.store.ListDiscountCodes(c.Request.Context(), tid)
+	codes, err := h.store.ListDiscountCodesScoped(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -496,6 +515,7 @@ type discountReq struct {
 	StartsAt     *string `json:"starts_at"`
 	EndsAt       *string `json:"ends_at"`
 	IsActive     bool    `json:"is_active"`
+	BranchID     *string `json:"branch_id"` // nil/"" = all branches
 }
 
 func (h *CatalogHandler) CreateDiscountCode(c *gin.Context) {
@@ -509,6 +529,14 @@ func (h *CatalogHandler) CreateDiscountCode(c *gin.Context) {
 		TenantID: tid, Code: req.Code, Description: req.Description, DiscountType: req.DiscountType,
 		Value: req.Value, MinSubtotal: req.MinSubtotal, MaxUses: req.MaxUses,
 		StartsAt: parseTimePtr(req.StartsAt), EndsAt: parseTimePtr(req.EndsAt), IsActive: req.IsActive,
+	}
+	if req.BranchID != nil && *req.BranchID != "" {
+		bid, perr := uuid.Parse(*req.BranchID)
+		if perr != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+		d.BranchID = &bid
 	}
 	if err := h.store.CreateDiscountCode(c.Request.Context(), d); err != nil {
 		errResponse(c, http.StatusConflict, err.Error())
@@ -528,9 +556,18 @@ func (h *CatalogHandler) UpdateDiscountCode(c *gin.Context) {
 		errResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	var branchID *uuid.UUID
+	if req.BranchID != nil && *req.BranchID != "" {
+		bid, perr := uuid.Parse(*req.BranchID)
+		if perr != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+		branchID = &bid
+	}
 	if err := h.store.UpdateDiscountCode(c.Request.Context(), tid, id,
 		req.Code, req.Description, req.DiscountType, req.Value, req.MinSubtotal,
-		req.MaxUses, parseTimePtr(req.StartsAt), parseTimePtr(req.EndsAt), req.IsActive); err != nil {
+		req.MaxUses, parseTimePtr(req.StartsAt), parseTimePtr(req.EndsAt), req.IsActive, branchID); err != nil {
 		notFoundOrErr(c, err, "discount code not found")
 		return
 	}

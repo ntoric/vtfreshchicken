@@ -127,11 +127,8 @@ const RazorpayGatewayForm: FC<PaymentComponentProps> = ({ amount, currencySymbol
 
       // Create order via backend
       const { createGatewayOrder } = await import("@/lib/api");
-      // We need the tenant — get it from the URL
-      const pathParts = window.location.pathname.split("/");
-      const tenant = pathParts[2] || "demo"; // /t/{tenant}/checkout/payment
 
-      const orderResult = await createGatewayOrder(tenant, "razorpay", {
+      const orderResult = await createGatewayOrder("razorpay", {
         amount,
         currency: "INR", // Razorpay default; backend handles conversion
       });

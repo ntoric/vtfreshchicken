@@ -73,6 +73,19 @@ func (s *Store) GetTenantByID(ctx context.Context, id uuid.UUID) (*models.Tenant
 	return t, nil
 }
 
+// GetFirstTenant returns the first tenant ever created. In single-store mode
+// this is the store; for databases migrated from the multitenant version it
+// resolves to the oldest tenant.
+func (s *Store) GetFirstTenant(ctx context.Context) (*models.Tenant, error) {
+	t := &models.Tenant{}
+	err := s.Pool.QueryRow(ctx, `SELECT id, slug, name, description, is_active, COALESCE(contact_email,''), COALESCE(contact_phone,''), COALESCE(country,''), COALESCE(city,''), COALESCE(address,''), plan, commission_rate, created_at, updated_at FROM tenants ORDER BY created_at ASC LIMIT 1`).
+		Scan(&t.ID, &t.Slug, &t.Name, &t.Description, &t.IsActive, &t.ContactEmail, &t.ContactPhone, &t.Country, &t.City, &t.Address, &t.Plan, &t.CommissionRate, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (s *Store) ListTenants(ctx context.Context) ([]models.Tenant, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT id, slug, name, description, is_active, COALESCE(contact_email,''), COALESCE(contact_phone,''), COALESCE(country,''), COALESCE(city,''), COALESCE(address,''), plan, commission_rate, created_at, updated_at FROM tenants ORDER BY created_at`)
 	if err != nil {
@@ -271,16 +284,17 @@ func (s *Store) GetTenantSettings(ctx context.Context, tenantID uuid.UUID) (*mod
 	ts := &models.TenantSettings{TenantID: tenantID}
 	var curID *uuid.UUID
 	var landingContent []byte
+	var serviceArea []byte
 	err := s.Pool.QueryRow(ctx,
-		`SELECT default_currency_id, default_language, supported_languages, brand_color, logo_url,
+		`SELECT default_currency_id, default_language, supported_languages, brand_color, COALESCE(logo_url, ''),
 		        landing_page_enabled, landing_page_content, tax_inclusive, tax_shipping, default_tax_class_id,
-		        anonymous_checkout, return_period_days, refund_period_days, replacement_period_days,
-		        meta_title, meta_description, og_image, site_url, social_links
+		        anonymous_checkout, returns_enabled, return_period_days, refund_period_days, replacement_period_days,
+		        meta_title, meta_description, og_image, site_url, social_links, service_area
 		 FROM tenant_settings WHERE tenant_id=$1`, tenantID).
 		Scan(&curID, &ts.DefaultLanguage, &ts.SupportedLanguages, &ts.BrandColor, &ts.LogoURL,
 			&ts.LandingPageEnabled, &landingContent, &ts.TaxInclusive, &ts.TaxShipping, &ts.DefaultTaxClassID,
-			&ts.AnonymousCheckout, &ts.ReturnPeriodDays, &ts.RefundPeriodDays, &ts.ReplacementPeriodDays,
-			&ts.MetaTitle, &ts.MetaDescription, &ts.OGImage, &ts.SiteURL, &ts.SocialLinks)
+			&ts.AnonymousCheckout, &ts.ReturnsEnabled, &ts.ReturnPeriodDays, &ts.RefundPeriodDays, &ts.ReplacementPeriodDays,
+			&ts.MetaTitle, &ts.MetaDescription, &ts.OGImage, &ts.SiteURL, &ts.SocialLinks, &serviceArea)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +303,12 @@ func (s *Store) GetTenantSettings(ctx context.Context, tenantID uuid.UUID) (*mod
 		var lc models.LandingPageContent
 		if err := json.Unmarshal(landingContent, &lc); err == nil {
 			ts.LandingPageContent = &lc
+		}
+	}
+	if len(serviceArea) > 0 {
+		var sa models.ServiceArea
+		if err := json.Unmarshal(serviceArea, &sa); err == nil {
+			ts.ServiceArea = &sa
 		}
 	}
 	return ts, nil
@@ -307,12 +327,20 @@ func (s *Store) UpsertTenantSettings(ctx context.Context, ts *models.TenantSetti
 	if ts.SocialLinks == nil {
 		ts.SocialLinks = []string{}
 	}
+	var serviceArea []byte
+	if ts.ServiceArea != nil {
+		var err error
+		serviceArea, err = json.Marshal(ts.ServiceArea)
+		if err != nil {
+			return err
+		}
+	}
 	_, err := s.Pool.Exec(ctx,
 		`INSERT INTO tenant_settings (tenant_id, default_currency_id, default_language, supported_languages, brand_color, logo_url,
 		       landing_page_enabled, landing_page_content, tax_inclusive, tax_shipping, default_tax_class_id,
-		       anonymous_checkout, return_period_days, refund_period_days, replacement_period_days,
-		       meta_title, meta_description, og_image, site_url, social_links)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+		       anonymous_checkout, returns_enabled, return_period_days, refund_period_days, replacement_period_days,
+		       meta_title, meta_description, og_image, site_url, social_links, service_area)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
 		 ON CONFLICT (tenant_id) DO UPDATE SET
 		   default_currency_id=EXCLUDED.default_currency_id,
 		   default_language=EXCLUDED.default_language,
@@ -325,6 +353,7 @@ func (s *Store) UpsertTenantSettings(ctx context.Context, ts *models.TenantSetti
 		   tax_shipping=EXCLUDED.tax_shipping,
 		   default_tax_class_id=EXCLUDED.default_tax_class_id,
 		   anonymous_checkout=EXCLUDED.anonymous_checkout,
+		   returns_enabled=EXCLUDED.returns_enabled,
 		   return_period_days=EXCLUDED.return_period_days,
 		   refund_period_days=EXCLUDED.refund_period_days,
 		   replacement_period_days=EXCLUDED.replacement_period_days,
@@ -332,11 +361,12 @@ func (s *Store) UpsertTenantSettings(ctx context.Context, ts *models.TenantSetti
 		   meta_description=EXCLUDED.meta_description,
 		   og_image=EXCLUDED.og_image,
 		   site_url=EXCLUDED.site_url,
-		   social_links=EXCLUDED.social_links`,
+		   social_links=EXCLUDED.social_links,
+		   service_area=EXCLUDED.service_area`,
 		ts.TenantID, ts.DefaultCurrencyID, ts.DefaultLanguage, ts.SupportedLanguages, ts.BrandColor, ts.LogoURL,
 		ts.LandingPageEnabled, landingContent, ts.TaxInclusive, ts.TaxShipping, ts.DefaultTaxClassID,
-		ts.AnonymousCheckout, ts.ReturnPeriodDays, ts.RefundPeriodDays, ts.ReplacementPeriodDays,
-		ts.MetaTitle, ts.MetaDescription, ts.OGImage, ts.SiteURL, ts.SocialLinks)
+		ts.AnonymousCheckout, ts.ReturnsEnabled, ts.ReturnPeriodDays, ts.RefundPeriodDays, ts.ReplacementPeriodDays,
+		ts.MetaTitle, ts.MetaDescription, ts.OGImage, ts.SiteURL, ts.SocialLinks, serviceArea)
 	return err
 }
 
@@ -376,9 +406,9 @@ func (s *Store) GetUserByEmail(ctx context.Context, tenantID *uuid.UUID, email s
 	u := &models.User{}
 	var tid *uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
+		`SELECT id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
 		 FROM users WHERE email=$1 AND (tenant_id IS NOT DISTINCT FROM $2)`, email, tenantID).
-		Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -390,9 +420,9 @@ func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, er
 	u := &models.User{}
 	var tid *uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
+		`SELECT id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
 		 FROM users WHERE id=$1`, id).
-		Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -409,10 +439,16 @@ func (s *Store) CreateUser(ctx context.Context, u *models.User) error {
 		Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
 }
 
-func (s *Store) ListTenantUsers(ctx context.Context, tenantID uuid.UUID) ([]models.User, error) {
+func (s *Store) ListTenantUsers(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) ([]models.User, error) {
+	where := "u.tenant_id=$1"
+	args := []interface{}{tenantID}
+	if branchID != nil {
+		where += " AND u.branch_id=$2"
+		args = append(args, *branchID)
+	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
-		 FROM users WHERE tenant_id=$1 ORDER BY created_at`, tenantID)
+		`SELECT u.id, u.tenant_id, u.branch_id, u.email, u.password_hash, u.full_name, u.role, u.is_active, u.phone, u.marketing_consent, u.admin_notes, u.last_login_at, u.created_at, u.updated_at, COALESCE(b.name,'')
+		 FROM users u LEFT JOIN branches b ON b.id=u.branch_id WHERE `+where+` ORDER BY u.created_at`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +457,7 @@ func (s *Store) ListTenantUsers(ctx context.Context, tenantID uuid.UUID) ([]mode
 	for rows.Next() {
 		var u models.User
 		var tid *uuid.UUID
-		if err := rows.Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt, &u.BranchName); err != nil {
 			return nil, err
 		}
 		u.TenantID = tid
@@ -435,9 +471,9 @@ func (s *Store) GetTenantUser(ctx context.Context, tenantID, userID uuid.UUID) (
 	u := &models.User{}
 	var tid *uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
+		`SELECT id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
 		 FROM users WHERE id=$1 AND tenant_id=$2`, userID, tenantID).
-		Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -445,16 +481,16 @@ func (s *Store) GetTenantUser(ctx context.Context, tenantID, userID uuid.UUID) (
 	return u, nil
 }
 
-// UpdateUser updates a user's profile, role, and status (admin).
-func (s *Store) UpdateUser(ctx context.Context, tenantID, userID uuid.UUID, fullName, phone, role, adminNotes string, isActive bool) (*models.User, error) {
+// UpdateUser updates a user's profile, role, branch assignment, and status (admin).
+func (s *Store) UpdateUser(ctx context.Context, tenantID, userID uuid.UUID, fullName, phone, role, adminNotes string, isActive bool, branchID *uuid.UUID) (*models.User, error) {
 	u := &models.User{}
 	var tid *uuid.UUID
 	err := s.Pool.QueryRow(ctx,
-		`UPDATE users SET full_name=$3, phone=$4, role=$5, admin_notes=$6, is_active=$7, updated_at=NOW()
+		`UPDATE users SET full_name=$3, phone=$4, role=$5, admin_notes=$6, is_active=$7, branch_id=$8, updated_at=NOW()
 		 WHERE id=$1 AND tenant_id=$2
-		 RETURNING id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at`,
-		userID, tenantID, fullName, phone, role, adminNotes, isActive).
-		Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
+		 RETURNING id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at`,
+		userID, tenantID, fullName, phone, role, adminNotes, isActive, branchID).
+		Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +557,7 @@ func (s *Store) UserStats(ctx context.Context, tenantID uuid.UUID) (*models.User
 // ListAllUsers lists all users across all tenants (superadmin platform view).
 func (s *Store) ListAllUsers(ctx context.Context) ([]models.User, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT u.id, u.tenant_id, u.email, u.password_hash, u.full_name, u.role, u.is_active, u.phone, u.marketing_consent, u.admin_notes, u.last_login_at, u.created_at, u.updated_at
+		`SELECT u.id, u.tenant_id, u.branch_id, u.email, u.password_hash, u.full_name, u.role, u.is_active, u.phone, u.marketing_consent, u.admin_notes, u.last_login_at, u.created_at, u.updated_at
 		 FROM users u ORDER BY u.created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -531,7 +567,7 @@ func (s *Store) ListAllUsers(ctx context.Context) ([]models.User, error) {
 	for rows.Next() {
 		var u models.User
 		var tid *uuid.UUID
-		if err := rows.Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		u.TenantID = tid
@@ -545,6 +581,7 @@ func (s *Store) ListAllUsers(ctx context.Context) ([]models.User, error) {
 // CustomerFilter controls listing/searching customers.
 type CustomerFilter struct {
 	TenantID uuid.UUID
+	BranchID *uuid.UUID // restrict to customers who ordered from this branch
 	Search   *string
 	IsActive *bool
 	Limit    int
@@ -564,6 +601,11 @@ func (s *Store) ListCustomers(ctx context.Context, f CustomerFilter) ([]models.U
 	args = append(args, f.TenantID)
 	argIdx++
 
+	if f.BranchID != nil {
+		conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM orders o WHERE o.user_id = users.id AND o.branch_id = $%d)", argIdx))
+		args = append(args, *f.BranchID)
+		argIdx++
+	}
 	if f.Search != nil && *f.Search != "" {
 		conds = append(conds, fmt.Sprintf("(email ILIKE $%d OR full_name ILIKE $%d)", argIdx, argIdx))
 		args = append(args, "%"+*f.Search+"%")
@@ -582,7 +624,7 @@ func (s *Store) ListCustomers(ctx context.Context, f CustomerFilter) ([]models.U
 		return nil, 0, err
 	}
 
-	q := fmt.Sprintf(`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
+	q := fmt.Sprintf(`SELECT id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
 		FROM users WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 		where, argIdx, argIdx+1)
 	args = append(args, f.Limit, f.Offset)
@@ -596,7 +638,7 @@ func (s *Store) ListCustomers(ctx context.Context, f CustomerFilter) ([]models.U
 	for rows.Next() {
 		var u models.User
 		var tid *uuid.UUID
-		if err := rows.Scan(&u.ID, &tid, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &tid, &u.BranchID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
 		u.TenantID = tid
@@ -726,7 +768,7 @@ func (s *Store) UpdateLastLoginAt(ctx context.Context, userID uuid.UUID) {
 func (s *Store) GetSuperAdmin(ctx context.Context) (*models.User, error) {
 	u := &models.User{}
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
+		`SELECT id, tenant_id, branch_id, email, password_hash, full_name, role, is_active, phone, marketing_consent, admin_notes, last_login_at, created_at, updated_at
 		 FROM users WHERE role='superadmin' LIMIT 1`).
 		Scan(&u.ID, &u.TenantID, &u.Email, &u.PasswordHash, &u.FullName, &u.Role, &u.IsActive, &u.Phone, &u.MarketingConsent, &u.AdminNotes, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
@@ -974,7 +1016,11 @@ func (s *Store) DeleteUserAccount(ctx context.Context, userID uuid.UUID) error {
 // ---------------- Currencies / languages ----------------
 
 func (s *Store) ListCurrencies(ctx context.Context) ([]models.Currency, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT id, code, name, symbol, decimals, is_active FROM currencies WHERE is_active=TRUE ORDER BY code`)
+	rows, err := s.Pool.Query(ctx,
+		`SELECT c.id, c.code, c.name, c.symbol, c.decimals, c.is_active, COALESCE(er.rate, 1)
+		 FROM currencies c
+		 LEFT JOIN exchange_rates er ON er.base_code = 'USD' AND er.quote_code = c.code
+		 WHERE c.is_active=TRUE ORDER BY c.code`)
 	if err != nil {
 		return nil, err
 	}
@@ -982,7 +1028,7 @@ func (s *Store) ListCurrencies(ctx context.Context) ([]models.Currency, error) {
 	var out []models.Currency
 	for rows.Next() {
 		var c models.Currency
-		if err := rows.Scan(&c.ID, &c.Code, &c.Name, &c.Symbol, &c.Decimals, &c.IsActive); err != nil {
+		if err := rows.Scan(&c.ID, &c.Code, &c.Name, &c.Symbol, &c.Decimals, &c.IsActive, &c.Rate); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -992,8 +1038,12 @@ func (s *Store) ListCurrencies(ctx context.Context) ([]models.Currency, error) {
 
 func (s *Store) GetCurrencyByCode(ctx context.Context, code string) (*models.Currency, error) {
 	c := &models.Currency{}
-	err := s.Pool.QueryRow(ctx, `SELECT id, code, name, symbol, decimals, is_active FROM currencies WHERE code=$1`, code).
-		Scan(&c.ID, &c.Code, &c.Name, &c.Symbol, &c.Decimals, &c.IsActive)
+	err := s.Pool.QueryRow(ctx,
+		`SELECT c.id, c.code, c.name, c.symbol, c.decimals, c.is_active, COALESCE(er.rate, 1)
+		 FROM currencies c
+		 LEFT JOIN exchange_rates er ON er.base_code = 'USD' AND er.quote_code = c.code
+		 WHERE c.code=$1`, code).
+		Scan(&c.ID, &c.Code, &c.Name, &c.Symbol, &c.Decimals, &c.IsActive, &c.Rate)
 	if err != nil {
 		return nil, err
 	}
@@ -1076,7 +1126,7 @@ func (s *Store) DeleteCategory(ctx context.Context, tenantID, id uuid.UUID) erro
 
 func (s *Store) ListAttributes(ctx context.Context, tenantID uuid.UUID) ([]models.Attribute, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, slug, name, type, is_filterable, is_variant FROM attributes WHERE tenant_id=$1 ORDER BY name`, tenantID)
+		`SELECT id, tenant_id, slug, name, type, is_filterable, is_variant, is_batch FROM attributes WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -1084,7 +1134,7 @@ func (s *Store) ListAttributes(ctx context.Context, tenantID uuid.UUID) ([]model
 	var out []models.Attribute
 	for rows.Next() {
 		var a models.Attribute
-		if err := rows.Scan(&a.ID, &a.TenantID, &a.Slug, &a.Name, &a.Type, &a.IsFilterable, &a.IsVariant); err != nil {
+		if err := rows.Scan(&a.ID, &a.TenantID, &a.Slug, &a.Name, &a.Type, &a.IsFilterable, &a.IsVariant, &a.IsBatch); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -1125,9 +1175,9 @@ func (s *Store) CreateAttribute(ctx context.Context, a *models.Attribute) error 
 	}
 	defer tx.Rollback(ctx)
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO attributes (tenant_id, slug, name, type, is_filterable, is_variant)
-		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-		a.TenantID, a.Slug, a.Name, a.Type, a.IsFilterable, a.IsVariant).Scan(&a.ID); err != nil {
+		`INSERT INTO attributes (tenant_id, slug, name, type, is_filterable, is_variant, is_batch)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+		a.TenantID, a.Slug, a.Name, a.Type, a.IsFilterable, a.IsVariant, a.IsBatch).Scan(&a.ID); err != nil {
 		return err
 	}
 	for _, o := range a.Options {
@@ -1161,9 +1211,9 @@ func (s *Store) UpdateAttribute(ctx context.Context, a *models.Attribute) error 
 	defer tx.Rollback(ctx)
 
 	tag, err := tx.Exec(ctx,
-		`UPDATE attributes SET slug=$2, name=$3, type=$4, is_filterable=$5, is_variant=$6
-		 WHERE id=$1 AND tenant_id=$7`,
-		a.ID, a.Slug, a.Name, a.Type, a.IsFilterable, a.IsVariant, a.TenantID)
+		`UPDATE attributes SET slug=$2, name=$3, type=$4, is_filterable=$5, is_variant=$6, is_batch=$7
+		 WHERE id=$1 AND tenant_id=$8`,
+		a.ID, a.Slug, a.Name, a.Type, a.IsFilterable, a.IsVariant, a.IsBatch, a.TenantID)
 	if err != nil {
 		return err
 	}
@@ -1708,9 +1758,21 @@ func (s *Store) GetProductByID(ctx context.Context, tenantID, id uuid.UUID) (*mo
 // ---------------- Offers ----------------
 
 func (s *Store) ListOffers(ctx context.Context, tenantID uuid.UUID) ([]models.Offer, error) {
+	return s.ListOffersScoped(ctx, tenantID, nil)
+}
+
+// ListOffersScoped lists offers visible at a branch: global offers plus
+// offers targeted at the given branch. Nil branchID lists all offers (admin).
+func (s *Store) ListOffersScoped(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) ([]models.Offer, error) {
+	where := "tenant_id=$1"
+	args := []interface{}{tenantID}
+	if branchID != nil {
+		where += " AND (branch_id IS NULL OR branch_id=$2)"
+		args = append(args, *branchID)
+	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, name, description, offer_type, value, starts_at, ends_at, is_active
-		 FROM offers WHERE tenant_id=$1 ORDER BY created_at DESC`, tenantID)
+		`SELECT id, tenant_id, branch_id, name, description, offer_type, value, starts_at, ends_at, is_active
+		 FROM offers WHERE `+where+` ORDER BY created_at DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1718,7 +1780,7 @@ func (s *Store) ListOffers(ctx context.Context, tenantID uuid.UUID) ([]models.Of
 	var out []models.Offer
 	for rows.Next() {
 		var o models.Offer
-		if err := rows.Scan(&o.ID, &o.TenantID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive); err != nil {
+		if err := rows.Scan(&o.ID, &o.TenantID, &o.BranchID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive); err != nil {
 			return nil, err
 		}
 		out = append(out, o)
@@ -1751,9 +1813,9 @@ func (s *Store) listOfferTargets(ctx context.Context, offerID uuid.UUID) ([]mode
 func (s *Store) GetOfferByID(ctx context.Context, tenantID, id uuid.UUID) (*models.Offer, error) {
 	o := &models.Offer{}
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, name, description, offer_type, value, starts_at, ends_at, is_active
+		`SELECT id, tenant_id, branch_id, name, description, offer_type, value, starts_at, ends_at, is_active
 		 FROM offers WHERE id=$1 AND tenant_id=$2`, id, tenantID).
-		Scan(&o.ID, &o.TenantID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive)
+		Scan(&o.ID, &o.TenantID, &o.BranchID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive)
 	if err != nil {
 		return nil, err
 	}
@@ -1761,16 +1823,16 @@ func (s *Store) GetOfferByID(ctx context.Context, tenantID, id uuid.UUID) (*mode
 	return o, nil
 }
 
-func (s *Store) UpdateOffer(ctx context.Context, tenantID, id uuid.UUID, name, description, offerType string, value float64, startsAt, endsAt *time.Time, isActive bool, targets []models.OfferTarget) error {
+func (s *Store) UpdateOffer(ctx context.Context, tenantID, id uuid.UUID, name, description, offerType string, value float64, startsAt, endsAt *time.Time, isActive bool, targets []models.OfferTarget, branchID *uuid.UUID) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 	tag, err := tx.Exec(ctx,
-		`UPDATE offers SET name=$1, description=$2, offer_type=$3, value=$4, starts_at=$5, ends_at=$6, is_active=$7
+		`UPDATE offers SET name=$1, description=$2, offer_type=$3, value=$4, starts_at=$5, ends_at=$6, is_active=$7, branch_id=$10
 		 WHERE id=$8 AND tenant_id=$9`,
-		name, description, offerType, value, startsAt, endsAt, isActive, id, tenantID)
+		name, description, offerType, value, startsAt, endsAt, isActive, id, tenantID, branchID)
 	if err != nil {
 		return err
 	}
@@ -1796,9 +1858,9 @@ func (s *Store) CreateOffer(ctx context.Context, o *models.Offer) error {
 	}
 	defer tx.Rollback(ctx)
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO offers (tenant_id, name, description, offer_type, value, starts_at, ends_at, is_active)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-		o.TenantID, o.Name, o.Description, o.OfferType, o.Value, o.StartsAt, o.EndsAt, o.IsActive).Scan(&o.ID); err != nil {
+		`INSERT INTO offers (tenant_id, branch_id, name, description, offer_type, value, starts_at, ends_at, is_active)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+		o.TenantID, o.BranchID, o.Name, o.Description, o.OfferType, o.Value, o.StartsAt, o.EndsAt, o.IsActive).Scan(&o.ID); err != nil {
 		return err
 	}
 	for _, t := range o.Targets {
@@ -1821,20 +1883,23 @@ func (s *Store) DeleteOffer(ctx context.Context, tenantID, id uuid.UUID) error {
 }
 
 // ActiveOfferForProduct returns the best active percentage offer for a product.
-func (s *Store) ActiveOfferForProduct(ctx context.Context, tenantID uuid.UUID, productID uuid.UUID, categoryID *uuid.UUID) (*models.Offer, error) {
+// Offers bound to a different branch are excluded; nil branchID exposes only
+// global offers.
+func (s *Store) ActiveOfferForProduct(ctx context.Context, tenantID uuid.UUID, productID uuid.UUID, categoryID *uuid.UUID, branchID *uuid.UUID) (*models.Offer, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT o.id, o.tenant_id, o.name, o.description, o.offer_type, o.value, o.starts_at, o.ends_at, o.is_active
+		`SELECT o.id, o.tenant_id, o.branch_id, o.name, o.description, o.offer_type, o.value, o.starts_at, o.ends_at, o.is_active
 		 FROM offers o
 		 JOIN offer_targets t ON t.offer_id = o.id
 		 WHERE o.tenant_id=$1 AND o.is_active=TRUE
 		   AND (o.starts_at IS NULL OR o.starts_at <= NOW())
 		   AND (o.ends_at IS NULL OR o.ends_at >= NOW())
+		   AND (o.branch_id IS NULL OR o.branch_id IS NOT DISTINCT FROM $4)
 		   AND (
 		     (t.target_type='all') OR
 		     (t.target_type='product' AND t.target_id=$2) OR
 		     (t.target_type='category' AND t.target_id IS NOT DISTINCT FROM $3)
 		   )
-		 ORDER BY o.value DESC`, tenantID, productID, categoryID)
+		 ORDER BY o.value DESC`, tenantID, productID, categoryID, branchID)
 	if err != nil {
 		return nil, err
 	}
@@ -1842,7 +1907,7 @@ func (s *Store) ActiveOfferForProduct(ctx context.Context, tenantID uuid.UUID, p
 	var best *models.Offer
 	for rows.Next() {
 		var o models.Offer
-		if err := rows.Scan(&o.ID, &o.TenantID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive); err != nil {
+		if err := rows.Scan(&o.ID, &o.TenantID, &o.BranchID, &o.Name, &o.Description, &o.OfferType, &o.Value, &o.StartsAt, &o.EndsAt, &o.IsActive); err != nil {
 			return nil, err
 		}
 		if best == nil || o.Value > best.Value {
@@ -1855,9 +1920,21 @@ func (s *Store) ActiveOfferForProduct(ctx context.Context, tenantID uuid.UUID, p
 // ---------------- Discount codes ----------------
 
 func (s *Store) ListDiscountCodes(ctx context.Context, tenantID uuid.UUID) ([]models.DiscountCode, error) {
+	return s.ListDiscountCodesScoped(ctx, tenantID, nil)
+}
+
+// ListDiscountCodesScoped lists discount codes visible at a branch: global
+// codes plus codes bound to the given branch. Nil branchID lists all (admin).
+func (s *Store) ListDiscountCodesScoped(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) ([]models.DiscountCode, error) {
+	where := "tenant_id=$1"
+	args := []interface{}{tenantID}
+	if branchID != nil {
+		where += " AND (branch_id IS NULL OR branch_id=$2)"
+		args = append(args, *branchID)
+	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
-		 FROM discount_codes WHERE tenant_id=$1 ORDER BY created_at DESC`, tenantID)
+		`SELECT id, tenant_id, branch_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
+		 FROM discount_codes WHERE `+where+` ORDER BY created_at DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1865,7 +1942,7 @@ func (s *Store) ListDiscountCodes(ctx context.Context, tenantID uuid.UUID) ([]mo
 	var out []models.DiscountCode
 	for rows.Next() {
 		var d models.DiscountCode
-		if err := rows.Scan(&d.ID, &d.TenantID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive); err != nil {
+		if err := rows.Scan(&d.ID, &d.TenantID, &d.BranchID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -1875,22 +1952,26 @@ func (s *Store) ListDiscountCodes(ctx context.Context, tenantID uuid.UUID) ([]mo
 
 func (s *Store) CreateDiscountCode(ctx context.Context, d *models.DiscountCode) error {
 	return s.Pool.QueryRow(ctx,
-		`INSERT INTO discount_codes (tenant_id, code, description, discount_type, value, min_subtotal, max_uses, starts_at, ends_at, is_active)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-		d.TenantID, d.Code, d.Description, d.DiscountType, d.Value, d.MinSubtotal, d.MaxUses, d.StartsAt, d.EndsAt, d.IsActive).Scan(&d.ID)
+		`INSERT INTO discount_codes (tenant_id, branch_id, code, description, discount_type, value, min_subtotal, max_uses, starts_at, ends_at, is_active)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+		d.TenantID, d.BranchID, d.Code, d.Description, d.DiscountType, d.Value, d.MinSubtotal, d.MaxUses, d.StartsAt, d.EndsAt, d.IsActive).Scan(&d.ID)
 }
 
-func (s *Store) ValidateDiscountCode(ctx context.Context, tenantID uuid.UUID, code string, subtotal float64) (*models.DiscountCode, error) {
+// ValidateDiscountCode checks a code is usable at the given branch. Codes
+// bound to a different branch are treated as invalid; nil branchID accepts
+// only global codes.
+func (s *Store) ValidateDiscountCode(ctx context.Context, tenantID uuid.UUID, code string, subtotal float64, branchID *uuid.UUID) (*models.DiscountCode, error) {
 	d := &models.DiscountCode{}
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
+		`SELECT id, tenant_id, branch_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
 		 FROM discount_codes
 		 WHERE tenant_id=$1 AND code=$2 AND is_active=TRUE
 		   AND (starts_at IS NULL OR starts_at <= NOW())
 		   AND (ends_at IS NULL OR ends_at >= NOW())
 		   AND (max_uses IS NULL OR used_count < max_uses)
-		   AND min_subtotal <= $3`, tenantID, code, subtotal).
-		Scan(&d.ID, &d.TenantID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive)
+		   AND min_subtotal <= $3
+		   AND (branch_id IS NULL OR branch_id IS NOT DISTINCT FROM $4)`, tenantID, code, subtotal, branchID).
+		Scan(&d.ID, &d.TenantID, &d.BranchID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive)
 	if err != nil {
 		return nil, err
 	}
@@ -1900,20 +1981,20 @@ func (s *Store) ValidateDiscountCode(ctx context.Context, tenantID uuid.UUID, co
 func (s *Store) GetDiscountCodeByID(ctx context.Context, tenantID, id uuid.UUID) (*models.DiscountCode, error) {
 	d := &models.DiscountCode{}
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
+		`SELECT id, tenant_id, branch_id, code, description, discount_type, value, min_subtotal, max_uses, used_count, starts_at, ends_at, is_active
 		 FROM discount_codes WHERE id=$1 AND tenant_id=$2`, id, tenantID).
-		Scan(&d.ID, &d.TenantID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive)
+		Scan(&d.ID, &d.TenantID, &d.BranchID, &d.Code, &d.Description, &d.DiscountType, &d.Value, &d.MinSubtotal, &d.MaxUses, &d.UsedCount, &d.StartsAt, &d.EndsAt, &d.IsActive)
 	if err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
-func (s *Store) UpdateDiscountCode(ctx context.Context, tenantID, id uuid.UUID, code, description, discountType string, value, minSubtotal float64, maxUses *int, startsAt, endsAt *time.Time, isActive bool) error {
+func (s *Store) UpdateDiscountCode(ctx context.Context, tenantID, id uuid.UUID, code, description, discountType string, value, minSubtotal float64, maxUses *int, startsAt, endsAt *time.Time, isActive bool, branchID *uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx,
-		`UPDATE discount_codes SET code=$1, description=$2, discount_type=$3, value=$4, min_subtotal=$5, max_uses=$6, starts_at=$7, ends_at=$8, is_active=$9
+		`UPDATE discount_codes SET code=$1, description=$2, discount_type=$3, value=$4, min_subtotal=$5, max_uses=$6, starts_at=$7, ends_at=$8, is_active=$9, branch_id=$12
 		 WHERE id=$10 AND tenant_id=$11`,
-		code, description, discountType, value, minSubtotal, maxUses, startsAt, endsAt, isActive, id, tenantID)
+		code, description, discountType, value, minSubtotal, maxUses, startsAt, endsAt, isActive, id, tenantID, branchID)
 	if err != nil {
 		return err
 	}
@@ -1977,6 +2058,7 @@ type OrderListFilter struct {
 	Status   string // filter by status
 	Search   string // search by order ID, customer name, or email
 	UserID   *uuid.UUID // filter by customer user ID (for storefront order history)
+	BranchID *uuid.UUID // filter by fulfilling branch
 	Dr       DateRangeFilter // filter by created_at date range
 }
 
@@ -1988,52 +2070,57 @@ func (s *Store) ListOrdersFiltered(ctx context.Context, tenantID uuid.UUID, f Or
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	conds := []string{"tenant_id=$1"}
+	conds := []string{"o.tenant_id=$1"}
 	args := []interface{}{tenantID}
 	argIdx := 2
 
 	if f.Status != "" {
-		conds = append(conds, fmt.Sprintf("status=$%d", argIdx))
+		conds = append(conds, fmt.Sprintf("o.status=$%d", argIdx))
 		args = append(args, f.Status)
 		argIdx++
 	}
 	if f.UserID != nil {
-		conds = append(conds, fmt.Sprintf("user_id=$%d", argIdx))
+		conds = append(conds, fmt.Sprintf("o.user_id=$%d", argIdx))
 		args = append(args, *f.UserID)
 		argIdx++
 	}
+	if f.BranchID != nil {
+		conds = append(conds, fmt.Sprintf("o.branch_id=$%d", argIdx))
+		args = append(args, *f.BranchID)
+		argIdx++
+	}
 	if f.Search != "" {
-		conds = append(conds, fmt.Sprintf("(customer_name ILIKE $%d OR customer_email ILIKE $%d OR id::text ILIKE $%d)", argIdx, argIdx, argIdx))
+		conds = append(conds, fmt.Sprintf("(o.customer_name ILIKE $%d OR o.customer_email ILIKE $%d OR o.id::text ILIKE $%d)", argIdx, argIdx, argIdx))
 		args = append(args, "%"+f.Search+"%")
 		argIdx++
 	}
 	if f.Dr.From != "" {
-		conds = append(conds, fmt.Sprintf("created_at >= $%d", argIdx))
+		conds = append(conds, fmt.Sprintf("o.created_at >= $%d", argIdx))
 		args = append(args, f.Dr.From)
 		argIdx++
 	}
 	if f.Dr.To != "" {
-		conds = append(conds, fmt.Sprintf("created_at <= $%d", argIdx))
+		conds = append(conds, fmt.Sprintf("o.created_at <= $%d", argIdx))
 		args = append(args, f.Dr.To)
 		argIdx++
 	}
 	where := strings.Join(conds, " AND ")
 
 	var total int
-	if err := s.Pool.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM orders WHERE %s`, where), args...).Scan(&total); err != nil {
+	if err := s.Pool.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM orders o WHERE %s`, where), args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	args = append(args, limit, offset)
 	rows, err := s.Pool.Query(ctx,
-		fmt.Sprintf(`SELECT id, tenant_id, user_id, status, subtotal, discount_total, shipping_total, tax_total,
-		            grand_total, currency_code, COALESCE(tracking_number,''), COALESCE(carrier,''),
-		            shipped_at, delivered_at, cancelled_at, COALESCE(cancel_reason,''),
-		            COALESCE(internal_notes,''), COALESCE(payment_method,''), COALESCE(transaction_id,''),
-		            COALESCE(shipping_method,''), COALESCE(customer_email,''), COALESCE(customer_name,''),
-		            created_at, updated_at,
-		            replaces_order_id, return_id, COALESCE(order_tag,''), return_status
-		             FROM orders WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
+		fmt.Sprintf(`SELECT o.id, o.tenant_id, o.user_id, o.branch_id, COALESCE(b.name,''), o.status, o.subtotal, o.discount_total, o.shipping_total, o.tax_total,
+		            o.grand_total, o.currency_code, COALESCE(o.tracking_number,''), COALESCE(o.carrier,''),
+		            o.shipped_at, o.delivered_at, o.cancelled_at, COALESCE(o.cancel_reason,''),
+		            COALESCE(o.internal_notes,''), COALESCE(o.payment_method,''), COALESCE(o.transaction_id,''),
+		            COALESCE(o.shipping_method,''), COALESCE(o.customer_email,''), COALESCE(o.customer_name,''),
+		            o.created_at, o.updated_at,
+		            o.replaces_order_id, o.return_id, COALESCE(o.order_tag,''), o.return_status
+		             FROM orders o LEFT JOIN branches b ON b.id=o.branch_id WHERE %s ORDER BY o.created_at DESC LIMIT $%d OFFSET $%d`,
 			where, argIdx, argIdx+1),
 		args...)
 	if err != nil {
@@ -2043,7 +2130,7 @@ func (s *Store) ListOrdersFiltered(ctx context.Context, tenantID uuid.UUID, f Or
 	out := []models.Order{}
 	for rows.Next() {
 		var o models.Order
-		if err := rows.Scan(&o.ID, &o.TenantID, &o.UserID, &o.Status, &o.Subtotal, &o.DiscountTotal, &o.ShippingTotal, &o.TaxTotal,
+		if err := rows.Scan(&o.ID, &o.TenantID, &o.UserID, &o.BranchID, &o.BranchName, &o.Status, &o.Subtotal, &o.DiscountTotal, &o.ShippingTotal, &o.TaxTotal,
 			&o.GrandTotal, &o.CurrencyCode, &o.TrackingNumber, &o.Carrier, &o.ShippedAt, &o.DeliveredAt, &o.CancelledAt,
 			&o.CancelReason, &o.InternalNotes, &o.PaymentMethod, &o.TransactionID, &o.ShippingMethod,
 			&o.CustomerEmail, &o.CustomerName, &o.CreatedAt, &o.UpdatedAt,
@@ -2055,8 +2142,14 @@ func (s *Store) ListOrdersFiltered(ctx context.Context, tenantID uuid.UUID, f Or
 	return out, total, nil
 }
 
-func (s *Store) OrderCountsByStatus(ctx context.Context, tenantID uuid.UUID) (map[string]int, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT status, COUNT(*) FROM orders WHERE tenant_id=$1 GROUP BY status`, tenantID)
+func (s *Store) OrderCountsByStatus(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) (map[string]int, error) {
+	where := "tenant_id=$1"
+	args := []interface{}{tenantID}
+	if branchID != nil {
+		where += " AND branch_id=$2"
+		args = append(args, *branchID)
+	}
+	rows, err := s.Pool.Query(ctx, `SELECT status, COUNT(*) FROM orders WHERE `+where+` GROUP BY status`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -2073,34 +2166,188 @@ func (s *Store) OrderCountsByStatus(ctx context.Context, tenantID uuid.UUID) (ma
 	return out, nil
 }
 
-func (s *Store) DashboardStats(ctx context.Context, tenantID uuid.UUID, dr DateRangeFilter) (map[string]interface{}, error) {
+// parseFlexDate parses an ISO date (YYYY-MM-DD) or RFC3339 timestamp.
+func parseFlexDate(s string) (time.Time, error) {
+	for _, layout := range []string{"2006-01-02", time.RFC3339} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("unparseable date: %q", s)
+}
+
+func (s *Store) DashboardStats(ctx context.Context, tenantID uuid.UUID, dr DateRangeFilter, branchID *uuid.UUID) (map[string]interface{}, error) {
 	stats := map[string]interface{}{}
-	var productCount int
+	var productCount, customerCount int
 	s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE tenant_id=$1`, tenantID).Scan(&productCount)
+	s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE tenant_id=$1 AND role='customer'`, tenantID).Scan(&customerCount)
 	stats["products"] = productCount
+	stats["customers"] = customerCount
+
+	// Store's default currency (used by the dashboard for display formatting)
+	var currency string
+	s.Pool.QueryRow(ctx,
+		`SELECT COALESCE(c.code,'USD')
+		   FROM tenant_settings ts LEFT JOIN currencies c ON c.id = ts.default_currency_id
+		  WHERE ts.tenant_id=$1`, tenantID).Scan(&currency)
+	if currency == "" {
+		currency = "USD"
+	}
+	stats["currency"] = currency
 
 	// Orders count + revenue scoped to the date range
-	var args []interface{}
-	argIdx := 1
-	args = append(args, tenantID)
-	argIdx++
+	args := []interface{}{tenantID}
+	argIdx := 2
 	drClause, args, argIdx := dateRangeClause("created_at", dr, args, argIdx)
+	branchClause := ""
+	if branchID != nil {
+		branchClause = fmt.Sprintf(" AND branch_id=$%d", argIdx)
+		args = append(args, *branchID)
+		argIdx++
+	}
 
 	var orderCount int
-	s.Pool.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM orders WHERE tenant_id=$1%s`, drClause), args...).Scan(&orderCount)
+	s.Pool.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM orders WHERE tenant_id=$1%s%s`, drClause, branchClause), args...).Scan(&orderCount)
 	stats["orders"] = orderCount
 
 	revenueArgs := make([]interface{}, len(args))
 	copy(revenueArgs, args)
 	var revenue float64
 	s.Pool.QueryRow(ctx,
-		fmt.Sprintf(`SELECT COALESCE(SUM(grand_total),0) FROM orders WHERE tenant_id=$1 AND status IN ('paid','shipped','delivered','fulfilled')%s`, drClause),
+		fmt.Sprintf(`SELECT COALESCE(SUM(grand_total),0) FROM orders WHERE tenant_id=$1 AND status IN ('paid','shipped','delivered','fulfilled')%s%s`, drClause, branchClause),
 		revenueArgs...).Scan(&revenue)
 	stats["revenue"] = revenue
 
+	// Average order value over non-cancelled orders in range
+	var aov float64
+	s.Pool.QueryRow(ctx,
+		fmt.Sprintf(`SELECT COALESCE(AVG(grand_total),0) FROM orders WHERE tenant_id=$1 AND status NOT IN ('cancelled','refunded')%s%s`, drClause, branchClause),
+		revenueArgs...).Scan(&aov)
+	stats["avg_order_value"] = aov
+
+	// New customers — scoped to the range when given, else last 30 days
+	newArgs := []interface{}{tenantID}
+	newClause := ""
+	if dr.From != "" {
+		newArgs = append(newArgs, dr.From)
+		newClause += fmt.Sprintf(" AND created_at >= $%d", len(newArgs))
+	} else {
+		newClause += " AND created_at >= NOW() - interval '30 days'"
+	}
+	if dr.To != "" {
+		newArgs = append(newArgs, dr.To)
+		newClause += fmt.Sprintf(" AND created_at <= $%d", len(newArgs))
+	}
+	var newCustomers int
+	s.Pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM users WHERE tenant_id=$1 AND role='customer'`+newClause,
+		newArgs...).Scan(&newCustomers)
+	stats["new_customers"] = newCustomers
+
+	// Fixed time windows for trend deltas (independent of the selected range)
+	winArgs := []interface{}{tenantID}
+	winBranch := ""
+	if branchID != nil {
+		winArgs = append(winArgs, *branchID)
+		winBranch = " AND branch_id=$2"
+	}
+	const paidStatuses = "'paid','shipped','delivered','fulfilled'"
+	var tOrd, yOrd, wOrd, pwOrd int
+	var tRev, yRev, wRev, pwRev float64
+	s.Pool.QueryRow(ctx, fmt.Sprintf(`SELECT
+		COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE),
+		COALESCE(SUM(grand_total) FILTER (WHERE created_at >= CURRENT_DATE AND status IN (%s)),0),
+		COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - interval '1 day' AND created_at < CURRENT_DATE),
+		COALESCE(SUM(grand_total) FILTER (WHERE created_at >= CURRENT_DATE - interval '1 day' AND created_at < CURRENT_DATE AND status IN (%s)),0),
+		COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - interval '6 days'),
+		COALESCE(SUM(grand_total) FILTER (WHERE created_at >= CURRENT_DATE - interval '6 days' AND status IN (%s)),0),
+		COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE - interval '13 days' AND created_at < CURRENT_DATE - interval '6 days'),
+		COALESCE(SUM(grand_total) FILTER (WHERE created_at >= CURRENT_DATE - interval '13 days' AND created_at < CURRENT_DATE - interval '6 days' AND status IN (%s)),0)
+		FROM orders WHERE tenant_id=$1%s AND created_at >= CURRENT_DATE - interval '13 days'`,
+		paidStatuses, paidStatuses, paidStatuses, paidStatuses, winBranch), winArgs...).
+		Scan(&tOrd, &tRev, &yOrd, &yRev, &wOrd, &wRev, &pwOrd, &pwRev)
+	stats["today"] = map[string]interface{}{"orders": tOrd, "revenue": tRev}
+	stats["yesterday"] = map[string]interface{}{"orders": yOrd, "revenue": yRev}
+	stats["week"] = map[string]interface{}{"orders": wOrd, "revenue": wRev}
+	stats["prev_week"] = map[string]interface{}{"orders": pwOrd, "revenue": pwRev}
+
+	// Daily revenue/order series for the chart — last 30 days by default,
+	// or bucketed across the selected range.
+	fromExpr := "(CURRENT_DATE - interval '29 days')::date"
+	toExpr := "CURRENT_DATE"
+	seriesArgs := []interface{}{tenantID}
+	if dr.From != "" {
+		seriesArgs = append(seriesArgs, dr.From)
+		fromExpr = fmt.Sprintf("$%d::timestamptz::date", len(seriesArgs))
+	}
+	if dr.To != "" {
+		seriesArgs = append(seriesArgs, dr.To)
+		toExpr = fmt.Sprintf("LEAST($%d::timestamptz::date, CURRENT_DATE)", len(seriesArgs))
+	}
+	seriesBranch := ""
+	if branchID != nil {
+		seriesArgs = append(seriesArgs, *branchID)
+		seriesBranch = fmt.Sprintf(" AND o.branch_id=$%d", len(seriesArgs))
+	}
+	seriesRows, err := s.Pool.Query(ctx, fmt.Sprintf(
+		`SELECT d::date AS day,
+		        COALESCE(SUM(o.grand_total) FILTER (WHERE o.status IN (%s)),0) AS revenue,
+		        COUNT(o.id) FILTER (WHERE o.status NOT IN ('cancelled','refunded')) AS orders
+		   FROM generate_series(%s, %s, interval '1 day') d
+		   LEFT JOIN orders o ON o.created_at::date = d::date AND o.tenant_id=$1%s
+		  GROUP BY d ORDER BY d`, paidStatuses, fromExpr, toExpr, seriesBranch), seriesArgs...)
+	if err != nil {
+		return nil, err
+	}
+	series := []map[string]interface{}{}
+	for seriesRows.Next() {
+		var day time.Time
+		var rev float64
+		var ord int
+		if err := seriesRows.Scan(&day, &rev, &ord); err != nil {
+			seriesRows.Close()
+			return nil, err
+		}
+		series = append(series, map[string]interface{}{"date": day.Format("2006-01-02"), "revenue": rev, "orders": ord})
+	}
+	seriesRows.Close()
+	stats["revenue_series"] = series
+
+	// Comparison window — when a from-date is supplied, compute the equal-length
+	// window immediately preceding the selected range.
+	if dr.From != "" {
+		if from, err := parseFlexDate(dr.From); err == nil {
+			to := time.Now()
+			if dr.To != "" {
+				if t, err := parseFlexDate(dr.To); err == nil {
+					to = t
+				}
+			}
+			if span := to.Sub(from); span > 0 {
+				cArgs := []interface{}{tenantID, from.Add(-span), from}
+				cBranch := ""
+				if branchID != nil {
+					cArgs = append(cArgs, *branchID)
+					cBranch = " AND branch_id=$4"
+				}
+				var cOrd int
+				var cRev, cAov float64
+				s.Pool.QueryRow(ctx,
+					`SELECT COUNT(*),
+					        COALESCE(SUM(grand_total) FILTER (WHERE status IN (`+paidStatuses+`)),0),
+					        COALESCE(AVG(grand_total) FILTER (WHERE status NOT IN ('cancelled','refunded')),0)
+					   FROM orders WHERE tenant_id=$1 AND created_at >= $2 AND created_at < $3`+cBranch,
+					cArgs...).Scan(&cOrd, &cRev, &cAov)
+				stats["comparison"] = map[string]interface{}{
+					"orders": cOrd, "revenue": cRev, "avg_order_value": cAov,
+				}
+			}
+		}
+	}
+
 	// orders_by_status scoped to date range
 	statusRows, err := s.Pool.Query(ctx,
-		fmt.Sprintf(`SELECT status, COUNT(*) FROM orders WHERE tenant_id=$1%s GROUP BY status`, drClause),
+		fmt.Sprintf(`SELECT status, COUNT(*) FROM orders WHERE tenant_id=$1%s%s GROUP BY status`, drClause, branchClause),
 		revenueArgs...)
 	if err != nil {
 		return nil, err
@@ -2122,9 +2369,9 @@ func (s *Store) DashboardStats(ctx context.Context, tenantID uuid.UUID, dr DateR
 	// recent orders scoped to date range
 	recentArgs := make([]interface{}, len(args))
 	copy(recentArgs, args)
-	recentArgs = append(recentArgs, 5)
+	recentArgs = append(recentArgs, 8)
 	rows, err := s.Pool.Query(ctx,
-		fmt.Sprintf(`SELECT id, status, grand_total, currency_code, created_at FROM orders WHERE tenant_id=$1%s ORDER BY created_at DESC LIMIT $%d`, drClause, argIdx),
+		fmt.Sprintf(`SELECT id, status, grand_total, currency_code, COALESCE(customer_name,''), created_at FROM orders WHERE tenant_id=$1%s%s ORDER BY created_at DESC LIMIT $%d`, drClause, branchClause, argIdx),
 		recentArgs...)
 	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
@@ -2134,16 +2381,180 @@ func (s *Store) DashboardStats(ctx context.Context, tenantID uuid.UUID, dr DateR
 		var recent []map[string]interface{}
 		for rows.Next() {
 			var id uuid.UUID
-			var status, cur string
+			var status, cur, custName string
 			var total float64
 			var created time.Time
-			if err := rows.Scan(&id, &status, &total, &cur, &created); err != nil {
+			if err := rows.Scan(&id, &status, &total, &cur, &custName, &created); err != nil {
 				return nil, err
 			}
-			recent = append(recent, map[string]interface{}{"id": id, "status": status, "total": total, "currency": cur, "created_at": created})
+			recent = append(recent, map[string]interface{}{"id": id, "status": status, "total": total, "currency": cur, "customer_name": custName, "created_at": created})
 		}
 		stats["recent_orders"] = recent
 	}
+
+	// Top products by revenue in range
+	topArgs := []interface{}{tenantID}
+	topIdx := 2
+	topDr, topArgs, topIdx := dateRangeClause("o.created_at", dr, topArgs, topIdx)
+	if branchID != nil {
+		topDr += fmt.Sprintf(" AND o.branch_id=$%d", topIdx)
+		topArgs = append(topArgs, *branchID)
+		topIdx++
+	}
+	topRows, err := s.Pool.Query(ctx, fmt.Sprintf(
+		`SELECT oi.product_id,
+		        MAX(COALESCE(p.name, oi.name, 'Product')) AS name,
+		        COALESCE(MAX(p.slug), '') AS slug,
+		        COALESCE(NULLIF(MAX(p.image_url), ''),
+		                 (SELECT pi.url FROM product_images pi WHERE pi.product_id = oi.product_id ORDER BY pi.sort_order LIMIT 1),
+		                 '') AS image,
+		        SUM(oi.quantity) AS qty,
+		        SUM(oi.line_total) AS revenue
+		   FROM order_items oi
+		   JOIN orders o ON o.id = oi.order_id AND o.tenant_id = $1 AND o.status NOT IN ('cancelled','refunded')%s
+		   LEFT JOIN products p ON p.id = oi.product_id
+		  GROUP BY oi.product_id
+		  ORDER BY revenue DESC
+		  LIMIT 6`, topDr), topArgs...)
+	if err != nil {
+		return nil, err
+	}
+	topProducts := []map[string]interface{}{}
+	for topRows.Next() {
+		var pid *uuid.UUID
+		var name, slug, image string
+		var qty int
+		var rev float64
+		if err := topRows.Scan(&pid, &name, &slug, &image, &qty, &rev); err != nil {
+			topRows.Close()
+			return nil, err
+		}
+		topProducts = append(topProducts, map[string]interface{}{
+			"product_id": pid, "name": name, "slug": slug, "image": image, "qty": qty, "revenue": rev,
+		})
+	}
+	topRows.Close()
+	stats["top_products"] = topProducts
+
+	// Revenue by category in range
+	catRows, err := s.Pool.Query(ctx, fmt.Sprintf(
+		`SELECT COALESCE(c.name, 'Uncategorized') AS name,
+		        SUM(oi.line_total) AS revenue,
+		        SUM(oi.quantity) AS qty
+		   FROM order_items oi
+		   JOIN orders o ON o.id = oi.order_id AND o.tenant_id = $1 AND o.status NOT IN ('cancelled','refunded')%s
+		   LEFT JOIN products p ON p.id = oi.product_id
+		   LEFT JOIN categories c ON c.id = p.category_id
+		  GROUP BY 1
+		  ORDER BY revenue DESC
+		  LIMIT 6`, topDr), topArgs...)
+	if err != nil {
+		return nil, err
+	}
+	topCategories := []map[string]interface{}{}
+	for catRows.Next() {
+		var name string
+		var qty int
+		var rev float64
+		if err := catRows.Scan(&name, &rev, &qty); err != nil {
+			catRows.Close()
+			return nil, err
+		}
+		topCategories = append(topCategories, map[string]interface{}{"name": name, "revenue": rev, "qty": qty})
+	}
+	catRows.Close()
+	stats["top_categories"] = topCategories
+
+	// Orders & revenue by payment method in range
+	pmRows, err := s.Pool.Query(ctx, fmt.Sprintf(
+		`SELECT COALESCE(NULLIF(o.payment_method,''), 'unpaid') AS method,
+		        COUNT(*) AS orders,
+		        COALESCE(SUM(o.grand_total),0) AS revenue
+		   FROM orders o
+		  WHERE o.tenant_id=$1 AND o.status NOT IN ('cancelled','refunded')%s
+		  GROUP BY 1
+		  ORDER BY revenue DESC`, topDr), topArgs...)
+	if err != nil {
+		return nil, err
+	}
+	paymentMethods := []map[string]interface{}{}
+	for pmRows.Next() {
+		var method string
+		var n int
+		var rev float64
+		if err := pmRows.Scan(&method, &n, &rev); err != nil {
+			pmRows.Close()
+			return nil, err
+		}
+		paymentMethods = append(paymentMethods, map[string]interface{}{"method": method, "orders": n, "revenue": rev})
+	}
+	pmRows.Close()
+	stats["payment_methods"] = paymentMethods
+
+	// Inventory snapshot + low-stock items
+	if inv, err := s.InventoryStats(ctx, tenantID, branchID); err == nil {
+		stats["inventory"] = inv
+	}
+	var branchArg interface{}
+	if branchID != nil {
+		branchArg = *branchID
+	}
+	lowRows, err := s.Pool.Query(ctx,
+		`SELECT product_id, name, variant, stock, threshold FROM (
+			SELECT p.id AS product_id, p.name, COALESCE(v.name,'') AS variant,
+			       COALESCE(bs.stock, v.stock) AS stock, p.low_stock_threshold AS threshold
+			  FROM variants v
+			  JOIN products p ON p.id = v.product_id
+			  LEFT JOIN branch_stock bs ON bs.variant_id = v.id AND bs.branch_id IS NOT DISTINCT FROM $2
+			 WHERE p.tenant_id=$1 AND v.is_active = TRUE AND p.status != 'archived'
+			UNION ALL
+			SELECT p.id, p.name, '', COALESCE(bs.stock, p.stock), p.low_stock_threshold
+			  FROM products p
+			  LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.variant_id IS NULL
+			       AND bs.branch_id IS NOT DISTINCT FROM $2
+			 WHERE p.tenant_id=$1 AND p.status != 'archived'
+			   AND NOT EXISTS (SELECT 1 FROM variants v WHERE v.product_id = p.id)
+		) t
+		WHERE stock <= threshold
+		ORDER BY stock ASC, name ASC
+		LIMIT 6`, tenantID, branchArg)
+	if err != nil {
+		return nil, err
+	}
+	lowStock := []map[string]interface{}{}
+	for lowRows.Next() {
+		var pid uuid.UUID
+		var name, variant string
+		var stock, threshold int
+		if err := lowRows.Scan(&pid, &name, &variant, &stock, &threshold); err != nil {
+			lowRows.Close()
+			return nil, err
+		}
+		lowStock = append(lowStock, map[string]interface{}{
+			"product_id": pid, "name": name, "variant": variant, "stock": stock, "threshold": threshold,
+		})
+	}
+	lowRows.Close()
+	stats["low_stock_items"] = lowStock
+
+	// Action-required + engagement counters
+	var pendingReturns, activeOffers, activeDiscounts, reviewCount, unreadContact int
+	var avgRating float64
+	s.Pool.QueryRow(ctx, `SELECT
+		(SELECT COUNT(*) FROM order_returns WHERE tenant_id=$1 AND status='requested'),
+		(SELECT COUNT(*) FROM offers WHERE tenant_id=$1 AND is_active=TRUE AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>=NOW())),
+		(SELECT COUNT(*) FROM discount_codes WHERE tenant_id=$1 AND is_active=TRUE AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>=NOW())),
+		(SELECT COALESCE(AVG(rating),0) FROM product_reviews WHERE tenant_id=$1 AND is_approved=TRUE),
+		(SELECT COUNT(*) FROM product_reviews WHERE tenant_id=$1),
+		(SELECT COUNT(*) FROM contact_submissions WHERE tenant_id=$1 AND is_read=FALSE)`,
+		tenantID).Scan(&pendingReturns, &activeOffers, &activeDiscounts, &avgRating, &reviewCount, &unreadContact)
+	stats["pending_returns"] = pendingReturns
+	stats["active_offers"] = activeOffers
+	stats["active_discounts"] = activeDiscounts
+	stats["avg_rating"] = avgRating
+	stats["reviews"] = reviewCount
+	stats["unread_messages"] = unreadContact
+
 	return stats, nil
 }
 
@@ -2658,7 +3069,9 @@ func (s *Store) ListPurchasedProducts(ctx context.Context, tenantID, userID uuid
 	tenantReturn := 30
 	tenantRefund := 30
 	tenantReplacement := 15
+	returnsEnabled := true
 	if ts, err := s.GetTenantSettings(ctx, tenantID); err == nil {
+		returnsEnabled = ts.ReturnsEnabled
 		if ts.ReturnPeriodDays > 0 {
 			tenantReturn = ts.ReturnPeriodDays
 		}
@@ -2708,10 +3121,11 @@ func (s *Store) ListPurchasedProducts(ctx context.Context, tenantID, userID uuid
 		if pReplacement != nil && *pReplacement > 0 {
 			repPeriod = *pReplacement
 		}
-		// Resolve allowed flags: product override → default true
-		pp.ReturnAllowed = pReturnEn == nil || *pReturnEn
-		pp.RefundAllowed = pRefundEn == nil || *pRefundEn
-		pp.ReplacementAllowed = pReplacementEn == nil || *pReplacementEn
+		// Resolve allowed flags: product override → default true, gated by the
+		// store-level returns_enabled switch.
+		pp.ReturnAllowed = returnsEnabled && (pReturnEn == nil || *pReturnEn)
+		pp.RefundAllowed = returnsEnabled && (pRefundEn == nil || *pRefundEn)
+		pp.ReplacementAllowed = returnsEnabled && (pReplacementEn == nil || *pReplacementEn)
 		// Compute return eligibility from delivered_at
 		if pp.DeliveredAt != nil {
 			delivered := *pp.DeliveredAt
@@ -2994,7 +3408,7 @@ func (s *Store) CreateOrderFromCart(ctx context.Context, cart *models.Cart, req 
 	// Calculate discount
 	discountTotal := 0.0
 	if req.DiscountCode != "" {
-		dc, err := s.ValidateDiscountCode(ctx, cart.TenantID, req.DiscountCode, subtotal)
+		dc, err := s.ValidateDiscountCode(ctx, cart.TenantID, req.DiscountCode, subtotal, req.BranchID)
 		if err == nil && dc != nil {
 			if dc.DiscountType == "percentage" {
 				discountTotal = subtotal * dc.Value / 100
@@ -3113,13 +3527,13 @@ func (s *Store) CreateOrderFromCart(ctx context.Context, cart *models.Cart, req 
 	}
 
 	err = tx.QueryRow(ctx,
-		`INSERT INTO orders (tenant_id, user_id, status, subtotal, discount_total, shipping_total, tax_total, grand_total, currency_code,
+		`INSERT INTO orders (tenant_id, user_id, branch_id, status, subtotal, discount_total, shipping_total, tax_total, grand_total, currency_code,
 		      shipping_address, billing_address, payment_method, transaction_id, shipping_method, shipping_weight, customer_name, customer_email, status_history, session_id, tax_breakdown)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-		 RETURNING id, tenant_id, user_id, status, subtotal, discount_total, shipping_total, tax_total, grand_total, currency_code, created_at`,
-		cart.TenantID, userID, status, subtotal, discountTotal, shippingTotal, taxTotal, grandTotal, currencyCode,
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+		 RETURNING id, tenant_id, user_id, branch_id, status, subtotal, discount_total, shipping_total, tax_total, grand_total, currency_code, created_at`,
+		cart.TenantID, userID, req.BranchID, status, subtotal, discountTotal, shippingTotal, taxTotal, grandTotal, currencyCode,
 		shippingAddr, billingAddr, req.PaymentMethod, req.TransactionID, req.ShippingMethod, shippingWeight, customerName, customerEmail, historyJSON, cart.SessionID, taxBreakdownJSON,
-	).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Status, &order.Subtotal, &order.DiscountTotal, &order.ShippingTotal, &order.TaxTotal, &order.GrandTotal, &order.CurrencyCode, &order.CreatedAt)
+	).Scan(&order.ID, &order.TenantID, &order.UserID, &order.BranchID, &order.Status, &order.Subtotal, &order.DiscountTotal, &order.ShippingTotal, &order.TaxTotal, &order.GrandTotal, &order.CurrencyCode, &order.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -3155,6 +3569,26 @@ func (s *Store) CreateOrderFromCart(ctx context.Context, cart *models.Cart, req 
 		if err != nil {
 			return nil, err
 		}
+		// Per-branch stock overlay: when the order is assigned to a branch and a
+		// branch_stock row exists for the item, it is enforced and decremented.
+		if req.BranchID != nil {
+			bsLevel, bsErr := s.branchStockLevel(ctx, tx, *req.BranchID, item.ProductID, item.VariantID)
+			if bsErr != nil {
+				return nil, bsErr
+			}
+			if bsLevel != nil {
+				tag, bsErr := tx.Exec(ctx,
+					`UPDATE branch_stock SET stock = stock - $1, updated_at=NOW()
+					 WHERE branch_id=$2 AND product_id=$3 AND variant_id IS NOT DISTINCT FROM $4 AND stock >= $1`,
+					item.Quantity, *req.BranchID, item.ProductID, item.VariantID)
+				if bsErr != nil {
+					return nil, bsErr
+				}
+				if tag.RowsAffected() == 0 {
+					return nil, fmt.Errorf("insufficient branch stock for product %s", item.ProductName)
+				}
+			}
+		}
 		// Decrement stock atomically
 		if item.VariantID != nil {
 			tag, sErr := tx.Exec(ctx,
@@ -3179,9 +3613,9 @@ func (s *Store) CreateOrderFromCart(ctx context.Context, cart *models.Cart, req 
 		}
 		// Record stock movement
 		_, _ = tx.Exec(ctx,
-			`INSERT INTO stock_movements (tenant_id, product_id, variant_id, movement_type, quantity, reference)
-			 VALUES ($1,$2,$3,'order',$4,$5)`,
-			cart.TenantID, item.ProductID, item.VariantID, -item.Quantity, order.ID.String())
+			`INSERT INTO stock_movements (tenant_id, product_id, variant_id, branch_id, movement_type, quantity, reference)
+			 VALUES ($1,$2,$3,$4,'order',$5,$6)`,
+			cart.TenantID, item.ProductID, item.VariantID, req.BranchID, -item.Quantity, order.ID.String())
 	}
 
 	// Clear the cart
@@ -3197,6 +3631,7 @@ func (s *Store) CreateOrderFromCart(ctx context.Context, cart *models.Cart, req 
 			ProductID:  item.ProductID,
 			VariantID:  item.VariantID,
 			Name:       item.ProductName,
+			ImageURL:   item.ImageURL,
 			Quantity:   item.Quantity,
 			UnitPrice:  item.UnitPrice,
 			LineTotal:  item.LineTotal,
@@ -3253,16 +3688,16 @@ func (s *Store) GetOrderByID(ctx context.Context, tenantID, orderID uuid.UUID) (
 	var o models.Order
 	var historyJSON, taxBreakdownJSON []byte
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, user_id, status, subtotal, discount_total, shipping_total, tax_total,
-		        grand_total, currency_code, COALESCE(tracking_number,''), COALESCE(carrier,''),
-		        shipped_at, delivered_at, cancelled_at, COALESCE(cancel_reason,''),
-		        COALESCE(internal_notes,''), COALESCE(payment_method,''), COALESCE(transaction_id,''),
-		        COALESCE(shipping_method,''), shipping_weight, COALESCE(customer_email,''), COALESCE(customer_name,''),
-		        status_history, created_at, updated_at,
-		        replaces_order_id, return_id, COALESCE(order_tag,''), tax_breakdown, return_status
-		 FROM orders WHERE id=$1 AND tenant_id=$2`,
+		`SELECT o.id, o.tenant_id, o.user_id, o.branch_id, COALESCE(b.name,''), o.status, o.subtotal, o.discount_total, o.shipping_total, o.tax_total,
+		        o.grand_total, o.currency_code, COALESCE(o.tracking_number,''), COALESCE(o.carrier,''),
+		        o.shipped_at, o.delivered_at, o.cancelled_at, COALESCE(o.cancel_reason,''),
+		        COALESCE(o.internal_notes,''), COALESCE(o.payment_method,''), COALESCE(o.transaction_id,''),
+		        COALESCE(o.shipping_method,''), o.shipping_weight, COALESCE(o.customer_email,''), COALESCE(o.customer_name,''),
+		        o.status_history, o.created_at, o.updated_at,
+		        o.replaces_order_id, o.return_id, COALESCE(o.order_tag,''), o.tax_breakdown, o.return_status
+		 FROM orders o LEFT JOIN branches b ON b.id=o.branch_id WHERE o.id=$1 AND o.tenant_id=$2`,
 		orderID, tenantID,
-	).Scan(&o.ID, &o.TenantID, &o.UserID, &o.Status, &o.Subtotal, &o.DiscountTotal, &o.ShippingTotal, &o.TaxTotal,
+	).Scan(&o.ID, &o.TenantID, &o.UserID, &o.BranchID, &o.BranchName, &o.Status, &o.Subtotal, &o.DiscountTotal, &o.ShippingTotal, &o.TaxTotal,
 		&o.GrandTotal, &o.CurrencyCode, &o.TrackingNumber, &o.Carrier, &o.ShippedAt, &o.DeliveredAt,
 		&o.CancelledAt, &o.CancelReason, &o.InternalNotes, &o.PaymentMethod, &o.TransactionID,
 		&o.ShippingMethod, &o.ShippingWeight, &o.CustomerEmail, &o.CustomerName, &historyJSON, &o.CreatedAt, &o.UpdatedAt,
@@ -3277,16 +3712,25 @@ func (s *Store) GetOrderByID(ctx context.Context, tenantID, orderID uuid.UUID) (
 		_ = json.Unmarshal(taxBreakdownJSON, &o.TaxBreakdown)
 	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, product_id, variant_id, name, sku, quantity, unit_price, line_total, tax_amount, tax_rate, tax_class_id,
-		        shipping_method, shipping_cost, shipping_weight
-		 FROM order_items WHERE order_id=$1`, o.ID)
+		`SELECT oi.id, oi.product_id, oi.variant_id, oi.name, oi.sku,
+		 COALESCE(NULLIF(p.image_url, ''),
+			(SELECT url FROM product_images WHERE product_id = oi.product_id ORDER BY sort_order ASC LIMIT 1),
+			COALESCE(v.image_url, ''),
+			''),
+		 oi.quantity, oi.unit_price, oi.line_total, oi.tax_amount, oi.tax_rate, oi.tax_class_id,
+		 oi.shipping_method, oi.shipping_cost, oi.shipping_weight
+		 FROM order_items oi
+		 LEFT JOIN products p ON p.id = oi.product_id
+		 LEFT JOIN variants v ON v.id = oi.variant_id
+		 WHERE oi.order_id=$1`, o.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var oi models.OrderItem
-		if err := rows.Scan(&oi.ID, &oi.ProductID, &oi.VariantID, &oi.Name, &oi.SKU, &oi.Quantity, &oi.UnitPrice, &oi.LineTotal, &oi.TaxAmount, &oi.TaxRate, &oi.TaxClassID,
+		if err := rows.Scan(&oi.ID, &oi.ProductID, &oi.VariantID, &oi.Name, &oi.SKU, &oi.ImageURL,
+			&oi.Quantity, &oi.UnitPrice, &oi.LineTotal, &oi.TaxAmount, &oi.TaxRate, &oi.TaxClassID,
 			&oi.ShippingMethod, &oi.ShippingCost, &oi.ShippingWeight); err != nil {
 			return nil, err
 		}
@@ -3307,17 +3751,17 @@ func (s *Store) GetOrderWithDetails(ctx context.Context, tenantID, orderID uuid.
 	var o models.OrderWithDetails
 	var shippingAddr, billingAddr, historyJSON, taxBreakdownJSON []byte
 	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, user_id, status, subtotal, discount_total, shipping_total, tax_total,
-		        grand_total, currency_code, shipping_address, billing_address,
-		        COALESCE(tracking_number,''), COALESCE(carrier,''),
-		        shipped_at, delivered_at, cancelled_at, COALESCE(cancel_reason,''),
-		        COALESCE(internal_notes,''), COALESCE(payment_method,''), COALESCE(transaction_id,''),
-		        COALESCE(shipping_method,''), shipping_weight, COALESCE(customer_email,''), COALESCE(customer_name,''),
-		        status_history, created_at, updated_at,
-		        replaces_order_id, return_id, COALESCE(order_tag,''), tax_breakdown, return_status
-		 FROM orders WHERE id=$1 AND tenant_id=$2`,
+		`SELECT o.id, o.tenant_id, o.user_id, o.branch_id, COALESCE(b.name,''), o.status, o.subtotal, o.discount_total, o.shipping_total, o.tax_total,
+		        o.grand_total, o.currency_code, o.shipping_address, o.billing_address,
+		        COALESCE(o.tracking_number,''), COALESCE(o.carrier,''),
+		        o.shipped_at, o.delivered_at, o.cancelled_at, COALESCE(o.cancel_reason,''),
+		        COALESCE(o.internal_notes,''), COALESCE(o.payment_method,''), COALESCE(o.transaction_id,''),
+		        COALESCE(o.shipping_method,''), o.shipping_weight, COALESCE(o.customer_email,''), COALESCE(o.customer_name,''),
+		        o.status_history, o.created_at, o.updated_at,
+		        o.replaces_order_id, o.return_id, COALESCE(o.order_tag,''), o.tax_breakdown, o.return_status
+		 FROM orders o LEFT JOIN branches b ON b.id=o.branch_id WHERE o.id=$1 AND o.tenant_id=$2`,
 		orderID, tenantID,
-	).Scan(&o.ID, &o.TenantID, &o.UserID, &o.Status, &o.Subtotal, &o.DiscountTotal,
+	).Scan(&o.ID, &o.TenantID, &o.UserID, &o.BranchID, &o.BranchName, &o.Status, &o.Subtotal, &o.DiscountTotal,
 		&o.ShippingTotal, &o.TaxTotal, &o.GrandTotal, &o.CurrencyCode,
 		&shippingAddr, &billingAddr,
 		&o.TrackingNumber, &o.Carrier, &o.ShippedAt, &o.DeliveredAt, &o.CancelledAt, &o.CancelReason,
@@ -3340,16 +3784,25 @@ func (s *Store) GetOrderWithDetails(ctx context.Context, tenantID, orderID uuid.
 		_ = json.Unmarshal(taxBreakdownJSON, &o.TaxBreakdown)
 	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, product_id, variant_id, name, sku, quantity, unit_price, line_total, tax_amount, tax_rate, tax_class_id,
-		        shipping_method, shipping_cost, shipping_weight
-		 FROM order_items WHERE order_id=$1`, o.ID)
+		`SELECT oi.id, oi.product_id, oi.variant_id, oi.name, oi.sku,
+		 COALESCE(NULLIF(p.image_url, ''),
+			(SELECT url FROM product_images WHERE product_id = oi.product_id ORDER BY sort_order ASC LIMIT 1),
+			COALESCE(v.image_url, ''),
+			''),
+		 oi.quantity, oi.unit_price, oi.line_total, oi.tax_amount, oi.tax_rate, oi.tax_class_id,
+		 oi.shipping_method, oi.shipping_cost, oi.shipping_weight
+		 FROM order_items oi
+		 LEFT JOIN products p ON p.id = oi.product_id
+		 LEFT JOIN variants v ON v.id = oi.variant_id
+		 WHERE oi.order_id=$1`, o.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var oi models.OrderItem
-		if err := rows.Scan(&oi.ID, &oi.ProductID, &oi.VariantID, &oi.Name, &oi.SKU, &oi.Quantity, &oi.UnitPrice, &oi.LineTotal, &oi.TaxAmount, &oi.TaxRate, &oi.TaxClassID,
+		if err := rows.Scan(&oi.ID, &oi.ProductID, &oi.VariantID, &oi.Name, &oi.SKU, &oi.ImageURL,
+			&oi.Quantity, &oi.UnitPrice, &oi.LineTotal, &oi.TaxAmount, &oi.TaxRate, &oi.TaxClassID,
 			&oi.ShippingMethod, &oi.ShippingCost, &oi.ShippingWeight); err != nil {
 			return nil, err
 		}
@@ -3455,6 +3908,8 @@ func (s *Store) UpdateOrderStatus(ctx context.Context, tenantID, orderID uuid.UU
 
 // restoreOrderStock adds back the quantities of all order items to product/variant stock.
 func (s *Store) restoreOrderStock(ctx context.Context, tenantID, orderID uuid.UUID) error {
+	var branchID *uuid.UUID
+	_ = s.Pool.QueryRow(ctx, `SELECT branch_id FROM orders WHERE id=$1`, orderID).Scan(&branchID)
 	rows, err := s.Pool.Query(ctx,
 		`SELECT product_id, variant_id, quantity FROM order_items WHERE order_id=$1`, orderID)
 	if err != nil {
@@ -3472,6 +3927,12 @@ func (s *Store) restoreOrderStock(ctx context.Context, tenantID, orderID uuid.UU
 			_, _ = s.Pool.Exec(ctx, `UPDATE variants SET stock = stock + $1 WHERE id=$2`, qty, *variantID)
 		} else {
 			_, _ = s.Pool.Exec(ctx, `UPDATE products SET stock = stock + $1 WHERE id=$2`, qty, productID)
+		}
+		if branchID != nil {
+			_, _ = s.Pool.Exec(ctx,
+				`UPDATE branch_stock SET stock = stock + $1, updated_at=NOW()
+				 WHERE branch_id=$2 AND product_id=$3 AND variant_id IS NOT DISTINCT FROM $4`,
+				qty, *branchID, productID, variantID)
 		}
 		// Record stock movement
 		_, _ = s.Pool.Exec(ctx,
@@ -3620,6 +4081,7 @@ func (s *Store) SetStock(ctx context.Context, tenantID uuid.UUID, productID uuid
 // StockMovementFilter holds optional filters for listing stock movements.
 type StockMovementFilter struct {
 	MovementType string
+	BranchID     *uuid.UUID // restrict to movements for one branch
 	Search       string
 	Dr           DateRangeFilter
 }
@@ -3639,6 +4101,11 @@ func (s *Store) ListStockMovementsFiltered(ctx context.Context, tenantID uuid.UU
 	if f.MovementType != "" {
 		where += fmt.Sprintf(" AND sm.movement_type=$%d", argIdx)
 		args = append(args, f.MovementType)
+		argIdx++
+	}
+	if f.BranchID != nil {
+		where += fmt.Sprintf(" AND sm.branch_id=$%d", argIdx)
+		args = append(args, *f.BranchID)
 		argIdx++
 	}
 	if f.Search != "" {
@@ -3692,18 +4159,23 @@ func (s *Store) ListStockMovementsFiltered(ctx context.Context, tenantID uuid.UU
 }
 
 // InventoryStats returns summary statistics for the inventory dashboard.
-func (s *Store) InventoryStats(ctx context.Context, tenantID uuid.UUID) (*models.InventoryStats, error) {
+// When branchID is set, branch_stock rows override store-level stock.
+func (s *Store) InventoryStats(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) (*models.InventoryStats, error) {
 	stats := &models.InventoryStats{}
 	// Count variant-level items
 	err := s.Pool.QueryRow(ctx,
 		`SELECT
-			COUNT(*) FILTER (WHERE v.stock <= 0),
-			COUNT(*) FILTER (WHERE v.stock > 0 AND v.stock <= p.low_stock_threshold),
-			COUNT(*) FILTER (WHERE v.stock > p.low_stock_threshold),
-			COALESCE(SUM(v.stock * v.price), 0)
-		 FROM variants v
-		 JOIN products p ON p.id = v.product_id
-		 WHERE p.tenant_id=$1`, tenantID).
+			COUNT(*) FILTER (WHERE eff.stock <= 0),
+			COUNT(*) FILTER (WHERE eff.stock > 0 AND eff.stock <= eff.low_stock_threshold),
+			COUNT(*) FILTER (WHERE eff.stock > eff.low_stock_threshold),
+			COALESCE(SUM(eff.stock * eff.price), 0)
+		 FROM (
+			SELECT COALESCE(bs.stock, v.stock) AS stock, v.price AS price, p.low_stock_threshold
+			FROM variants v
+			JOIN products p ON p.id = v.product_id
+			LEFT JOIN branch_stock bs ON bs.variant_id = v.id AND bs.branch_id IS NOT DISTINCT FROM $2
+			WHERE p.tenant_id=$1
+		 ) eff`, tenantID, branchID).
 		Scan(&stats.OutOfStock, &stats.LowStock, &stats.InStock, &stats.TotalStockValue)
 	if err != nil {
 		return nil, err
@@ -3713,13 +4185,18 @@ func (s *Store) InventoryStats(ctx context.Context, tenantID uuid.UUID) (*models
 	var prodValue float64
 	err = s.Pool.QueryRow(ctx,
 		`SELECT
-			COUNT(*) FILTER (WHERE p.stock <= 0),
-			COUNT(*) FILTER (WHERE p.stock > 0 AND p.stock <= p.low_stock_threshold),
-			COUNT(*) FILTER (WHERE p.stock > p.low_stock_threshold),
-			COALESCE(SUM(p.stock * p.base_price), 0)
-		 FROM products p
-		 WHERE p.tenant_id=$1
-		   AND NOT EXISTS (SELECT 1 FROM variants v WHERE v.product_id = p.id)`, tenantID).
+			COUNT(*) FILTER (WHERE eff.stock <= 0),
+			COUNT(*) FILTER (WHERE eff.stock > 0 AND eff.stock <= eff.low_stock_threshold),
+			COUNT(*) FILTER (WHERE eff.stock > eff.low_stock_threshold),
+			COALESCE(SUM(eff.stock * eff.price), 0)
+		 FROM (
+			SELECT COALESCE(bs.stock, p.stock) AS stock, p.base_price AS price, p.low_stock_threshold
+			FROM products p
+			LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.variant_id IS NULL
+				AND bs.branch_id IS NOT DISTINCT FROM $2
+			WHERE p.tenant_id=$1
+			  AND NOT EXISTS (SELECT 1 FROM variants v WHERE v.product_id = p.id)
+		 ) eff`, tenantID, branchID).
 		Scan(&prodOutOf, &prodLow, &prodIn, &prodValue)
 	if err != nil {
 		return nil, err
@@ -3997,7 +4474,25 @@ func (s *Store) SeedDefaultPermissions(ctx context.Context, tenantID uuid.UUID) 
 			staffPermIDs = append(staffPermIDs, p.ID)
 		}
 	}
-	return s.SetRolePermissions(ctx, tenantID, models.RoleStaff, staffPermIDs)
+	if err := s.SetRolePermissions(ctx, tenantID, models.RoleStaff, staffPermIDs); err != nil {
+		return err
+	}
+
+	// branch_manager: staff-level access plus branch stock adjustment; data
+	// visibility is limited to their branch by the backend scoping rules.
+	managerAllowed := map[string]bool{}
+	for code := range staffAllowed {
+		managerAllowed[code] = true
+	}
+	managerAllowed["inventory.adjust"] = true
+	managerAllowed["branches.view"] = true
+	var managerPermIDs []uuid.UUID
+	for _, p := range perms {
+		if managerAllowed[p.Code] {
+			managerPermIDs = append(managerPermIDs, p.ID)
+		}
+	}
+	return s.SetRolePermissions(ctx, tenantID, models.RoleBranchManager, managerPermIDs)
 }
 
 // ---------------- Contact Submissions ----------------

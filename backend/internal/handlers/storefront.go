@@ -50,21 +50,47 @@ func (h *StorefrontHandler) Bootstrap(c *gin.Context) {
 	}
 	shippingMethods, _ := h.store.ListActiveShippingMethods(c.Request.Context(), tid)
 
+	// Coupon field at checkout is shown only when at least one discount code
+	// is active and within its validity window.
+	discounts, _ := h.store.ListDiscountCodes(c.Request.Context(), tid)
+	discountsEnabled := false
+	for _, d := range discounts {
+		if !d.IsActive {
+			continue
+		}
+		if d.StartsAt != nil && now.Before(*d.StartsAt) {
+			continue
+		}
+		if d.EndsAt != nil && now.After(*d.EndsAt) {
+			continue
+		}
+		discountsEnabled = true
+		break
+	}
+
 	// Include the store name so the storefront can display it instead of the slug
 	storeName := ""
 	if t, err := h.store.GetTenantByID(c.Request.Context(), tid); err == nil {
 		storeName = t.Name
 	}
 
+	// Active branches with their service areas — drives the location picker.
+	branches, _ := h.store.ListActiveBranches(c.Request.Context(), tid)
+	if branches == nil {
+		branches = []models.Branch{}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"settings":         ts,
-		"store_name":       storeName,
-		"currencies":       currencies,
-		"languages":        langs,
-		"categories":       cats,
-		"attributes":       attrs,
-		"offers":           activeOffers,
-		"shipping_methods": shippingMethods,
+		"settings":          ts,
+		"store_name":        storeName,
+		"branches":          branches,
+		"currencies":        currencies,
+		"languages":         langs,
+		"categories":        cats,
+		"attributes":        attrs,
+		"offers":            activeOffers,
+		"shipping_methods":  shippingMethods,
+		"discounts_enabled": discountsEnabled,
 	})
 }
 
@@ -165,7 +191,7 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 			p.EffectivePrice = p.BasePrice
 		}
 		// offers
-		offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID)
+		offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
 		if err == nil && offer != nil && offer.OfferType == "percentage" {
 			p.DiscountPct = offer.Value
 			p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
@@ -186,6 +212,19 @@ func supportedLangs(ts *models.TenantSettings) []string {
 		return []string{"en"}
 	}
 	return ts.SupportedLanguages
+}
+
+// queryBranchID parses the optional ?branch_id= query parameter used to give
+// public endpoints a branch context (pricing offers, discount validation).
+func queryBranchID(c *gin.Context) *uuid.UUID {
+	raw := c.Query("branch_id")
+	if raw == "" {
+		return nil
+	}
+	if id, err := uuid.Parse(raw); err == nil {
+		return &id
+	}
+	return nil
 }
 
 // GetProduct: public product detail with currency + language.
@@ -232,7 +271,7 @@ func (h *StorefrontHandler) GetProduct(c *gin.Context) {
 			v.Price = vc
 		}
 	}
-	offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID)
+	offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
 	if err == nil && offer != nil && offer.OfferType == "percentage" {
 		p.DiscountPct = offer.Value
 		p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
@@ -254,7 +293,7 @@ func (h *StorefrontHandler) ValidateDiscount(c *gin.Context) {
 		errResponse(c, http.StatusBadRequest, "invalid subtotal")
 		return
 	}
-	d, err := h.store.ValidateDiscountCode(c.Request.Context(), tid, code, subtotal)
+	d, err := h.store.ValidateDiscountCode(c.Request.Context(), tid, code, subtotal, queryBranchID(c))
 	if err != nil {
 		errResponse(c, http.StatusNotFound, "invalid or expired discount code")
 		return

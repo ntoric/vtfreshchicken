@@ -180,7 +180,7 @@ export function ImageCropModal({
     try {
       setUploading(true);
       const blob = await getCroppedImg(imgRef.current, completedCrop, rotation, scale, maxSize);
-      const result = await uploadImage(tenant, blob, filename ? `cropped_${filename}` : undefined);
+      const result = await uploadImage(blob, filename ? `cropped_${filename}` : undefined);
       toast.success("Image saved", "Cropped image has been uploaded.");
       onConfirm(result.url);
     } catch (e) {
@@ -198,7 +198,7 @@ export function ImageCropModal({
         setUploading(true);
         const response = await fetch(imageSrc);
         const blob = await response.blob();
-        const result = await uploadImage(tenant, blob, filename);
+        const result = await uploadImage(blob, filename);
         onConfirm(result.url);
       } catch (e) {
         toast.error("Upload failed", (e as Error).message);

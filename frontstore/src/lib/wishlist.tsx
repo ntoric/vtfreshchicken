@@ -24,7 +24,7 @@ interface WishlistCtx {
 
 const Ctx = createContext<WishlistCtx>(null as any);
 
-export function WishlistProvider({ tenant, children }: { tenant: string; children: ReactNode }) {
+export function WishlistProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const router = useRouter();
   const { isAuthenticated, setPendingAction, allowAnonymous } = useAuth();
@@ -32,13 +32,13 @@ export function WishlistProvider({ tenant, children }: { tenant: string; childre
   const [isOpen, setIsOpen] = useState(false);
 
   const wlQ = useQuery<WishlistResponse>({
-    queryKey: ["wishlist", tenant],
-    queryFn: () => fetchWishlist(tenant),
+    queryKey: ["wishlist"],
+    queryFn: () => fetchWishlist(),
   });
 
   const invalidate = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["wishlist", tenant] });
-  }, [qc, tenant]);
+    qc.invalidateQueries({ queryKey: ["wishlist"] });
+  }, [qc]);
 
   const items = wlQ.data?.wishlist.items ?? [];
   const productIds = new Set(items.map((i) => i.product_id));
@@ -46,19 +46,19 @@ export function WishlistProvider({ tenant, children }: { tenant: string; childre
 
   const addMut = useMutation({
     mutationFn: ({ productId, variantId }: { productId: string; variantId?: string }) =>
-      apiAdd(tenant, productId, variantId),
+      apiAdd(productId, variantId),
     onSuccess: () => { invalidate(); setIsOpen(true); toast.success("Added to wishlist", "Item has been saved to your wishlist."); },
     onError: (err) => { console.error("[Wishlist] addItem error:", err); toast.error("Failed to save", err.message || "Could not add item to wishlist."); },
   });
 
   const removeMut = useMutation({
-    mutationFn: (itemId: string) => apiRemove(tenant, itemId),
+    mutationFn: (itemId: string) => apiRemove(itemId),
     onSuccess: () => { invalidate(); toast.info("Removed", "Item removed from your wishlist."); },
     onError: (err) => { console.error("[Wishlist] removeItem error:", err); toast.error("Remove failed", err.message || "Could not remove item."); },
   });
 
   const removeProductMut = useMutation({
-    mutationFn: (productId: string) => apiRemoveProduct(tenant, productId),
+    mutationFn: (productId: string) => apiRemoveProduct(productId),
     onSuccess: () => { invalidate(); toast.info("Removed", "Item removed from your wishlist."); },
     onError: (err) => { console.error("[Wishlist] removeProduct error:", err); toast.error("Remove failed", err.message || "Could not remove item."); },
   });
@@ -90,7 +90,7 @@ export function WishlistProvider({ tenant, children }: { tenant: string; childre
           returnPath: window.location.pathname,
         };
         setPendingAction(action);
-        router.push(`/${tenant}/account/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        router.push(`/account/login?redirect=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
       if (productIds.has(productId)) {
@@ -99,7 +99,7 @@ export function WishlistProvider({ tenant, children }: { tenant: string; childre
         addMut.mutate({ productId, variantId });
       }
     },
-    [isAuthenticated, allowAnonymous, setPendingAction, router, tenant, productIds, addMut, removeProductMut],
+    [isAuthenticated, allowAnonymous, setPendingAction, router, productIds, addMut, removeProductMut],
   );
 
   return (

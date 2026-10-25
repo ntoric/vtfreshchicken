@@ -442,14 +442,14 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                   placeholder="Label"
                   className={`${inp} col-span-4`}
                 />
-                <label className="col-span-3 flex items-center gap-2 text-xs text-slate-600">
-                  <input
-                    type="checkbox"
+                <span className="col-span-3 flex items-center gap-2 text-xs text-slate-600">
+                  <Toggle
+                    size="sm"
                     checked={p.required}
-                    onChange={(e) => updateParam(form, setForm, i, { required: e.target.checked })}
+                    onChange={(v) => updateParam(form, setForm, i, { required: v })}
                   />
                   Required
-                </label>
+                </span>
                 <button
                   onClick={() => setForm({ ...form, parameters: form.parameters.filter((_, idx) => idx !== i) })}
                   className="col-span-1 text-rose-500 hover:text-rose-700 text-sm"

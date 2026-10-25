@@ -13,7 +13,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_pages",
 		mcp.WithDescription("List all store pages. Requires settings.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/pages"), nil)
+		return callGet(ctx, c, c.APIPath("/pages"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_page",
@@ -21,7 +21,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Page UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/pages/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/pages/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_page",
@@ -30,7 +30,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "page")
-		return callPost(ctx, c, c.TenantPath("/pages"), body)
+		return callPost(ctx, c, c.APIPath("/pages"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_page",
@@ -40,7 +40,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "page")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/pages/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/pages/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_page",
@@ -48,7 +48,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Page UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/pages/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/pages/%s", argString(args, "id"))))
 	})
 
 	s.AddTool(mcp.NewTool("get_public_page",
@@ -56,7 +56,7 @@ func RegisterPagesTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Page slug")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/page/%s", argString(args, "slug"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/page/%s", argString(args, "slug"))), nil)
 	})
 }
 
@@ -66,7 +66,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_notification_events",
 		mcp.WithDescription("List notification events. Requires settings.manage permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/notifications/events"), nil)
+		return callGet(ctx, c, c.APIPath("/notifications/events"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_notification_event",
@@ -75,7 +75,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "event")
-		return callPost(ctx, c, c.TenantPath("/notifications/events"), body)
+		return callPost(ctx, c, c.APIPath("/notifications/events"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_notification_event",
@@ -85,7 +85,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "event")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/notifications/events/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/notifications/events/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_notification_event",
@@ -93,14 +93,14 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Event UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/notifications/events/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/notifications/events/%s", argString(args, "id"))))
 	})
 
 	// ---- Templates ----
 	s.AddTool(mcp.NewTool("list_notification_templates",
 		mcp.WithDescription("List notification templates. Requires settings.manage permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/notifications/templates"), nil)
+		return callGet(ctx, c, c.APIPath("/notifications/templates"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_notification_template",
@@ -108,7 +108,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Template UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_notification_template",
@@ -117,7 +117,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "template")
-		return callPost(ctx, c, c.TenantPath("/notifications/templates"), body)
+		return callPost(ctx, c, c.APIPath("/notifications/templates"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_notification_template",
@@ -127,7 +127,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "template")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_notification_template",
@@ -135,7 +135,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Template UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/notifications/templates/%s", argString(args, "id"))))
 	})
 
 	// ---- Preview, Send, Logs ----
@@ -146,7 +146,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "template_id", "data")
-		return callPost(ctx, c, c.TenantPath("/notifications/preview"), body)
+		return callPost(ctx, c, c.APIPath("/notifications/preview"), body)
 	})
 
 	s.AddTool(mcp.NewTool("send_notification",
@@ -157,7 +157,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "event_code", "recipient", "data")
-		return callPost(ctx, c, c.TenantPath("/notifications/send"), body)
+		return callPost(ctx, c, c.APIPath("/notifications/send"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_notification_logs",
@@ -167,7 +167,7 @@ func RegisterNotificationTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath("/notifications/logs"), q)
+		return callGet(ctx, c, c.APIPath("/notifications/logs"), q)
 	})
 }
 
@@ -176,7 +176,7 @@ func RegisterVendorTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_vendors",
 		mcp.WithDescription("List all vendors. Requires vendors.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/vendors"), nil)
+		return callGet(ctx, c, c.APIPath("/vendors"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_vendor",
@@ -184,7 +184,7 @@ func RegisterVendorTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Vendor UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_vendor",
@@ -193,7 +193,7 @@ func RegisterVendorTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "vendor")
-		return callPost(ctx, c, c.TenantPath("/vendors"), body)
+		return callPost(ctx, c, c.APIPath("/vendors"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_vendor",
@@ -203,7 +203,7 @@ func RegisterVendorTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "vendor")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_vendor",
@@ -211,6 +211,6 @@ func RegisterVendorTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Vendor UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/vendors/%s", argString(args, "id"))))
 	})
 }

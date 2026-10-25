@@ -10,11 +10,10 @@ import { useWishlist } from "@/lib/wishlist";
 
 interface ProductListItemProps {
   product: Product;
-  tenant: string;
   currency?: Currency;
 }
 
-export function ProductListItem({ product, tenant, currency }: ProductListItemProps) {
+export function ProductListItem({ product, currency }: ProductListItemProps) {
   const price = product.discounted_price ?? product.effective_price ?? (product.base_price || product.variants?.[0]?.price) ?? 0;
   const hasDiscount = product.discounted_price != null && (product.discount_pct ?? 0) > 0;
   const cart = useCart();
@@ -28,7 +27,7 @@ export function ProductListItem({ product, tenant, currency }: ProductListItemPr
 
   return (
     <Link
-      href={`/${tenant}/products/${product.slug}`}
+      href={`/products/${product.slug}`}
       className="group flex flex-col sm:flex-row bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-200"
     >
       {/* Image */}

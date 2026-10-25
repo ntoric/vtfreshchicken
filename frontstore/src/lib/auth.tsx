@@ -29,9 +29,8 @@ interface AuthCtx {
   isLoading: boolean;
   pendingAction: PendingAction | null;
   allowAnonymous: boolean;
-  login: (tenant: string, email: string, password: string) => Promise<CustomerUser>;
+  login: (email: string, password: string) => Promise<CustomerUser>;
   register: (
-    tenant: string,
     email: string,
     password: string,
     fullName: string,
@@ -39,7 +38,6 @@ interface AuthCtx {
     marketingConsent?: boolean,
   ) => Promise<CustomerUser>;
   registerFromOrder: (
-    tenant: string,
     email: string,
     password: string,
     fullName: string,
@@ -70,27 +68,22 @@ export function AuthProvider({ allowAnonymous = true, children }: { allowAnonymo
   }, []);
 
   // Listen for auth-expired events dispatched by fetchJson on 401 responses.
-  // Auto-logout and redirect to the tenant's login page.
+  // Auto-logout and redirect to the store's login page.
   useEffect(() => {
     function onAuthExpired() {
       clearAuthToken();
       setCustomer(null);
       setPendingActionState(null);
-      // Extract tenant from the current path (/:tenant/...)
-      const m = window.location.pathname.match(/^\/([^/]+)/);
-      const tenant = m?.[1];
-      if (tenant) {
-        const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-        window.location.href = `/${tenant}/account/login?redirect=${redirect}`;
-      }
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/account/login?redirect=${redirect}`;
     }
     window.addEventListener("tc-auth-expired", onAuthExpired);
     return () => window.removeEventListener("tc-auth-expired", onAuthExpired);
   }, []);
 
   const login = useCallback(
-    async (tenant: string, email: string, password: string) => {
-      const data = await apiLogin(tenant, email, password);
+    async (email: string, password: string) => {
+      const data = await apiLogin(email, password);
       setCustomer(data.user);
       return data.user as CustomerUser;
     },
@@ -99,14 +92,13 @@ export function AuthProvider({ allowAnonymous = true, children }: { allowAnonymo
 
   const register = useCallback(
     async (
-      tenant: string,
       email: string,
       password: string,
       fullName: string,
       phone?: string,
       marketingConsent?: boolean,
     ) => {
-      const data = await apiRegister(tenant, email, password, fullName, phone, marketingConsent, generateIdempotencyKey());
+      const data = await apiRegister(email, password, fullName, phone, marketingConsent, generateIdempotencyKey());
       setCustomer(data.user);
       return data.user as CustomerUser;
     },
@@ -115,14 +107,13 @@ export function AuthProvider({ allowAnonymous = true, children }: { allowAnonymo
 
   const registerFromOrder = useCallback(
     async (
-      tenant: string,
       email: string,
       password: string,
       fullName: string,
       phone?: string,
       marketingConsent?: boolean,
     ) => {
-      const data = await apiRegisterFromOrder(tenant, email, password, fullName, phone, marketingConsent, generateIdempotencyKey());
+      const data = await apiRegisterFromOrder(email, password, fullName, phone, marketingConsent, generateIdempotencyKey());
       setCustomer(data.user);
       return data.user as CustomerUser;
     },

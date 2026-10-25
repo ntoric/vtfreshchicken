@@ -57,11 +57,32 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 		}
 	}
 
+	// Resolve the fulfilling branch from the delivery location. When the store
+	// has active branches, orders are accepted only inside a branch's service
+	// area and assigned to the nearest covering branch.
+	if hasBranches, bErr := h.store.HasActiveBranches(c.Request.Context(), tid); bErr == nil && hasBranches {
+		area := req.DeliveryArea
+		if area == "" {
+			area = req.ShippingAddress.City
+		}
+		branch, rErr := h.store.ResolveDeliveryBranch(c.Request.Context(), tid, req.DeliveryLat, req.DeliveryLng, area)
+		if rErr != nil {
+			errResponse(c, http.StatusInternalServerError, rErr.Error())
+			return
+		}
+		if branch == nil {
+			errResponse(c, http.StatusUnprocessableEntity, "delivery is not available for the selected location")
+			return
+		}
+		req.BranchID = &branch.ID
+	}
+
 	// Look up the payment gateway from the registry
 	// Wallet payments are handled specially — the debit happens via the wallet
 	// service using the authenticated user ID, not via a gateway.
 	var gateway payment.Gateway
 	var ok bool
+	var gwCfg *models.PaymentGatewayConfig
 	isWalletPayment := req.PaymentMethod == "wallet"
 
 	if isWalletPayment {
@@ -80,6 +101,18 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 		gateway, ok = h.registry.Get(req.PaymentMethod)
 		if !ok {
 			errResponse(c, http.StatusBadRequest, "unsupported payment method: "+req.PaymentMethod)
+			return
+		}
+		// Enforce the store's gateway configuration — a disabled gateway cannot
+		// be used even if a stale client submits it directly.
+		var gErr error
+		gwCfg, gErr = h.store.GetPaymentGatewayConfig(c.Request.Context(), tid, req.PaymentMethod)
+		if gErr != nil {
+			errResponse(c, http.StatusInternalServerError, gErr.Error())
+			return
+		}
+		if gwCfg != nil && !gwCfg.IsEnabled {
+			errResponse(c, http.StatusBadRequest, "payment method is disabled: "+req.PaymentMethod)
 			return
 		}
 	}
@@ -161,7 +194,7 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 	}
 	discountTotal := 0.0
 	if req.DiscountCode != "" {
-		dc, derr := h.store.ValidateDiscountCode(c.Request.Context(), cart.TenantID, req.DiscountCode, subtotal)
+		dc, derr := h.store.ValidateDiscountCode(c.Request.Context(), cart.TenantID, req.DiscountCode, subtotal, req.BranchID)
 		if derr == nil && dc != nil {
 			if dc.DiscountType == "percentage" {
 				discountTotal = subtotal * dc.Value / 100
@@ -275,6 +308,10 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 			Message:       "Paid with wallet balance",
 		}
 	} else {
+		var gwConfig map[string]interface{}
+		if gwCfg != nil {
+			gwConfig = gwCfg.Config
+		}
 		pr, err := gateway.ProcessPayment(c.Request.Context(), payment.PaymentRequest{
 			Amount:        grandTotal,
 			Currency:      currency,
@@ -282,6 +319,7 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 			CustomerName:  customerName,
 			CustomerEmail: req.ShippingAddress.Email,
 			Details:       detailsMap,
+			Config:        gwConfig,
 		})
 		if err != nil {
 			errResponse(c, http.StatusPaymentRequired, "payment processing failed: "+err.Error())

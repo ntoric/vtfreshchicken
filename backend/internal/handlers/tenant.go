@@ -66,6 +66,16 @@ type updateSettingsReq struct {
 	LandingPageEnabled  *bool    `json:"landing_page_enabled"`
 	LandingPageContent  *models.LandingPageContent `json:"landing_page_content"`
 	AnonymousCheckout   *bool    `json:"anonymous_checkout"`
+	ServiceArea         *models.ServiceArea `json:"service_area"`
+	ReturnsEnabled        *bool  `json:"returns_enabled"`
+	ReturnPeriodDays      *int   `json:"return_period_days"`
+	RefundPeriodDays      *int   `json:"refund_period_days"`
+	ReplacementPeriodDays *int   `json:"replacement_period_days"`
+	MetaTitle             *string `json:"meta_title"`
+	MetaDescription       *string `json:"meta_description"`
+	OGImage               *string `json:"og_image"`
+	SiteURL               *string `json:"site_url"`
+	SocialLinks           []string `json:"social_links"`
 }
 
 func (h *TenantHandler) UpdateSettings(c *gin.Context) {
@@ -108,12 +118,21 @@ func (h *TenantHandler) UpdateSettings(c *gin.Context) {
 		if ts.LogoURL == "" {
 			ts.LogoURL = existing.LogoURL
 		}
-		// Preserve SEO/social fields from existing settings
+		// Preserve tax settings — not updatable via this endpoint
+		ts.TaxInclusive = existing.TaxInclusive
+		ts.TaxShipping = existing.TaxShipping
+		ts.DefaultTaxClassID = existing.DefaultTaxClassID
+		// Preserve SEO/social fields
 		ts.MetaTitle = existing.MetaTitle
 		ts.MetaDescription = existing.MetaDescription
 		ts.OGImage = existing.OGImage
 		ts.SiteURL = existing.SiteURL
 		ts.SocialLinks = existing.SocialLinks
+		// Preserve return policy fields
+		ts.ReturnsEnabled = existing.ReturnsEnabled
+		ts.ReturnPeriodDays = existing.ReturnPeriodDays
+		ts.RefundPeriodDays = existing.RefundPeriodDays
+		ts.ReplacementPeriodDays = existing.ReplacementPeriodDays
 		// Preserve landing page settings unless explicitly provided
 		if req.LandingPageEnabled != nil {
 			ts.LandingPageEnabled = *req.LandingPageEnabled
@@ -131,6 +150,43 @@ func (h *TenantHandler) UpdateSettings(c *gin.Context) {
 		} else {
 			ts.AnonymousCheckout = existing.AnonymousCheckout
 		}
+		// Preserve service area unless explicitly provided
+		if req.ServiceArea != nil {
+			ts.ServiceArea = req.ServiceArea
+		} else {
+			ts.ServiceArea = existing.ServiceArea
+		}
+	}
+	// Optional pointer/slice fields: apply when explicitly provided (an empty
+	// string/array is a valid value and clears the field).
+	if req.MetaTitle != nil {
+		ts.MetaTitle = *req.MetaTitle
+	}
+	if req.MetaDescription != nil {
+		ts.MetaDescription = *req.MetaDescription
+	}
+	if req.OGImage != nil {
+		ts.OGImage = *req.OGImage
+	}
+	if req.SiteURL != nil {
+		ts.SiteURL = *req.SiteURL
+	}
+	if req.SocialLinks != nil {
+		ts.SocialLinks = req.SocialLinks
+	}
+	if req.ReturnsEnabled != nil {
+		ts.ReturnsEnabled = *req.ReturnsEnabled
+	} else if existing == nil {
+		ts.ReturnsEnabled = true
+	}
+	if req.ReturnPeriodDays != nil {
+		ts.ReturnPeriodDays = *req.ReturnPeriodDays
+	}
+	if req.RefundPeriodDays != nil {
+		ts.RefundPeriodDays = *req.RefundPeriodDays
+	}
+	if req.ReplacementPeriodDays != nil {
+		ts.ReplacementPeriodDays = *req.ReplacementPeriodDays
 	}
 	if ts.DefaultLanguage == "" {
 		ts.DefaultLanguage = "en"
@@ -179,6 +235,7 @@ func (h *TenantHandler) Bootstrap(c *gin.Context, hashPw func(string) (string, e
 	// default settings
 	_ = h.store.UpsertTenantSettings(c.Request.Context(), &models.TenantSettings{
 		TenantID: t.ID, DefaultLanguage: "en", SupportedLanguages: []string{"en"}, BrandColor: "#4f46e5",
+		ReturnsEnabled: true,
 	})
 	c.JSON(http.StatusCreated, gin.H{"tenant": t, "admin": admin})
 }

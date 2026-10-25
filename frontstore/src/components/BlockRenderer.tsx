@@ -18,18 +18,16 @@ const ICON_MAP: Record<string, any> = {
 
 export function BlockRenderer({
   block,
-  tenant,
-  currency,
+    currency,
 }: {
   block: PageBlock;
-  tenant: string;
   currency?: Currency;
 }) {
   const p = block.props;
 
   switch (block.type) {
     case "hero":
-      return <HeroBlock props={p} tenant={tenant} />;
+      return <HeroBlock props={p} />;
     case "rich_text":
       return <RichTextBlock props={p} />;
     case "image":
@@ -45,19 +43,19 @@ export function BlockRenderer({
     case "banner":
       return <BannerBlock props={p} />;
     case "featured_products":
-      return <FeaturedProductsBlock props={p} tenant={tenant} currency={currency} />;
+      return <FeaturedProductsBlock props={p} currency={currency} />;
     case "category_showcase":
-      return <CategoryShowcaseBlock props={p} tenant={tenant} />;
+      return <CategoryShowcaseBlock props={p} />;
     case "product_carousel":
-      return <ProductCarouselBlock props={p} tenant={tenant} currency={currency} />;
+      return <ProductCarouselBlock props={p} currency={currency} />;
     case "testimonials":
       return <TestimonialsBlock props={p} />;
     case "reviews":
-      return <ReviewsBlock props={p} tenant={tenant} />;
+      return <ReviewsBlock props={p} />;
     case "faq":
       return <FAQBlock props={p} />;
     case "contact_form":
-      return <ContactFormBlock props={p} tenant={tenant} />;
+      return <ContactFormBlock props={p} />;
     case "map":
       return <MapBlock props={p} />;
     case "team":
@@ -79,7 +77,7 @@ export function BlockRenderer({
   }
 }
 
-function HeroBlock({ props: p, tenant }: { props: any; tenant: string }) {
+function HeroBlock({ props: p }: { props: any }) {
   return (
     <section
       className="relative flex items-center justify-center text-center py-20 px-4"
@@ -97,7 +95,7 @@ function HeroBlock({ props: p, tenant }: { props: any; tenant: string }) {
         {p.subtitle && <p className="text-lg sm:text-xl opacity-90 mb-6">{p.subtitle}</p>}
         {p.buttonText && (
           <Link
-            href={p.buttonLink || `/${tenant}?view=shop`}
+            href={p.buttonLink || `/?view=shop`}
             className="inline-block bg-white/20 hover:bg-white/30 backdrop-blur-sm px-6 py-2.5 rounded-lg font-semibold transition"
           >
             {p.buttonText}
@@ -194,23 +192,23 @@ function BannerBlock({ props: p }: { props: any }) {
   );
 }
 
-function FeaturedProductsBlock({ props: p, tenant, currency }: { props: any; tenant: string; currency?: Currency }) {
+function FeaturedProductsBlock({ props: p, currency }: { props: any; currency?: Currency }) {
   const source = p.source || "featured";
-  const queryKey = ["featured-products", tenant, source, p.category, p.limit, (p.product_ids || []).join(",")];
+  const queryKey = ["featured-products", source, p.category, p.limit, (p.product_ids || []).join(",")];
   const { data, isLoading } = useQuery({
     queryKey,
     queryFn: () => {
       if (source === "selected" && (p.product_ids || []).length > 0) {
-        return fetchProducts(tenant, { product_ids: p.product_ids, limit: p.product_ids.length });
+        return fetchProducts({ product_ids: p.product_ids, limit: p.product_ids.length });
       }
       if (source === "category" && p.category) {
-        return fetchProducts(tenant, { category: p.category, limit: p.limit || 8 });
+        return fetchProducts({ category: p.category, limit: p.limit || 8 });
       }
       if (source === "all") {
-        return fetchProducts(tenant, { limit: p.limit || 8 });
+        return fetchProducts({ limit: p.limit || 8 });
       }
       // default: featured
-      return fetchProducts(tenant, { limit: p.limit || 8, featured: true });
+      return fetchProducts({ limit: p.limit || 8, featured: true });
     },
   });
   const products: Product[] = data?.items || [];
@@ -221,18 +219,18 @@ function FeaturedProductsBlock({ props: p, tenant, currency }: { props: any; ten
       {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{p.title}</h2>}
       <div className={`grid grid-cols-2 sm:grid-cols-${Math.min(p.columns || 4, 4)} gap-4 max-w-6xl mx-auto`}>
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} tenant={tenant} currency={currency} />
+          <ProductCard key={product.id} product={product} currency={currency} />
         ))}
       </div>
     </div>
   );
 }
 
-function CategoryShowcaseBlock({ props: p, tenant }: { props: any; tenant: string }) {
+function CategoryShowcaseBlock({ props: p }: { props: any }) {
   const source = p.source || "all";
   const { data, isLoading } = useQuery({
-    queryKey: ["bootstrap", tenant],
-    queryFn: () => fetchBootstrap(tenant),
+    queryKey: ["bootstrap"],
+    queryFn: () => fetchBootstrap(),
   });
 
   if (isLoading) return <div className="py-12 text-center text-gray-400">Loading categories...</div>;
@@ -256,7 +254,7 @@ function CategoryShowcaseBlock({ props: p, tenant }: { props: any; tenant: strin
         {categories.map((cat) => (
           <Link
             key={cat.id}
-            href={`/${tenant}?category=${cat.slug}`}
+            href={`/?category=${cat.slug}`}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-50 to-slate-100 border border-slate-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex flex-col items-center text-center">
@@ -275,23 +273,23 @@ function CategoryShowcaseBlock({ props: p, tenant }: { props: any; tenant: strin
   );
 }
 
-function ProductCarouselBlock({ props: p, tenant, currency }: { props: any; tenant: string; currency?: Currency }) {
+function ProductCarouselBlock({ props: p, currency }: { props: any; currency?: Currency }) {
   const source = p.source || "all";
-  const queryKey = ["carousel-products", tenant, source, p.category, p.limit, (p.product_ids || []).join(",")];
+  const queryKey = ["carousel-products", source, p.category, p.limit, (p.product_ids || []).join(",")];
   const { data, isLoading } = useQuery({
     queryKey,
     queryFn: () => {
       if (source === "selected" && (p.product_ids || []).length > 0) {
-        return fetchProducts(tenant, { product_ids: p.product_ids, limit: p.product_ids.length });
+        return fetchProducts({ product_ids: p.product_ids, limit: p.product_ids.length });
       }
       if (source === "category" && p.category) {
-        return fetchProducts(tenant, { category: p.category, limit: p.limit || 10 });
+        return fetchProducts({ category: p.category, limit: p.limit || 10 });
       }
       if (source === "featured") {
-        return fetchProducts(tenant, { limit: p.limit || 10, featured: true });
+        return fetchProducts({ limit: p.limit || 10, featured: true });
       }
       // default: all
-      return fetchProducts(tenant, { limit: p.limit || 10 });
+      return fetchProducts({ limit: p.limit || 10 });
     },
   });
   const products: Product[] = data?.items || [];
@@ -303,7 +301,7 @@ function ProductCarouselBlock({ props: p, tenant, currency }: { props: any; tena
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
         {products.map((product) => (
           <div key={product.id} className="w-48 sm:w-56 flex-shrink-0">
-            <ProductCard product={product} tenant={tenant} currency={currency} />
+            <ProductCard product={product} currency={currency} />
           </div>
         ))}
       </div>
@@ -334,7 +332,7 @@ function TestimonialsBlock({ props: p }: { props: any }) {
   );
 }
 
-function ReviewsBlock({ props: p, tenant }: { props: any; tenant: string }) {
+function ReviewsBlock({ props: p }: { props: any }) {
   return (
     <div className="px-4 py-8">
       {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{p.title}</h2>}
@@ -370,7 +368,7 @@ function FAQBlock({ props: p }: { props: any }) {
   );
 }
 
-function ContactFormBlock({ props: p, tenant }: { props: any; tenant: string }) {
+function ContactFormBlock({ props: p }: { props: any }) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -385,7 +383,7 @@ function ContactFormBlock({ props: p, tenant }: { props: any; tenant: string }) 
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch(`/api/t/${tenant}/contact`, {
+      const res = await fetch(`/api/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

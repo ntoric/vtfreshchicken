@@ -303,7 +303,6 @@ const HERO_SHOWCASE = [
 ];
 
 interface LandingPageProps {
-  tenant: string;
   bootstrap: BootstrapResponse;
   currency: string;
   setCurrency: (c: string) => void;
@@ -413,7 +412,7 @@ function GlareCard({ children, className = "", intensity = 12, glareColor = "rgb
 }
 
 // ===== Full 3D Product Card with layered depth =====
-function ProductCard3D({ product, tenant, currency, brandColor }: { product: import("@/types").Product; tenant: string; currency?: import("@/types").Currency; brandColor: string }) {
+function ProductCard3D({ product, currency, brandColor }: { product: import("@/types").Product; currency?: import("@/types").Currency; brandColor: string }) {
   const price = product.discounted_price ?? product.effective_price ?? (product.base_price || product.variants?.[0]?.price) ?? 0;
   const hasDiscount = product.discounted_price != null && (product.discount_pct ?? 0) > 0;
   const cart = useCart();
@@ -464,7 +463,7 @@ function ProductCard3D({ product, tenant, currency, brandColor }: { product: imp
       className="relative h-full"
     >
       <Link
-        href={`/${tenant}/products/${product.slug}`}
+        href={`/products/${product.slug}`}
         className="group block h-full bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-shadow duration-300 border border-stone-200"
         style={{ transformStyle: "preserve-3d" }}
       >
@@ -963,7 +962,7 @@ function WaveLines({ color = "#4f46e5" }: { color?: string }) {
   );
 }
 
-export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, setLang }: LandingPageProps) {
+export function LandingPage({ bootstrap, currency, setCurrency, lang, setLang }: LandingPageProps) {
   const content = bootstrap.settings?.landing_page_content ?? DEFAULT_CONTENT;
   const brandColor = bootstrap.settings?.brand_color || "#4f46e5";
   const offers: Offer[] = bootstrap.offers || [];
@@ -992,15 +991,15 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
 
   // Fetch featured products
   const featuredQ = useQuery({
-    queryKey: ["landing-featured", tenant, currency, lang],
-    queryFn: () => fetchProducts(tenant, { featured: true, limit: 8, currency }, lang),
+    queryKey: ["landing-featured", currency, lang],
+    queryFn: () => fetchProducts({ featured: true, limit: 8, currency }, lang),
     enabled: content.show_featured_products,
   });
 
   // Fetch new arrivals
   const newArrivalsQ = useQuery({
-    queryKey: ["landing-new", tenant, currency, lang],
-    queryFn: () => fetchProducts(tenant, { limit: 4, currency }, lang),
+    queryKey: ["landing-new", currency, lang],
+    queryFn: () => fetchProducts({ limit: 4, currency }, lang),
     enabled: categories.length > 0,
   });
 
@@ -1010,7 +1009,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <Header
-        tenant={tenant}
+       
         bootstrap={bootstrap}
         currency={currency}
         setCurrency={setCurrency}
@@ -1069,7 +1068,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                 className="flex flex-wrap items-center gap-4"
               >
                 <Link
-                  href={`/${tenant}?view=shop`}
+                  href={`/?view=shop`}
                   className="group inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-medium text-base shadow-lg hover:shadow-xl hover:gap-4 transition-all duration-300"
                   style={{ backgroundColor: brandColor }}
                 >
@@ -1274,7 +1273,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                   ))}
                 </div>
                 <Link
-                  href={`/${tenant}/about`}
+                  href={`/about`}
                   className="group inline-flex items-center gap-2 text-sm font-medium pt-2 transition-colors"
                   style={{ color: brandColor }}
                 >
@@ -1345,7 +1344,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                 </h2>
               </div>
               <Link
-                href={`/${tenant}?view=shop`}
+                href={`/?view=shop`}
                 className="group text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 transition-colors"
               >
                 View all
@@ -1363,7 +1362,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
               {categories.slice(0, 8).map((cat) => (
                 <motion.div key={cat.id} variants={fadeUp} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
                   <GlareCard intensity={12} glareColor="rgba(255,255,255,0.3)">
-                    <Link href={`/${tenant}?category=${cat.slug}`} className="group block">
+                    <Link href={`/?category=${cat.slug}`} className="group block">
                       <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-md" style={{ transform: "translateZ(30px)" }}>
                         <Image
                           src={categoryImage(cat)}
@@ -1409,7 +1408,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                 </h2>
               </div>
               <Link
-                href={`/${tenant}?view=shop`}
+                href={`/?view=shop`}
                 className="group text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 transition-colors"
               >
                 View all
@@ -1440,7 +1439,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
               >
                 {featuredProducts.map((p) => (
                   <motion.div key={p.id} variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-                    <ProductCard3D product={p} tenant={tenant} currency={currencyObj} brandColor={brandColor} />
+                    <ProductCard3D product={p} currency={currencyObj} brandColor={brandColor} />
                   </motion.div>
                 ))}
               </motion.div>
@@ -1506,7 +1505,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
 
             <div className="text-center mt-10 lg:mt-14">
               <Link
-                href={`/${tenant}?view=shop`}
+                href={`/?view=shop`}
                 className="group inline-flex items-center gap-2 px-8 py-4 rounded-full border border-stone-300 text-gray-700 font-medium text-base hover:border-gray-900 hover:text-gray-900 transition-all duration-300"
               >
                 View Full Lookbook
@@ -1597,7 +1596,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
               </h2>
               <p className="text-lg lg:text-xl text-white/80 font-light leading-relaxed">{content.promo_text}</p>
               <Link
-                href={`/${tenant}?view=shop`}
+                href={`/?view=shop`}
                 className="group inline-flex items-center gap-2 mt-4 bg-white px-8 py-4 rounded-full font-medium text-base text-gray-900 hover:gap-4 transition-all duration-300 shadow-lg"
               >
                 Shop the Sale
@@ -1627,7 +1626,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                 </h2>
               </div>
               <Link
-                href={`/${tenant}?view=shop`}
+                href={`/?view=shop`}
                 className="group text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 transition-colors"
               >
                 View all
@@ -1644,7 +1643,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
             >
               {newArrivals.map((p) => (
                 <motion.div key={p.id} variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-                  <ProductCard3D product={p} tenant={tenant} currency={currencyObj} brandColor={brandColor} />
+                  <ProductCard3D product={p} currency={currencyObj} brandColor={brandColor} />
                 </motion.div>
               ))}
             </motion.div>
@@ -2024,7 +2023,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
             <div className="text-center mt-10">
               <p className="text-sm text-gray-500">Still have questions?</p>
               <Link
-                href={`/${tenant}/contact`}
+                href={`/contact`}
                 className="group inline-flex items-center gap-2 mt-3 text-sm font-medium transition-colors"
                 style={{ color: brandColor }}
               >
@@ -2151,7 +2150,7 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
                   className="flex flex-wrap items-center gap-4 justify-center lg:justify-start mb-10"
                 >
                   <Link
-                    href={`/${tenant}?view=shop`}
+                    href={`/?view=shop`}
                     className="group inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-medium text-base lg:text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:gap-4"
                     style={{ backgroundColor: brandColor }}
                   >
@@ -2226,9 +2225,9 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Shop</h4>
               <ul className="space-y-3 text-sm text-gray-500">
-                <li><Link href={`/${tenant}?view=shop`} className="hover:text-gray-900 transition-colors">All Products</Link></li>
-                <li><Link href={`/${tenant}?view=shop&sort=newest`} className="hover:text-gray-900 transition-colors">New Arrivals</Link></li>
-                <li><Link href={`/${tenant}?view=shop&featured=true`} className="hover:text-gray-900 transition-colors">Featured</Link></li>
+                <li><Link href={`/?view=shop`} className="hover:text-gray-900 transition-colors">All Products</Link></li>
+                <li><Link href={`/?view=shop&sort=newest`} className="hover:text-gray-900 transition-colors">New Arrivals</Link></li>
+                <li><Link href={`/?view=shop&featured=true`} className="hover:text-gray-900 transition-colors">Featured</Link></li>
                 <li><Link href="#categories" className="hover:text-gray-900 transition-colors">Categories</Link></li>
               </ul>
             </div>
@@ -2237,8 +2236,8 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Help</h4>
               <ul className="space-y-3 text-sm text-gray-500">
-                <li><Link href={`/${tenant}/contact`} className="hover:text-gray-900 transition-colors">Contact Us</Link></li>
-                <li><Link href={`/${tenant}/about`} className="hover:text-gray-900 transition-colors">About Us</Link></li>
+                <li><Link href={`/contact`} className="hover:text-gray-900 transition-colors">Contact Us</Link></li>
+                <li><Link href={`/about`} className="hover:text-gray-900 transition-colors">About Us</Link></li>
                 <li><a href="#" className="hover:text-gray-900 transition-colors">Shipping Info</a></li>
                 <li><a href="#" className="hover:text-gray-900 transition-colors">Returns</a></li>
               </ul>
@@ -2248,9 +2247,9 @@ export function LandingPage({ tenant, bootstrap, currency, setCurrency, lang, se
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Legal</h4>
               <ul className="space-y-3 text-sm text-gray-500">
-                <li><Link href={`/${tenant}/privacy-policy`} className="hover:text-gray-900 transition-colors">Privacy Policy</Link></li>
-                <li><Link href={`/${tenant}/cookie-policy`} className="hover:text-gray-900 transition-colors">Cookie Policy</Link></li>
-                <li><Link href={`/${tenant}/terms`} className="hover:text-gray-900 transition-colors">Terms of Service</Link></li>
+                <li><Link href={`/privacy-policy`} className="hover:text-gray-900 transition-colors">Privacy Policy</Link></li>
+                <li><Link href={`/cookie-policy`} className="hover:text-gray-900 transition-colors">Cookie Policy</Link></li>
+                <li><Link href={`/terms`} className="hover:text-gray-900 transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>

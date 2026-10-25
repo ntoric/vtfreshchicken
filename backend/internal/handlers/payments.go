@@ -26,6 +26,7 @@ type PaymentsStore interface {
 
 	ListPaymentGatewayConfigs(ctx context.Context, tenantID uuid.UUID) ([]models.PaymentGatewayConfig, error)
 	UpdatePaymentGatewayConfig(ctx context.Context, pgc *models.PaymentGatewayConfig) error
+	EnsureDefaultGatewayConfigs(ctx context.Context, tenantID uuid.UUID) error
 
 	PaymentStats(ctx context.Context, tenantID uuid.UUID, dr services.DateRangeFilter) (*models.PaymentStats, error)
 }
@@ -118,6 +119,9 @@ func (h *PaymentsHandler) RefundTransaction(c *gin.Context) {
 // ---------------- Payment Gateway Configs ----------------
 
 func (h *PaymentsHandler) ListGatewayConfigs(c *gin.Context) {
+	// Backfill rows for stores created after the payments module was seeded,
+	// so the admin/developer UI always has a config row per built-in gateway.
+	_ = h.store.EnsureDefaultGatewayConfigs(c.Request.Context(), tenantID(c))
 	configs, err := h.store.ListPaymentGatewayConfigs(c.Request.Context(), tenantID(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())

@@ -40,8 +40,20 @@ func newRazorpayGateway() *RazorpayGateway {
 	}
 }
 
-func (g *RazorpayGateway) isDemoMode() bool {
-	return g.keyID == "" || g.keySecret == ""
+// credentials resolves the API credentials for a single request: values stored
+// in the store's gateway config take precedence over the environment fallback
+// captured at startup.
+func (g *RazorpayGateway) credentials(cfg map[string]interface{}) (keyID, keySecret string) {
+	keyID, keySecret = g.keyID, g.keySecret
+	if cfg != nil {
+		if v, ok := cfg["key_id"].(string); ok && v != "" {
+			keyID = v
+		}
+		if v, ok := cfg["key_secret"].(string); ok && v != "" {
+			keySecret = v
+		}
+	}
+	return keyID, keySecret
 }
 
 func (g *RazorpayGateway) Info() GatewayInfo {
@@ -81,10 +93,12 @@ type razorpayOrderAPIResp struct {
 }
 
 func (g *RazorpayGateway) CreateOrder(ctx context.Context, req CreateOrderRequest) (*CreateOrderResult, error) {
+	keyID, keySecret := g.credentials(req.Config)
+
 	// Razorpay expects amount in smallest currency unit (paise for INR)
 	amountInPaise := int64(req.Amount * 100)
 
-	if g.isDemoMode() {
+	if keyID == "" || keySecret == "" {
 		// Demo mode — return a fake order ID
 		return &CreateOrderResult{
 			GatewayOrderID: fmt.Sprintf("order_demo_%d", time.Now().UnixNano()),
@@ -106,7 +120,7 @@ func (g *RazorpayGateway) CreateOrder(ctx context.Context, req CreateOrderReques
 	if err != nil {
 		return nil, err
 	}
-	httpReq.SetBasicAuth(g.keyID, g.keySecret)
+	httpReq.SetBasicAuth(keyID, keySecret)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 15 * time.Second}
@@ -130,7 +144,7 @@ func (g *RazorpayGateway) CreateOrder(ctx context.Context, req CreateOrderReques
 		GatewayOrderID: orderResp.ID,
 		Amount:         orderResp.Amount,
 		Currency:       orderResp.Currency,
-		KeyID:          g.keyID,
+		KeyID:          keyID,
 	}, nil
 }
 
@@ -139,6 +153,8 @@ func (g *RazorpayGateway) CreateOrder(ctx context.Context, req CreateOrderReques
 // ============================================================
 
 func (g *RazorpayGateway) ProcessPayment(ctx context.Context, req PaymentRequest) (*PaymentResult, error) {
+	_, keySecret := g.credentials(req.Config)
+
 	razorpayOrderID, _ := req.Details["razorpay_order_id"].(string)
 	razorpayPaymentID, _ := req.Details["razorpay_payment_id"].(string)
 	razorpaySignature, _ := req.Details["razorpay_signature"].(string)
@@ -149,7 +165,7 @@ func (g *RazorpayGateway) ProcessPayment(ctx context.Context, req PaymentRequest
 		return nil, fmt.Errorf("Razorpay payment not completed. Please click 'Pay with Razorpay' to open the checkout.")
 	}
 
-	if g.isDemoMode() {
+	if keySecret == "" {
 		// Demo mode — simulate verification success
 		// In demo mode, we accept any non-empty payment_id and order_id
 		return &PaymentResult{
@@ -166,7 +182,7 @@ func (g *RazorpayGateway) ProcessPayment(ctx context.Context, req PaymentRequest
 		return nil, fmt.Errorf("missing Razorpay signature")
 	}
 
-	expectedSig := computeRazorpaySignature(razorpayOrderID, razorpayPaymentID, g.keySecret)
+	expectedSig := computeRazorpaySignature(razorpayOrderID, razorpayPaymentID, keySecret)
 	if !hmac.Equal([]byte(expectedSig), []byte(razorpaySignature)) {
 		return &PaymentResult{
 			Success: false,

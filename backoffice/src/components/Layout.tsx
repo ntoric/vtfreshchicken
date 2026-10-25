@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { X, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { TenantSelector } from "@/components/TenantSelector";
 import { TopNavbar } from "@/components/TopNavbar";
 import type { UserRole } from "@/types";
 
@@ -11,7 +10,6 @@ interface NavItem {
   label: string;
   icon: string;
   roles?: UserRole[];
-  superadminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -23,7 +21,6 @@ interface NavGroup {
 interface NavSection {
   title: string;
   items: (NavItem | NavGroup)[];
-  superadminOnly?: boolean;
 }
 
 // Type guard to distinguish flat items from collapsible groups
@@ -31,11 +28,6 @@ function isNavGroup(item: NavItem | NavGroup): item is NavGroup {
   return (item as NavGroup).children !== undefined;
 }
 
-const PLATFORM_ICON = "M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21";
-// Developer Settings — code/terminal icon (more dev-focused than a wrench)
-const DEV_ICON = "M17.25 6.75 22.5 12l-5.25 5.25M6.75 17.25 1.5 12l5.25-5.25M14.25 3l-4.5 18";
-// Users & Roles — shield-check icon (roles/permissions/authorization)
-const USERS_ICON = "M9 12.75 11.25 15 15 9.75m-3-7.036A11.969 11.969 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z";
 
 // Group header icons
 const CATALOG_ICON = "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4";
@@ -46,16 +38,6 @@ const CONTENT_ICON = "M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.2
 const ADMIN_ICON = "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z";
 
 const SECTIONS: NavSection[] = [
-  {
-    title: "Platform",
-    superadminOnly: true,
-    items: [
-      { to: "/platform-dashboard", label: "Platform Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-      { to: "/tenants", label: "Store Management", icon: PLATFORM_ICON },
-      { to: "/platform-users", label: "Users & Roles", icon: USERS_ICON },
-      { to: "/dev-settings", label: "Developer Settings", icon: DEV_ICON },
-    ],
-  },
   {
     title: "Store",
     items: [
@@ -112,7 +94,9 @@ const SECTIONS: NavSection[] = [
         icon: ADMIN_ICON,
         children: [
           { to: "/users", label: "Users & Staff", icon: "M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.353 9.28 9.28 0 0 0-1.876-.272M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" },
+          { to: "/branches", label: "Branches", icon: "M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" },
           { to: "/permissions", label: "Permissions", icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
+          { to: "/developer", label: "Developer", icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-3 13.5", roles: ["superadmin"] },
           { to: "/settings", label: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
         ],
       },
@@ -126,8 +110,15 @@ const expandLabel = "block md:hidden md:group-hover:block";
 export function Layout() {
   const { user, tenantName } = useAuth();
   const location = useLocation();
-  const isSuperAdmin = user?.role === "superadmin";
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Branch-scoped backoffice lives under /b/:slug — strip the prefix for
+  // active-state matching and re-apply it to nav links. The /branches admin
+  // page itself stays global.
+  const branchPrefix = location.pathname.match(/^\/b\/[^/]+/)?.[0] ?? "";
+  const scopedPath = branchPrefix ? location.pathname.slice(branchPrefix.length) || "/" : location.pathname;
+  // Global pages that must not be prefixed with the branch scope.
+  const navTo = (to: string) => (to === "/branches" || to === "/developer" ? to : branchPrefix + to);
 
   // Track which collapsible groups are expanded. A group key is its label.
   // Groups auto-expand when any child route is active.
@@ -140,7 +131,7 @@ export function Layout() {
       const next = new Set(prev);
       for (const section of SECTIONS) {
         for (const item of section.items) {
-          if (isNavGroup(item) && item.children.some((c) => location.pathname === c.to || (c.to !== "/" && location.pathname.startsWith(c.to))) ) {
+          if (isNavGroup(item) && item.children.some((c) => scopedPath === c.to || (c.to !== "/" && scopedPath.startsWith(c.to))) ) {
             next.add(item.label);
           }
         }
@@ -158,14 +149,26 @@ export function Layout() {
     });
   };
 
-  const visibleSections = SECTIONS.filter(
-    (sec) => !sec.superadminOnly || isSuperAdmin,
-  );
+  // Hide nav entries restricted to other roles (items without `roles` are
+  // visible to everyone). Groups are hidden when all their children are.
+  const role = user?.role;
+  const visibleSections = SECTIONS.map((section) => ({
+    ...section,
+    items: section.items
+      .map((item) =>
+        isNavGroup(item)
+          ? { ...item, children: item.children.filter((c) => !c.roles || (!!role && c.roles.includes(role))) }
+          : item,
+      )
+      .filter((item) =>
+        isNavGroup(item)
+          ? item.children.length > 0
+          : !item.roles || (!!role && item.roles.includes(role)),
+      ),
+  }));
 
-  // For non-superadmin users, show the store name as the brand. For superadmin,
-  // show the platform name (TruCommerce) since they manage multiple stores.
-  const brandName = isSuperAdmin ? "TruCommerce" : (tenantName || "Store");
-  const brandSubtitle = isSuperAdmin ? "Backoffice" : "Admin Panel";
+  const brandName = tenantName || "Store";
+  const brandSubtitle = "Admin Panel";
 
   return (
     <div className="min-h-screen flex">
@@ -188,7 +191,7 @@ export function Layout() {
         <div className="px-3 md:px-2 py-5 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white font-bold text-lg">
             <span className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-sm flex-shrink-0 mx-auto md:mx-0">
-              {isSuperAdmin ? "TC" : (brandName.charAt(0).toUpperCase() || "S")}
+              {brandName.charAt(0).toUpperCase() || "S"}
             </span>
             <span className={`truncate ${expandLabel}`}>{brandName}</span>
           </div>
@@ -213,7 +216,7 @@ export function Layout() {
                   if (isNavGroup(item)) {
                     const isExpanded = expandedGroups.has(item.label);
                     const hasActiveChild = item.children.some(
-                      (c) => location.pathname === c.to || (c.to !== "/" && location.pathname.startsWith(c.to)),
+                      (c) => scopedPath === c.to || (c.to !== "/" && scopedPath.startsWith(c.to)),
                     );
                     return (
                       <div key={item.label}>
@@ -237,7 +240,7 @@ export function Layout() {
                             {item.children.map((child) => (
                               <NavLink
                                 key={child.to}
-                                to={child.to}
+                                to={navTo(child.to)}
                                 end={child.to === "/"}
                                 title={child.label}
                                 className={({ isActive }) =>
@@ -263,7 +266,7 @@ export function Layout() {
                   return (
                     <NavLink
                       key={item.to}
-                      to={item.to}
+                      to={navTo(item.to)}
                       end={item.to === "/"}
                       title={item.label}
                       className={({ isActive }) =>
@@ -287,12 +290,8 @@ export function Layout() {
           ))}
         </nav>
 
-        {/* Footer — tenant selector for superadmins (mobile/collapsed) */}
-        <div className="border-t border-slate-700 p-4">
-          <div className={`md:hidden md:group-hover:block ${isSuperAdmin ? "" : "hidden"}`}>
-            {isSuperAdmin && <TenantSelector />}
-          </div>
-        </div>
+        {/* Footer */}
+        <div className="border-t border-slate-700 p-4" />
       </aside>
 
       {/* Main content */}

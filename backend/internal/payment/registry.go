@@ -37,6 +37,7 @@ type PaymentRequest struct {
 	CustomerName string                   // customer's full name
 	CustomerEmail string                  // customer's email
 	Details      map[string]interface{}   // gateway-specific raw fields from the frontend
+	Config       map[string]interface{}   // resolved gateway config from the store (credentials etc.); gateways fall back to env vars when empty
 }
 
 // PaymentResult is returned by a gateway after processing.
@@ -74,6 +75,7 @@ type CreateOrderRequest struct {
 	Receipt      string  // internal reference (cart ID etc.)
 	CustomerName string
 	CustomerEmail string
+	Config       map[string]interface{} // resolved gateway config from the store (credentials etc.)
 }
 
 // CreateOrderResult is returned by OrderCreator.CreateOrder.

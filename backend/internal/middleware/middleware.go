@@ -19,34 +19,38 @@ const (
 	CtxUserID    = "user_id"
 	CtxUserEmail = "user_email"
 	CtxUserRole  = "user_role"
+	CtxBranchID  = "branch_id"
 	CtxClaims    = "claims"
 )
 
-// ResolveTenant extracts the tenant slug from the path /t/:tenant/... and loads it.
-// For platform-level (superadmin) routes that don't include :tenant, it allows passthrough.
-func ResolveTenant(loader func(slug string) (*models.Tenant, error)) gin.HandlerFunc {
+// storeExemptPrefixes are API path prefixes that never require store context:
+// the setup/install flow and platform-level (superadmin) auth.
+var storeExemptPrefixes = []string{"/api/setup", "/api/platform/"}
+
+// ResolveStore loads the single store's tenant record and sets it in context
+// for every /api request. Exempt paths (setup flow, platform auth) pass through
+// untouched. When no store has been created yet, all other API paths return 503
+// so clients can redirect to the setup wizard.
+func ResolveStore(loader func(ctx context.Context) (*models.Tenant, error)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
-		// API routes look like /api/t/:tenant/...
-		if !strings.HasPrefix(path, "/api/t/") {
+		if !strings.HasPrefix(path, "/api/") {
 			c.Next()
 			return
 		}
-		// strip prefix and read first segment
-		rest := strings.TrimPrefix(path, "/api/t/")
-		parts := strings.SplitN(rest, "/", 2)
-		if len(parts) == 0 || parts[0] == "" {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "tenant slug required"})
-			return
+		for _, p := range storeExemptPrefixes {
+			if strings.HasPrefix(path, p) {
+				c.Next()
+				return
+			}
 		}
-		slug := parts[0]
-		t, err := loader(slug)
+		t, err := loader(c.Request.Context())
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "tenant not found"})
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "store not configured", "needs_setup": true})
 			return
 		}
 		if !t.IsActive {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "tenant inactive"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "store inactive"})
 			return
 		}
 		c.Set(CtxTenantID, t.ID)
@@ -74,6 +78,9 @@ func RequireAuth(svc *auth.Service) gin.HandlerFunc {
 		c.Set(CtxUserRole, claims.Role)
 		if claims.TenantID != nil {
 			c.Set(CtxTenantID, *claims.TenantID)
+		}
+		if claims.BranchID != nil {
+			c.Set(CtxBranchID, *claims.BranchID)
 		}
 		c.Set(CtxClaims, claims)
 		c.Next()
@@ -188,7 +195,7 @@ func RequirePermission(store *services.Store, permCode string) gin.HandlerFunc {
 				c.Next()
 				return
 			}
-			// Staff fallback: allow read-only permissions (codes ending with .view)
+			// Staff/branch_manager fallback: allow read-only permissions (codes ending with .view)
 			if strings.HasSuffix(permCode, ".view") {
 				c.Next()
 				return

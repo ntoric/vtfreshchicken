@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
@@ -44,6 +45,7 @@ function fromISO(s?: string): string {
 
 export function Offers() {
   const { tenant } = useAuth();
+  const { formatMoney, currency } = useCurrency();
   const qc = useQueryClient();
   const confirmDlg = useConfirmState();
   const toast = useToast();
@@ -182,7 +184,7 @@ export function Offers() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <select value={form.offer_type} onChange={(e) => setForm({ ...form, offer_type: e.target.value })} className={inp}>
               <option value="percentage">Percentage (%)</option>
-              <option value="fixed">Fixed amount ($)</option>
+              <option value="fixed">Fixed amount ({currency.code})</option>
             </select>
             <input type="number" step="0.01" placeholder="Value" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} className={inp} />
           </div>
@@ -264,7 +266,7 @@ export function Offers() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="bg-brand-light text-brand px-2.5 py-1 rounded-full text-xs font-bold">
-                        {o.offer_type === "percentage" ? `${o.value}% off` : `$${o.value} off`}
+                        {o.offer_type === "percentage" ? `${o.value}% off` : `${formatMoney(o.value)} off`}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600 text-xs">{targetLabel}</td>

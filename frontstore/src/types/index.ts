@@ -18,6 +18,7 @@ export interface TenantSettings {
   landing_page_enabled: boolean;
   landing_page_content?: LandingPageContent;
   anonymous_checkout?: boolean;
+  returns_enabled?: boolean;
   return_period_days?: number;
   refund_period_days?: number;
   replacement_period_days?: number;
@@ -26,6 +27,21 @@ export interface TenantSettings {
   og_image?: string;
   site_url?: string;
   social_links?: string[];
+  service_area?: ServiceArea;
+}
+
+// ServiceArea configures where the store delivers. A customer location is
+// serviceable when it falls inside the circle (center + radius) or matches
+// one of the named areas.
+export interface ServiceArea {
+  enabled: boolean;
+  label: string;
+  state: string;
+  country: string;
+  center_lat: number;
+  center_lng: number;
+  radius_km: number;
+  areas: string[];
 }
 
 export interface LandingPageContent {
@@ -265,6 +281,7 @@ export interface Attribute {
   type: string;
   is_filterable: boolean;
   is_variant: boolean;
+  is_batch: boolean;
   options?: AttributeOption[];
 }
 
@@ -371,15 +388,51 @@ export interface Offer {
   is_active: boolean;
 }
 
+// Branch is a physical outlet with its own delivery service area.
+export interface Branch {
+  id: UUID;
+  tenant_id: UUID;
+  name: string;
+  slug: string;
+  phone?: string;
+  email?: string;
+  line1?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  center_lat: number;
+  center_lng: number;
+  radius_km: number;
+  areas: string[];
+  is_active: boolean;
+  is_default?: boolean;
+}
+
+// One eligible branch for a delivery point, with its distance from it.
+export interface BranchMatch {
+  branch: Branch;
+  distance_km?: number;
+}
+
+// Response of GET /api/delivery/check — branch is the nearest eligible match
+// (auto-selected); branches lists every match so the customer can switch.
+export interface DeliveryCheckResult {
+  serviceable: boolean;
+  branch: Branch | null;
+  branches: BranchMatch[];
+}
+
 export interface BootstrapResponse {
   settings: TenantSettings;
   store_name?: string;
+  branches?: Branch[];
   currencies: Currency[];
   languages: Language[];
   categories: Category[];
   attributes: Attribute[];
   offers?: Offer[];
   shipping_methods?: ShippingMethod[];
+  discounts_enabled?: boolean;
 }
 
 export interface CartItem {
@@ -599,6 +652,7 @@ export interface PurchasedProduct {
 
 export interface OrderReturnEligibility {
   delivered_at?: string;
+  returns_enabled: boolean;
   return_eligible: boolean;
   refund_eligible: boolean;
   replacement_eligible: boolean;
@@ -733,6 +787,10 @@ export interface CheckoutRequest {
   notes?: string;
   // Per-item shipping methods (split-shipment support)
   item_shipping_methods?: ItemShippingMethod[];
+  // Delivery location — used to resolve the fulfilling branch
+  delivery_area?: string;
+  delivery_lat?: number;
+  delivery_lng?: number;
 }
 
 // ItemShippingMethod assigns a shipping method to a specific cart item at checkout.
@@ -747,6 +805,7 @@ export interface OrderItem {
   variant_id?: UUID;
   name: string;
   sku: string;
+  image_url?: string;
   quantity: number;
   unit_price: number;
   line_total: number;
@@ -770,6 +829,8 @@ export interface Order {
   id: UUID;
   tenant_id: UUID;
   user_id?: UUID;
+  branch_id?: UUID;
+  branch_name?: string;
   status: string;
   subtotal: number;
   discount_total: number;

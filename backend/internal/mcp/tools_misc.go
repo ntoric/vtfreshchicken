@@ -16,13 +16,13 @@ func RegisterContactTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "message")
-		return callPost(ctx, c, c.TenantPath("/contact"), body)
+		return callPost(ctx, c, c.APIPath("/contact"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_contact_submissions",
 		mcp.WithDescription("List contact form submissions. Requires settings.view permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/contact/submissions"), nil)
+		return callGet(ctx, c, c.APIPath("/contact/submissions"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("mark_contact_read",
@@ -30,7 +30,7 @@ func RegisterContactTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Submission UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/contact/submissions/%s/read", argString(args, "id"))), nil)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/contact/submissions/%s/read", argString(args, "id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("delete_contact_submission",
@@ -38,32 +38,32 @@ func RegisterContactTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("Submission UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/contact/submissions/%s", argString(args, "id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/contact/submissions/%s", argString(args, "id"))))
 	})
 }
 
-// RegisterSettingsTools registers tenant settings and SMTP MCP tools.
+// RegisterSettingsTools registers store settings and SMTP MCP tools.
 func RegisterSettingsTools(s *server.MCPServer, c *Client) {
-	s.AddTool(mcp.NewTool("get_tenant_settings",
-		mcp.WithDescription("Get tenant settings (brand, contact, currency, languages, SEO). Requires authentication."),
+	s.AddTool(mcp.NewTool("get_store_settings",
+		mcp.WithDescription("Get store settings (brand, contact, currency, languages, SEO). Requires authentication."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/settings"), nil)
+		return callGet(ctx, c, c.APIPath("/settings"), nil)
 	})
 
-	s.AddTool(mcp.NewTool("update_tenant_settings",
-		mcp.WithDescription("Update tenant settings. Requires authentication."),
+	s.AddTool(mcp.NewTool("update_store_settings",
+		mcp.WithDescription("Update store settings. Requires authentication."),
 		mcp.WithObject("settings", mcp.Required(), mcp.Description("Settings fields to update")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "settings")
-		return callPut(ctx, c, c.TenantPath("/settings"), body)
+		return callPut(ctx, c, c.APIPath("/settings"), body)
 	})
 
 	// ---- SMTP ----
 	s.AddTool(mcp.NewTool("get_smtp_settings",
 		mcp.WithDescription("Get SMTP/email server settings. Requires settings.manage permission."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/settings/smtp"), nil)
+		return callGet(ctx, c, c.APIPath("/settings/smtp"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("update_smtp_settings",
@@ -72,7 +72,7 @@ func RegisterSettingsTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "smtp")
-		return callPut(ctx, c, c.TenantPath("/settings/smtp"), body)
+		return callPut(ctx, c, c.APIPath("/settings/smtp"), body)
 	})
 
 	s.AddTool(mcp.NewTool("test_smtp_settings",
@@ -81,7 +81,7 @@ func RegisterSettingsTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "to_email")
-		return callPost(ctx, c, c.TenantPath("/settings/smtp/test"), body)
+		return callPost(ctx, c, c.APIPath("/settings/smtp/test"), body)
 	})
 }
 
@@ -90,13 +90,13 @@ func RegisterPermissionTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_permissions",
 		mcp.WithDescription("List all available permissions. Requires business_admin or superadmin."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/permissions"), nil)
+		return callGet(ctx, c, c.APIPath("/permissions"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_role_permissions",
 		mcp.WithDescription("List permissions grouped by role. Requires business_admin or superadmin."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/permissions/roles"), nil)
+		return callGet(ctx, c, c.APIPath("/permissions/roles"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_role_permissions",
@@ -104,7 +104,7 @@ func RegisterPermissionTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("role", mcp.Required(), mcp.Description("Role name (staff, business_admin)")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/permissions/roles/%s", argString(args, "role"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/permissions/roles/%s", argString(args, "role"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("set_role_permissions",
@@ -114,7 +114,7 @@ func RegisterPermissionTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "permissions")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/permissions/roles/%s", argString(args, "role"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/permissions/roles/%s", argString(args, "role"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("toggle_permission",
@@ -124,102 +124,27 @@ func RegisterPermissionTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "permission")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/permissions/roles/%s/toggle", argString(args, "role"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/permissions/roles/%s/toggle", argString(args, "role"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("seed_default_permissions",
 		mcp.WithDescription("Seed default permissions for all roles. Requires business_admin or superadmin."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callPost(ctx, c, c.TenantPath("/permissions/seed"), nil)
+		return callPost(ctx, c, c.APIPath("/permissions/seed"), nil)
 	})
 }
 
-// RegisterPlatformTools registers platform/superadmin and tenant management MCP tools.
-func RegisterPlatformTools(s *server.MCPServer, c *Client) {
-	s.AddTool(mcp.NewTool("list_tenants",
-		mcp.WithDescription("List all tenants on the platform. Requires superadmin auth."),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, "/api/platform/tenants", nil)
-	})
-
-	s.AddTool(mcp.NewTool("get_tenant",
-		mcp.WithDescription("Get a tenant by ID. Requires superadmin auth."),
-		mcp.WithString("id", mcp.Required(), mcp.Description("Tenant UUID")),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/platform/tenants/%s", argString(args, "id")), nil)
-	})
-
-	s.AddTool(mcp.NewTool("create_tenant",
-		mcp.WithDescription("Create a new tenant with a business admin. Requires superadmin auth."),
-		mcp.WithObject("tenant", mcp.Required(), mcp.Description("Tenant with slug, name, brand_color, admin_email, admin_password, admin_full_name")),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		body := argMap(args, "tenant")
-		return callPost(ctx, c, "/api/platform/tenants", body)
-	})
-
-	s.AddTool(mcp.NewTool("update_tenant",
-		mcp.WithDescription("Update a tenant. Requires superadmin auth."),
-		mcp.WithString("id", mcp.Required(), mcp.Description("Tenant UUID")),
-		mcp.WithObject("tenant", mcp.Required(), mcp.Description("Tenant fields to update")),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		body := argMap(args, "tenant")
-		return callPut(ctx, c, fmt.Sprintf("/api/platform/tenants/%s", argString(args, "id")), body)
-	})
-
-	s.AddTool(mcp.NewTool("set_tenant_active",
-		mcp.WithDescription("Activate or deactivate a tenant. Requires superadmin auth."),
-		mcp.WithString("id", mcp.Required(), mcp.Description("Tenant UUID")),
-		mcp.WithBoolean("is_active", mcp.Required(), mcp.Description("True to activate, false to deactivate")),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		body := bodyFromArgs(args, "is_active")
-		return callPut(ctx, c, fmt.Sprintf("/api/platform/tenants/%s/active", argString(args, "id")), body)
-	})
-
-	s.AddTool(mcp.NewTool("get_tenant_store_stats",
-		mcp.WithDescription("Get store statistics for a tenant (orders, products, customers). Requires superadmin auth."),
-		mcp.WithString("id", mcp.Required(), mcp.Description("Tenant UUID")),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/platform/tenants/%s/stats", argString(args, "id")), nil)
-	})
-
-	s.AddTool(mcp.NewTool("list_all_users",
-		mcp.WithDescription("List all users across all tenants. Requires superadmin auth."),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, "/api/platform/users", nil)
-	})
-
-	s.AddTool(mcp.NewTool("get_platform_stats",
-		mcp.WithDescription("Get platform-wide statistics (tenants, users, revenue). Requires superadmin auth."),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, "/api/platform/stats", nil)
-	})
-
-	s.AddTool(mcp.NewTool("get_developer_settings",
-		mcp.WithDescription("Get developer/system settings. Requires superadmin auth."),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, "/api/platform/dev-settings", nil)
-	})
-
-	s.AddTool(mcp.NewTool("get_platform_health",
-		mcp.WithDescription("Get platform health check (DB, Redis, services). Requires superadmin auth."),
-	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, "/api/platform/health", nil)
-	})
-
+// RegisterSetupTools registers initial-setup MCP tools.
+func RegisterSetupTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("get_setup_status",
-		mcp.WithDescription("Check platform setup status (needs_setup, needs_tenant, has_superadmin, has_tenants). Public endpoint."),
+		mcp.WithDescription("Check store setup status (needs_setup, has_store, setup_complete). Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return callGet(ctx, c, "/api/setup/status", nil)
 	})
 
 	s.AddTool(mcp.NewTool("complete_setup",
-		mcp.WithDescription("Complete platform setup (create superadmin + first tenant + admin). Only works when setup is needed. Public endpoint."),
-		mcp.WithObject("setup", mcp.Required(), mcp.Description("Setup data with superadmin_email, superadmin_password, superadmin_full_name, tenant_slug, tenant_name, tenant_brand_color, admin_email, admin_password, admin_full_name")),
+		mcp.WithDescription("Complete store setup (create the store + its admin). Only works when setup is needed. Public endpoint."),
+		mcp.WithObject("setup", mcp.Required(), mcp.Description("Setup data with store_name, store_slug (optional), store_description, brand_color, admin_email, admin_password, admin_name")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "setup")
@@ -235,7 +160,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "checkout")
-		return callPost(ctx, c, c.TenantPath("/checkout"), body)
+		return callPost(ctx, c, c.APIPath("/checkout"), body)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_orders",
@@ -245,7 +170,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath("/orders"), q)
+		return callGet(ctx, c, c.APIPath("/orders"), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_my_order",
@@ -253,7 +178,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_order_shipments",
@@ -261,7 +186,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s/shipments", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s/shipments", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("track_my_shipment",
@@ -270,7 +195,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("shipment_id", mcp.Required(), mcp.Description("Shipment UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s/shipments/%s/track", argString(args, "order_id"), argString(args, "shipment_id"))), nil)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s/shipments/%s/track", argString(args, "order_id"), argString(args, "shipment_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_returns",
@@ -280,7 +205,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath("/my-returns"), q)
+		return callGet(ctx, c, c.APIPath("/my-returns"), q)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_order_returns",
@@ -288,7 +213,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s/returns", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s/returns", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("get_my_return_eligibility",
@@ -296,7 +221,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("order_id", mcp.Required(), mcp.Description("Order UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s/return-eligibility", argString(args, "order_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s/return-eligibility", argString(args, "order_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_my_return",
@@ -306,7 +231,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "return")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/orders/%s/returns", argString(args, "order_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/orders/%s/returns", argString(args, "order_id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("create_payment_order",
@@ -317,7 +242,7 @@ func RegisterCheckoutTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "amount", "currency")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/payment/%s/create-order", argString(args, "gateway_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/payment/%s/create-order", argString(args, "gateway_id"))), body)
 	})
 }
 
@@ -326,7 +251,7 @@ func RegisterAddressTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("list_addresses",
 		mcp.WithDescription("List the current user's saved addresses. Requires authentication."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/addresses"), nil)
+		return callGet(ctx, c, c.APIPath("/addresses"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("save_address",
@@ -335,7 +260,7 @@ func RegisterAddressTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "address")
-		return callPost(ctx, c, c.TenantPath("/addresses"), body)
+		return callPost(ctx, c, c.APIPath("/addresses"), body)
 	})
 
 	s.AddTool(mcp.NewTool("delete_address",
@@ -343,6 +268,6 @@ func RegisterAddressTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("address_id", mcp.Required(), mcp.Description("Address UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/addresses/%s", argString(args, "address_id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/addresses/%s", argString(args, "address_id"))))
 	})
 }

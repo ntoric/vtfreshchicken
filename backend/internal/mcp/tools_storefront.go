@@ -11,16 +11,13 @@ import (
 // RegisterStorefrontTools registers public storefront MCP tools.
 func RegisterStorefrontTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("get_storefront_bootstrap",
-		mcp.WithDescription("Get storefront bootstrap data (settings, currencies, languages, categories, attributes) for a tenant. Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
+		mcp.WithDescription("Get storefront bootstrap data (settings, currencies, languages, categories, attributes). Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/bootstrap", argString(args, "tenant")), nil)
+		return callGet(ctx, c, "/api/bootstrap", nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_storefront_products",
 		mcp.WithDescription("List storefront products with filters (only active products). Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
 		mcp.WithString("category", mcp.Description("Category slug filter")),
 		mcp.WithString("search", mcp.Description("Search query")),
 		mcp.WithNumber("min_price", mcp.Description("Min price filter")),
@@ -31,7 +28,6 @@ func RegisterStorefrontTools(s *server.MCPServer, c *Client) {
 		mcp.WithNumber("offset", mcp.Description("Page offset")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		tenant := argString(args, "tenant")
 		q := buildQuery(args, "category", "search", "min_price", "max_price", "currency", "limit", "offset")
 		// attr is an array — handle separately
 		if attrs := argArray(args, "attr"); attrs != nil {
@@ -41,48 +37,39 @@ func RegisterStorefrontTools(s *server.MCPServer, c *Client) {
 				}
 			}
 		}
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/products", tenant), q)
+		return callGet(ctx, c, "/api/products", q)
 	})
 
 	s.AddTool(mcp.NewTool("get_storefront_product",
 		mcp.WithDescription("Get a storefront product by slug with variants and attributes. Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Product slug")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/products/%s", argString(args, "tenant"), argString(args, "slug")), nil)
+		return callGet(ctx, c, fmt.Sprintf("/api/products/%s", argString(args, "slug")), nil)
 	})
 
-	s.AddTool(mcp.NewTool("get_tenant_public_info",
-		mcp.WithDescription("Get public tenant info (name, logo, brand color, description). Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
+	s.AddTool(mcp.NewTool("get_store_public_info",
+		mcp.WithDescription("Get public store info (name, logo, brand color, description). Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/info", argString(args, "tenant")), nil)
+		return callGet(ctx, c, "/api/info", nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_storefront_currencies",
-		mcp.WithDescription("List currencies supported by the tenant. Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
+		mcp.WithDescription("List currencies supported by the store. Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/currencies", argString(args, "tenant")), nil)
+		return callGet(ctx, c, "/api/currencies", nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_storefront_languages",
-		mcp.WithDescription("List languages supported by the tenant. Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
+		mcp.WithDescription("List languages supported by the store. Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/languages", argString(args, "tenant")), nil)
+		return callGet(ctx, c, "/api/languages", nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_payment_methods",
-		mcp.WithDescription("List available payment methods/gateways for a tenant. Public endpoint."),
-		mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant slug")),
+		mcp.WithDescription("List available payment methods/gateways. Public endpoint."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := req.GetArguments()
-		return callGet(ctx, c, fmt.Sprintf("/api/t/%s/payment/methods", argString(args, "tenant")), nil)
+		return callGet(ctx, c, "/api/payment/methods", nil)
 	})
 }
 
@@ -96,7 +83,7 @@ func RegisterReviewTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "limit", "offset")
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/reviews/%s", argString(args, "product_id"))), q)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/reviews/%s", argString(args, "product_id"))), q)
 	})
 
 	s.AddTool(mcp.NewTool("get_review_summary",
@@ -104,7 +91,7 @@ func RegisterReviewTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("product_id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/reviews/%s/summary", argString(args, "product_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/reviews/%s/summary", argString(args, "product_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("create_review",
@@ -114,7 +101,7 @@ func RegisterReviewTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "review")
-		return callPost(ctx, c, c.TenantPath(fmt.Sprintf("/reviews/%s", argString(args, "product_id"))), body)
+		return callPost(ctx, c, c.APIPath(fmt.Sprintf("/reviews/%s", argString(args, "product_id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("get_my_review",
@@ -122,19 +109,19 @@ func RegisterReviewTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("product_id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/reviews/%s/my", argString(args, "product_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/reviews/%s/my", argString(args, "product_id"))), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_my_reviews",
 		mcp.WithDescription("List all reviews written by the current user. Requires authentication."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/me/reviews"), nil)
+		return callGet(ctx, c, c.APIPath("/me/reviews"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("list_purchased_products",
 		mcp.WithDescription("List products the current user has purchased (eligible for review). Requires authentication."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/me/purchased-products"), nil)
+		return callGet(ctx, c, c.APIPath("/me/purchased-products"), nil)
 	})
 }
 
@@ -146,7 +133,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "session_id")
-		return callGet(ctx, c, c.TenantPath("/cart"), q)
+		return callGet(ctx, c, c.APIPath("/cart"), q)
 	})
 
 	s.AddTool(mcp.NewTool("add_cart_item",
@@ -158,7 +145,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "product_id", "variant_id", "quantity", "session_id")
-		return callPost(ctx, c, c.TenantPath("/cart/items"), body)
+		return callPost(ctx, c, c.APIPath("/cart/items"), body)
 	})
 
 	s.AddTool(mcp.NewTool("update_cart_item",
@@ -169,7 +156,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "quantity", "session_id")
-		return callPut(ctx, c, c.TenantPath(fmt.Sprintf("/cart/items/%s", argString(args, "item_id"))), body)
+		return callPut(ctx, c, c.APIPath(fmt.Sprintf("/cart/items/%s", argString(args, "item_id"))), body)
 	})
 
 	s.AddTool(mcp.NewTool("remove_cart_item",
@@ -179,7 +166,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "session_id")
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/cart/items/%s?%s", argString(args, "item_id"), q.Encode())))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/cart/items/%s?%s", argString(args, "item_id"), q.Encode())))
 	})
 
 	s.AddTool(mcp.NewTool("clear_cart",
@@ -188,7 +175,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "session_id")
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/cart?%s", q.Encode())))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/cart?%s", q.Encode())))
 	})
 
 	s.AddTool(mcp.NewTool("get_cart_count",
@@ -197,7 +184,7 @@ func RegisterCartTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		q := buildQuery(args, "session_id")
-		return callGet(ctx, c, c.TenantPath("/cart/count"), q)
+		return callGet(ctx, c, c.APIPath("/cart/count"), q)
 	})
 }
 
@@ -206,7 +193,7 @@ func RegisterWishlistTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("get_wishlist",
 		mcp.WithDescription("Get the current user's wishlist."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callGet(ctx, c, c.TenantPath("/wishlist"), nil)
+		return callGet(ctx, c, c.APIPath("/wishlist"), nil)
 	})
 
 	s.AddTool(mcp.NewTool("add_wishlist_item",
@@ -215,7 +202,7 @@ func RegisterWishlistTools(s *server.MCPServer, c *Client) {
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := bodyFromArgs(args, "product_id")
-		return callPost(ctx, c, c.TenantPath("/wishlist/items"), body)
+		return callPost(ctx, c, c.APIPath("/wishlist/items"), body)
 	})
 
 	s.AddTool(mcp.NewTool("remove_wishlist_item",
@@ -223,7 +210,7 @@ func RegisterWishlistTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("item_id", mcp.Required(), mcp.Description("Wishlist item UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/wishlist/items/%s", argString(args, "item_id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/wishlist/items/%s", argString(args, "item_id"))))
 	})
 
 	s.AddTool(mcp.NewTool("remove_wishlist_product",
@@ -231,13 +218,13 @@ func RegisterWishlistTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("product_id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callDelete(ctx, c, c.TenantPath(fmt.Sprintf("/wishlist/product/%s", argString(args, "product_id"))))
+		return callDelete(ctx, c, c.APIPath(fmt.Sprintf("/wishlist/product/%s", argString(args, "product_id"))))
 	})
 
 	s.AddTool(mcp.NewTool("clear_wishlist",
 		mcp.WithDescription("Clear all items from the wishlist."),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return callDelete(ctx, c, c.TenantPath("/wishlist"))
+		return callDelete(ctx, c, c.APIPath("/wishlist"))
 	})
 
 	s.AddTool(mcp.NewTool("check_wishlist_product",
@@ -245,6 +232,6 @@ func RegisterWishlistTools(s *server.MCPServer, c *Client) {
 		mcp.WithString("product_id", mcp.Required(), mcp.Description("Product UUID")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		return callGet(ctx, c, c.TenantPath(fmt.Sprintf("/wishlist/check/%s", argString(args, "product_id"))), nil)
+		return callGet(ctx, c, c.APIPath(fmt.Sprintf("/wishlist/check/%s", argString(args, "product_id"))), nil)
 	})
 }

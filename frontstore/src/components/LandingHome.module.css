@@ -1,0 +1,40 @@
+.page {
+  --brand-color: #C9232C;
+  --brand-color-dark: #A61922;
+  --brand-color-light: #FDECEE;
+  background: #faf7f1;
+  min-height: 100vh;
+}
+
+.page a:focus-visible,
+.page button:focus-visible,
+.page summary:focus-visible {
+  outline: 3px solid #C9232C;
+  outline-offset: 5px;
+}
+
+.skipLink {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 100;
+  background: #171717;
+  color: #FFFFFF;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: top 0.2s;
+}
+.skipLink:focus {
+  top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

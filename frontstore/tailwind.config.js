@@ -15,6 +15,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        display: ["var(--font-fraunces)", "Georgia", "serif"],
       },
       keyframes: {
         "slide-up": {

@@ -228,6 +228,10 @@ func (h *ReturnsHandler) CustomerCreateReturn(c *gin.Context) {
 	// Enforce return validity period and type-allowed check based on the requested type
 	elig, err := h.store.GetOrderReturnEligibility(c.Request.Context(), tid, oid)
 	if err == nil && elig != nil {
+		if !elig.ReturnsEnabled {
+			errResponse(c, http.StatusForbidden, "returns and refunds are currently disabled for this store")
+			return
+		}
 		switch req.Type {
 		case models.ReturnTypeRefund:
 			if !elig.RefundAllowed {

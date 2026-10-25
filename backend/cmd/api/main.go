@@ -127,8 +127,13 @@ func main() {
 		}
 	}
 
-	tenantLoader := func(slug string) (*models.Tenant, error) {
-		return store.GetTenantBySlug(ctx, slug)
+	// Single-store resolution: STORE_SLUG pins the store to a specific tenant;
+	// otherwise the first (and only) tenant is used.
+	storeLoader := func(ctx context.Context) (*models.Tenant, error) {
+		if cfg.StoreSlug != "" {
+			return store.GetTenantBySlug(ctx, cfg.StoreSlug)
+		}
+		return store.GetFirstTenant(ctx)
 	}
 
 	authH := handlers.NewAuthHandler(store, authSvc)
@@ -144,7 +149,7 @@ func main() {
 	emailH := handlers.NewEmailHandler(store, cfg)
 	checkoutH := handlers.NewCheckoutHandler(store, payment.Default, emailH)
 	addressH := handlers.NewAddressHandler(store)
-	paymentH := handlers.NewPaymentHandler(payment.Default)
+	paymentH := handlers.NewPaymentHandler(payment.Default, store)
 	orderH := handlers.NewOrderHandler(store)
 	taxH := handlers.NewTaxHandler(store)
 	shippingH := handlers.NewShippingHandler(store)
@@ -152,7 +157,6 @@ func main() {
 	paymentsH := handlers.NewPaymentsHandler(store)
 	permH := handlers.NewPermissionHandler(store)
 	setupH := handlers.NewSetupHandler(store, auth.HashPassword)
-	platformH := handlers.NewPlatformHandler(store, cfg, Version, Commit, BuildDate)
 	walletH := handlers.NewWalletHandler(store, payment.Default)
 	uploadH := handlers.NewUploadHandler("/app/uploads", cfg.UploadMaxSize, cfg.UploadAllowedTypes)
 	notifH := handlers.NewNotificationHandler(store, emailH)
@@ -160,6 +164,7 @@ func main() {
 	pagesH := handlers.NewPagesHandler(store)
 	exportH := handlers.NewExportHandler(store, cfg, emailH)
 	contactH := handlers.NewContactHandler(store, emailH)
+	branchH := handlers.NewBranchHandler(store)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -171,7 +176,7 @@ func main() {
 		corsConfig = cors.Config{
 			AllowOriginFunc:  func(origin string) bool { return true },
 			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept-Language", "Idempotency-Key"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept-Language", "Idempotency-Key", "X-Branch-Id"},
 			ExposeHeaders:    []string{"Content-Length"},
 			AllowCredentials: true,
 			MaxAge:           cfg.CORSMaxAge,
@@ -180,7 +185,7 @@ func main() {
 		corsConfig = cors.Config{
 			AllowOrigins:     cfg.CORSAllowedOrigins,
 			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept-Language", "Idempotency-Key"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept-Language", "Idempotency-Key", "X-Branch-Id"},
 			ExposeHeaders:    []string{"Content-Length"},
 			AllowCredentials: true,
 			MaxAge:           cfg.CORSMaxAge,
@@ -193,8 +198,9 @@ func main() {
 	// Serve uploaded files statically
 	r.Static("/uploads", "/app/uploads")
 
-	// Tenant resolution middleware applied globally; it only acts on /api/t/:tenant routes.
-	r.Use(middleware.ResolveTenant(tenantLoader))
+	// Store resolution middleware applied globally; it loads the single store's
+	// tenant record for every /api route (setup + platform auth are exempt).
+	r.Use(middleware.ResolveStore(storeLoader))
 
 	api := r.Group("/api")
 
@@ -205,106 +211,89 @@ func main() {
 		setup.POST("/complete", middleware.Idempotency(idemStore, "setup"), setupH.Complete)
 	}
 
-	// Platform-level (superadmin) routes — no tenant in path.
-	platform := api.Group("/platform")
-	platform.Use(middleware.RequireAuth(authSvc))
-	{
-		platform.GET("/tenants", tenantH.List)
-		platform.POST("/tenants", middleware.RequireRole(models.RoleSuperAdmin), func(c *gin.Context) {
-			tenantH.Bootstrap(c, auth.HashPassword)
-		})
-		platform.GET("/tenants/:id", middleware.RequireRole(models.RoleSuperAdmin), tenantH.GetByID)
-		platform.PUT("/tenants/:id", middleware.RequireRole(models.RoleSuperAdmin), tenantH.Update)
-		platform.PUT("/tenants/:id/active", middleware.RequireRole(models.RoleSuperAdmin), tenantH.SetActive)
-		platform.GET("/tenants/:id/stats", middleware.RequireRole(models.RoleSuperAdmin), tenantH.StoreStats)
-		platform.GET("/users", middleware.RequireRole(models.RoleSuperAdmin), authH.ListAllUsers)
-		platform.GET("/me", authH.Me)
-		// Platform dashboard KPIs
-		platform.GET("/stats", middleware.RequireRole(models.RoleSuperAdmin), platformH.Stats)
-		// Developer / system settings
-		platform.GET("/dev-settings", middleware.RequireRole(models.RoleSuperAdmin), platformH.DeveloperSettings)
-		platform.GET("/health", middleware.RequireRole(models.RoleSuperAdmin), platformH.HealthCheck)
-		// Create first tenant (when superadmin exists but no tenants)
-		platform.POST("/setup/create-tenant", middleware.RequireRole(models.RoleSuperAdmin), setupH.CreateFirstTenant)
-	}
-	// Platform login (superadmin)
+	// Platform login (internal superadmin only — there is no platform UI).
+	// Exempt from store resolution so a superadmin can authenticate even
+	// before the store exists.
 	api.POST("/platform/auth/login", authH.Login)
 
-	// Tenant-scoped routes: /api/t/:tenant/...
-	tenant := api.Group("/t/:tenant")
+	// Store-scoped routes: /api/... (single store resolved from the database)
+	storeAPI := api.Group("")
 
 	// Public storefront endpoints (no auth)
-	tenant.GET("/bootstrap", storeH.Bootstrap)
-	tenant.GET("/products", storeH.ListProducts)
-	tenant.GET("/products/:slug", storeH.GetProduct)
-	tenant.GET("/discount/validate", storeH.ValidateDiscount)
-	tenant.GET("/categories", catalogH.ListCategories)
-	tenant.GET("/attributes", catalogH.ListAttributes)
-	tenant.GET("/currencies", catalogH.ListCurrencies)
-	tenant.GET("/languages", catalogH.ListLanguages)
-	tenant.GET("/info", tenantH.PublicInfo)
+	storeAPI.GET("/bootstrap", storeH.Bootstrap)
+	storeAPI.GET("/products", storeH.ListProducts)
+	storeAPI.GET("/products/:slug", storeH.GetProduct)
+	storeAPI.GET("/discount/validate", storeH.ValidateDiscount)
+	storeAPI.GET("/categories", catalogH.ListCategories)
+	storeAPI.GET("/attributes", catalogH.ListAttributes)
+	storeAPI.GET("/currencies", catalogH.ListCurrencies)
+	storeAPI.GET("/languages", catalogH.ListLanguages)
+	storeAPI.GET("/info", tenantH.PublicInfo)
 
 	// Cart (public — uses session cookie or user ID if authenticated)
 	// OptionalAuth sets user context if a token is present (associates cart with user)
-	tenant.GET("/cart", middleware.OptionalAuth(authSvc), cartH.GetCart)
-	tenant.POST("/cart/items", middleware.OptionalAuth(authSvc), cartH.AddItem)
-	tenant.PUT("/cart/items/:itemId", middleware.OptionalAuth(authSvc), cartH.UpdateItem)
-	tenant.DELETE("/cart/items/:itemId", middleware.OptionalAuth(authSvc), cartH.RemoveItem)
-	tenant.DELETE("/cart", middleware.OptionalAuth(authSvc), cartH.ClearCart)
-	tenant.GET("/cart/count", middleware.OptionalAuth(authSvc), cartH.CartCount)
+	storeAPI.GET("/cart", middleware.OptionalAuth(authSvc), cartH.GetCart)
+	storeAPI.POST("/cart/items", middleware.OptionalAuth(authSvc), cartH.AddItem)
+	storeAPI.PUT("/cart/items/:itemId", middleware.OptionalAuth(authSvc), cartH.UpdateItem)
+	storeAPI.DELETE("/cart/items/:itemId", middleware.OptionalAuth(authSvc), cartH.RemoveItem)
+	storeAPI.DELETE("/cart", middleware.OptionalAuth(authSvc), cartH.ClearCart)
+	storeAPI.GET("/cart/count", middleware.OptionalAuth(authSvc), cartH.CartCount)
 
 	// Wishlist (public — uses session cookie or user ID if authenticated)
-	tenant.GET("/wishlist", wishlistH.GetWishlist)
-	tenant.POST("/wishlist/items", wishlistH.AddItem)
-	tenant.DELETE("/wishlist/items/:itemId", wishlistH.RemoveItem)
-	tenant.DELETE("/wishlist/product/:productId", wishlistH.RemoveByProduct)
-	tenant.DELETE("/wishlist", wishlistH.ClearWishlist)
-	tenant.GET("/wishlist/check/:productId", wishlistH.CheckProduct)
+	storeAPI.GET("/wishlist", wishlistH.GetWishlist)
+	storeAPI.POST("/wishlist/items", wishlistH.AddItem)
+	storeAPI.DELETE("/wishlist/items/:itemId", wishlistH.RemoveItem)
+	storeAPI.DELETE("/wishlist/product/:productId", wishlistH.RemoveByProduct)
+	storeAPI.DELETE("/wishlist", wishlistH.ClearWishlist)
+	storeAPI.GET("/wishlist/check/:productId", wishlistH.CheckProduct)
 
 	// Reviews (public read, public write for now)
-	tenant.GET("/reviews/:productId", reviewH.ListReviews)
-	tenant.POST("/reviews/:productId", reviewH.CreateReview)
-	tenant.GET("/reviews/:productId/summary", reviewH.GetSummary)
+	storeAPI.GET("/reviews/:productId", reviewH.ListReviews)
+	storeAPI.POST("/reviews/:productId", reviewH.CreateReview)
+	storeAPI.GET("/reviews/:productId/summary", reviewH.GetSummary)
 
 	// Checkout (public — uses session cookie or user ID if authenticated)
 	// OptionalAuth sets user context if a token is present (needed for wallet payment)
-	tenant.POST("/checkout", middleware.OptionalAuth(authSvc), middleware.Idempotency(idemStore, "checkout"), checkoutH.PlaceOrder)
-	tenant.GET("/orders", middleware.OptionalAuth(authSvc), checkoutH.ListMyOrders)
-	tenant.GET("/orders/:orderId", checkoutH.GetOrder)
+	storeAPI.POST("/checkout", middleware.OptionalAuth(authSvc), middleware.Idempotency(idemStore, "checkout"), checkoutH.PlaceOrder)
+	storeAPI.GET("/orders", middleware.OptionalAuth(authSvc), checkoutH.ListMyOrders)
+	storeAPI.GET("/orders/:orderId", checkoutH.GetOrder)
 	// Shipment tracking for a specific order (customer-facing — uses optional auth for guest orders)
-	tenant.GET("/orders/:orderId/shipments", middleware.OptionalAuth(authSvc), shippingProviderH.ListOrderShipments)
-	tenant.POST("/orders/:orderId/shipments/:id/track", middleware.OptionalAuth(authSvc), shippingProviderH.TrackShipment)
+	storeAPI.GET("/orders/:orderId/shipments", middleware.OptionalAuth(authSvc), shippingProviderH.ListOrderShipments)
+	storeAPI.POST("/orders/:orderId/shipments/:id/track", middleware.OptionalAuth(authSvc), shippingProviderH.TrackShipment)
 	// Returns for a specific order (public with optional auth — guest orders accessible via order ID)
-	tenant.GET("/orders/:orderId/returns", middleware.OptionalAuth(authSvc), returnsH.CustomerListOrderReturns)
-	tenant.GET("/orders/:orderId/return-eligibility", middleware.OptionalAuth(authSvc), returnsH.CustomerGetReturnEligibility)
-	tenant.POST("/orders/:orderId/returns", middleware.OptionalAuth(authSvc), middleware.Idempotency(idemStore, "return_create"), returnsH.CustomerCreateReturn)
+	storeAPI.GET("/orders/:orderId/returns", middleware.OptionalAuth(authSvc), returnsH.CustomerListOrderReturns)
+	storeAPI.GET("/orders/:orderId/return-eligibility", middleware.OptionalAuth(authSvc), returnsH.CustomerGetReturnEligibility)
+	storeAPI.POST("/orders/:orderId/returns", middleware.OptionalAuth(authSvc), middleware.Idempotency(idemStore, "return_create"), returnsH.CustomerCreateReturn)
 	// Store pages (public — published pages for storefront rendering)
-	tenant.GET("/page/:slug", pagesH.PublicGetPage)
+	storeAPI.GET("/page/:slug", pagesH.PublicGetPage)
 	// Contact form submission (public — used by storefront contact form widget)
-	tenant.POST("/contact", contactH.SubmitContact)
+	storeAPI.POST("/contact", contactH.SubmitContact)
 	// Tax calculation (public — used by frontstore checkout to preview tax)
-	tenant.POST("/tax/calculate", taxH.CalculateTax)
+	storeAPI.POST("/tax/calculate", taxH.CalculateTax)
 	// Shipping calculation (public — used by frontstore checkout to get shipping options)
-	tenant.POST("/shipping/calculate", shippingH.CalculateShipping)
+	storeAPI.POST("/shipping/calculate", shippingH.CalculateShipping)
+
+	// Delivery availability check (public — which branch serves a location)
+	storeAPI.GET("/delivery/check", branchH.DeliveryCheck)
 
 	// Payment methods (public — lists available gateways from the registry)
-	tenant.GET("/payment/methods", paymentH.ListMethods)
+	storeAPI.GET("/payment/methods", paymentH.ListMethods)
 	// Create gateway order (for gateways like Razorpay that need server-side order creation)
-	tenant.POST("/payment/:gatewayId/create-order", paymentH.CreateOrder)
+	storeAPI.POST("/payment/:gatewayId/create-order", paymentH.CreateOrder)
 
 	// Test payment system (only active in non-production mode)
-	tenant.GET("/payment/test/cards", paymentH.ListTestCards)
-	tenant.GET("/payment/test/transactions", paymentH.ListTestTransactions)
-	tenant.DELETE("/payment/test/transactions", paymentH.ClearTestTransactions)
+	storeAPI.GET("/payment/test/cards", paymentH.ListTestCards)
+	storeAPI.GET("/payment/test/transactions", paymentH.ListTestTransactions)
+	storeAPI.DELETE("/payment/test/transactions", paymentH.ClearTestTransactions)
 
 	// Auth (tenant-scoped)
-	tenant.POST("/auth/login", authH.Login)
-	tenant.POST("/auth/register", middleware.Idempotency(idemStore, "register"), authH.Register)
-	tenant.POST("/auth/register-from-order", middleware.Idempotency(idemStore, "register"), authH.RegisterFromOrder)
-	tenant.POST("/auth/refresh", authH.Refresh)
+	storeAPI.POST("/auth/login", authH.Login)
+	storeAPI.POST("/auth/register", middleware.Idempotency(idemStore, "register"), authH.Register)
+	storeAPI.POST("/auth/register-from-order", middleware.Idempotency(idemStore, "register"), authH.RegisterFromOrder)
+	storeAPI.POST("/auth/refresh", authH.Refresh)
 
 	// Authenticated tenant routes
-	authed := tenant.Group("")
+	authed := storeAPI.Group("")
 	authed.Use(middleware.RequireAuth(authSvc))
 	authed.Use(middleware.RequireTenantMatch())
 	{
@@ -337,10 +326,13 @@ func main() {
 		// Customer image upload (for review photos)
 		authed.POST("/upload/images", uploadH.UploadImages)
 
-		// Admin (business_admin + staff) + superadmin
+		// Admin (business_admin + branch_manager + staff) + superadmin
 		admin := authed.Group("")
-		admin.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin, models.RoleStaff))
+		admin.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin, models.RoleBranchManager, models.RoleStaff))
 		{
+			// Branches — readable by all admin roles (branch switcher, scoped views)
+			admin.GET("/branches", middleware.RequirePermission(store, "branches.view"), branchH.List)
+			admin.GET("/branches/:id", middleware.RequirePermission(store, "branches.view"), branchH.Get)
 			// Dashboard
 			admin.GET("/dashboard/stats", middleware.RequirePermission(store, "dashboard.view"), dashH.Stats)
 
@@ -528,10 +520,15 @@ func main() {
 				adminPerm.POST("/permissions/seed", permH.SeedDefaults)
 			}
 
-			// Only business_admin + superadmin can manage staff/users
+			// Only business_admin + superadmin can manage staff/users/branches
 			adminOnly := admin.Group("")
 			adminOnly.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin))
 			{
+				adminOnly.POST("/branches", middleware.RequirePermission(store, "branches.manage"), middleware.Idempotency(idemStore, "branch"), branchH.Create)
+				adminOnly.PUT("/branches/:id", middleware.RequirePermission(store, "branches.manage"), branchH.Update)
+				adminOnly.DELETE("/branches/:id", middleware.RequirePermission(store, "branches.manage"), branchH.Delete)
+				adminOnly.PUT("/branches/:id/default", middleware.RequirePermission(store, "branches.manage"), branchH.SetDefault)
+
 				adminOnly.POST("/users/staff", middleware.RequirePermission(store, "users.manage"), middleware.Idempotency(idemStore, "create_staff"), authH.CreateStaff)
 				adminOnly.GET("/users/:id", middleware.RequirePermission(store, "users.view"), authH.GetUser)
 				adminOnly.PUT("/users/:id", middleware.RequirePermission(store, "users.manage"), authH.UpdateUser)

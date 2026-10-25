@@ -7,10 +7,9 @@ import { hasConsent, acceptAll, rejectAll, type CookieConsent } from "@/lib/cook
 import { CookiePreferencesModal } from "@/components/CookiePreferencesModal";
 
 interface CookieConsentBannerProps {
-  tenant: string;
 }
 
-export function CookieConsentBanner({ tenant }: CookieConsentBannerProps) {
+export function CookieConsentBanner({}: CookieConsentBannerProps) {
   const [visible, setVisible] = useState(false);
   const [showPrefs, setShowPrefs] = useState(false);
 
@@ -51,25 +50,25 @@ export function CookieConsentBanner({ tenant }: CookieConsentBannerProps) {
           aria-label="Cookie consent"
         >
           <div
-            className="w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border shadow-lg shadow-slate-900/5 overflow-hidden backdrop-blur-xl bg-white/80 border-slate-200/50"
+            className="w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden backdrop-blur-xl bg-white/95 border border-stone-200 shadow-[0_24px_60px_-20px_rgba(28,25,23,0.3)]"
           >
             {/* Header */}
             <div className="flex items-start gap-3 p-4 pb-2">
               <div
                 className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: "color-mix(in srgb, var(--brand-color, #4f46e5) 10%, transparent)" }}
+                style={{ background: "var(--brand-color-light, #FDECEE)" }}
               >
-                <Cookie className="w-5 h-5" style={{ color: "var(--brand-color, #4f46e5)" }} strokeWidth={1.75} />
+                <Cookie className="w-5 h-5 text-brand" strokeWidth={1.75} />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-gray-900">We value your privacy</h2>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                <h2 className="font-display text-sm font-semibold text-stone-900">We value your privacy</h2>
+                <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
                   We use cookies to enhance your browsing experience and analyze traffic.
                 </p>
               </div>
               <button
                 onClick={handleRejectAll}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition"
+                className="flex-shrink-0 text-stone-400 hover:text-stone-600 transition"
                 aria-label="Dismiss"
               >
                 <X className="w-4 h-4" />
@@ -78,20 +77,18 @@ export function CookieConsentBanner({ tenant }: CookieConsentBannerProps) {
 
             {/* Links */}
             <div className="px-4 pb-2">
-              <p className="text-xs text-gray-500 leading-relaxed">
+              <p className="text-xs text-stone-500 leading-relaxed">
                 Read our{" "}
                 <Link
-                  href={`/${tenant}/cookie-policy`}
-                  className="font-medium underline hover:text-gray-700"
-                  style={{ color: "var(--brand-color, #4f46e5)" }}
+                  href={`/cookie-policy`}
+                  className="font-medium text-brand underline underline-offset-2 hover:text-brand-dark transition"
                 >
                   Cookie Policy
                 </Link>{" "}
                 and{" "}
                 <Link
-                  href={`/${tenant}/privacy-policy`}
-                  className="font-medium underline hover:text-gray-700"
-                  style={{ color: "var(--brand-color, #4f46e5)" }}
+                  href={`/privacy-policy`}
+                  className="font-medium text-brand underline underline-offset-2 hover:text-brand-dark transition"
                 >
                   Privacy Policy
                 </Link>
@@ -100,23 +97,22 @@ export function CookieConsentBanner({ tenant }: CookieConsentBannerProps) {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-2 p-3 bg-slate-50/50 border-t border-slate-200/50">
+            <div className="flex gap-2 p-3 bg-stone-50 border-t border-stone-200">
               <button
                 onClick={() => setShowPrefs(true)}
-                className="flex-1 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-white transition"
+                className="flex-1 px-3 py-2 text-xs font-medium text-stone-600 border border-stone-200 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition"
               >
                 Customize
               </button>
               <button
                 onClick={handleRejectAll}
-                className="flex-1 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-white transition"
+                className="flex-1 px-3 py-2 text-xs font-medium text-stone-600 border border-stone-200 rounded-lg hover:bg-stone-100 hover:text-stone-900 transition"
               >
                 Reject All
               </button>
               <button
                 onClick={handleAcceptAll}
-                className="flex-1 px-3 py-2 text-xs font-semibold text-white rounded-lg shadow-sm hover:shadow transition"
-                style={{ backgroundColor: "var(--brand-color, #4f46e5)" }}
+                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-brand rounded-lg hover:bg-brand-dark transition"
               >
                 Accept All
               </button>
@@ -128,7 +124,7 @@ export function CookieConsentBanner({ tenant }: CookieConsentBannerProps) {
       {/* Preferences modal (can be opened from banner) */}
       {showPrefs && (
         <CookiePreferencesModal
-          tenant={tenant}
+
           onClose={() => setShowPrefs(false)}
           onSave={handleSavePrefs}
         />

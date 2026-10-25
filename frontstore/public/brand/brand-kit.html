@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VT Fresh Chicken — Brand Kit</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --red: #C9232C;
+    --red-deep: #A61922;
+    --white: #FFFFFF;
+    --black: #171717;
+    --gray: #555555;
+    --neutral: #F6F6F4;
+    --hairline: #E3E3E0;
+    --pale-red: #FDECEE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--white);
+    color: var(--black);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .wrap { width: min(1080px, calc(100% - 48px)); margin-inline: auto; }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: -0.03em; line-height: 1.15; }
+  h1 { font-size: clamp(40px, 6vw, 64px); margin: 20px 0 16px; }
+  h2 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 14px; }
+  h3 { font-size: 22px; margin: 0 0 10px; }
+  p { margin: 0 0 14px; color: var(--gray); max-width: 62ch; }
+  a { color: var(--black); }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--red); outline-offset: 4px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--gray); display: flex; align-items: center; gap: 10px; }
+  .eyebrow::after { content: ""; height: 1px; width: 42px; background: var(--hairline); }
+  section { padding: 72px 0; border-top: 1px solid var(--hairline); }
+  section:first-of-type { border-top: 0; }
+  header.top { padding: 40px 0 0; }
+  .hero { padding: 56px 0 72px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
+  .hero img { width: 100%; max-width: 380px; }
+  .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 24px; border-radius: 6px; background: var(--red); color: #fff; text-decoration: none; font-weight: 600; font-size: 15px; }
+  .btn:hover { background: var(--red-deep); }
+  .btn.ghost { background: transparent; color: var(--black); border: 1.5px solid var(--black); }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
+  .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin-top: 36px; }
+  .panel { border: 1px solid var(--hairline); border-radius: 14px; padding: 36px; display: flex; flex-direction: column; gap: 20px; }
+  .panel.neutral { background: var(--neutral); }
+  .panel.dark { background: var(--black); color: var(--white); }
+  .panel.dark h3, .panel.dark p { color: var(--white); }
+  .panel img { max-width: 100%; height: auto; align-self: center; }
+  .panel .cap { font-size: 13px; color: var(--gray); }
+  .panel.dark .cap { color: #E3E3E0; }
+  .dl { font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .dl a { color: inherit; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 32px; }
+  .swatch { border-radius: 12px; border: 1px solid var(--hairline); overflow: hidden; }
+  .swatch .chip { height: 84px; }
+  .swatch .meta { padding: 12px 14px; font-size: 13px; }
+  .swatch .meta b { display: block; font-weight: 600; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .92em; }
+  .type { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 32px; }
+  .typebox { border: 1px solid var(--hairline); border-radius: 12px; padding: 28px; }
+  .typebox .sample { font-family: Georgia, serif; font-size: 30px; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .rules { margin-top: 28px; }
+  .rules li { margin-bottom: 10px; color: var(--gray); }
+  ul.rules { padding-left: 20px; }
+  .clearspace { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; margin-top: 32px; }
+  .cs-demo { position: relative; padding: 30px; border: 1px dashed var(--red); border-radius: 8px; display: inline-block; }
+  .cs-demo img { width: 96px; display: block; }
+  .cs-demo::before { content: "¼ mark width"; position: absolute; top: -10px; left: 16px; background: var(--white); padding: 0 8px; font-size: 11px; letter-spacing: .08em; color: var(--red); text-transform: uppercase; font-weight: 600; }
+  footer { padding: 48px 0; border-top: 1px solid var(--hairline); font-size: 14px; color: var(--gray); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; gap: 32px; }
+    .gallery, .type { grid-template-columns: 1fr; }
+    section { padding: 52px 0; }
+  }
+  @media print {
+    .btnrow, .dl { display: none; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <img src="logo-horizontal.svg" alt="VT Fresh Chicken" width="190">
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero" aria-labelledby="intro">
+    <div>
+      <p class="eyebrow">Brand kit</p>
+      <h1 id="intro">Everyday goodness, thoughtfully presented.</h1>
+      <p>The VT Fresh Chicken identity pairs a simple line-drawn chicken — its wing shaped like a leaf — with a crisp red, white and black palette. The leaf wing is a nod to natural, honest food; it is a design motif, not a certification mark.</p>
+      <p>This kit contains the logo files, colours, typography guidance and usage rules needed to present the brand consistently.</p>
+      <div class="btnrow">
+        <a class="btn" href="brand-kit.zip" download>Download all assets (.zip)</a>
+        <a class="btn ghost" href="#logos">Browse the logos</a>
+      </div>
+    </div>
+    <div>
+      <img src="mark.svg" alt="VT Fresh Chicken emblem — a line-drawn chicken with a leaf-shaped wing" width="380">
+    </div>
+  </section>
+
+  <section id="logos" aria-labelledby="logos-h">
+    <p class="eyebrow">Logos</p>
+    <h2 id="logos-h">The logo suite</h2>
+    <p>One emblem, five lockups. Use the horizontal logo as the default; the stacked version where space is square; the reversed version on dark backgrounds; the monochrome version for single-colour print. SVG wordmarks use editable text set in Georgia (a stand-in for the Fraunces webfont used on the site).</p>
+    <div class="gallery">
+      <div class="panel">
+        <img src="logo-horizontal.svg" alt="VT Fresh Chicken horizontal logo" width="300">
+        <h3>Horizontal — primary</h3>
+        <p class="cap">Default lockup for headers, packaging and documents.</p>
+        <div class="dl"><a href="logo-horizontal.svg" download>SVG</a><a href="logo-horizontal.png" download>PNG 1260×360</a></div>
+      </div>
+      <div class="panel neutral">
+        <img src="logo-stacked.svg" alt="VT Fresh Chicken stacked logo" width="210">
+        <h3>Stacked</h3>
+        <p class="cap">For square-ish placements: social profiles, stamps, labels.</p>
+        <div class="dl"><a href="logo-stacked.svg" download>SVG</a><a href="logo-stacked.png" download>PNG 840×900</a></div>
+      </div>
+      <div class="panel dark">
+        <img src="logo-reversed.svg" alt="VT Fresh Chicken reversed logo on black" width="300">
+        <h3>Reversed</h3>
+        <p class="cap">White wordmark and emblem for black and other dark backgrounds.</p>
+        <div class="dl"><a href="logo-reversed.svg" download>SVG</a><a href="logo-reversed.png" download>PNG 1260×360</a></div>
+      </div>
+      <div class="panel">
+        <img src="logo-monochrome.svg" alt="VT Fresh Chicken monochrome logo" width="300">
+        <h3>Monochrome</h3>
+        <p class="cap">Single-colour black version for print and engraving.</p>
+        <div class="dl"><a href="logo-monochrome.svg" download>SVG</a></div>
+      </div>
+      <div class="panel neutral">
+        <img src="mark.svg" alt="VT Fresh Chicken emblem mark" width="150">
+        <h3>Emblem</h3>
+        <p class="cap">The mark alone — favicons, avatars, stamps. Minimum 24px digital.</p>
+        <div class="dl"><a href="mark.svg" download>SVG</a><a href="mark.png" download>PNG 512×512</a><a href="mark-reversed.svg" download>Reversed SVG</a><a href="mark-reversed.png" download>Reversed PNG</a><a href="favicon.svg" download>Favicon SVG</a><a href="favicon.ico" download>favicon.ico</a><a href="apple-touch-icon.png" download>Apple touch icon</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="colours-h">
+    <p class="eyebrow">Colour</p>
+    <h2 id="colours-h">Palette</h2>
+    <p>Clean, confident, butcher-counter colours. White is the paper; black is the voice; signature red is the accent — used with intent, never as wallpaper.</p>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#FFFFFF"></div><div class="meta"><b>White</b><code>#FFFFFF</code> — primary background</div></div>
+      <div class="swatch"><div class="chip" style="background:#171717"></div><div class="meta"><b>Black</b><code>#171717</code> — primary colour, headings</div></div>
+      <div class="swatch"><div class="chip" style="background:#C9232C"></div><div class="meta"><b>Signature red</b><code>#C9232C</code> — accent, CTAs, comb, focus</div></div>
+      <div class="swatch"><div class="chip" style="background:#A61922"></div><div class="meta"><b>Deep red</b><code>#A61922</code> — red hover/active state</div></div>
+      <div class="swatch"><div class="chip" style="background:#555555"></div><div class="meta"><b>Body gray</b><code>#555555</code> — body copy, captions</div></div>
+      <div class="swatch"><div class="chip" style="background:#F6F6F4"></div><div class="meta"><b>Neutral surface</b><code>#F6F6F4</code> — panels, strips</div></div>
+      <div class="swatch"><div class="chip" style="background:#E3E3E0"></div><div class="meta"><b>Hairline</b><code>#E3E3E0</code> — borders, separators</div></div>
+      <div class="swatch"><div class="chip" style="background:#FDECEE"></div><div class="meta"><b>Pale red</b><code>#FDECEE</code> — soft highlight fills</div></div>
+    </div>
+    <p style="margin-top:24px"><strong>Accessible pairings:</strong> black on white, white on black, and white on signature red all pass for text. Use red for accents and actions — not for small body text, and not on pale red.</p>
+  </section>
+
+  <section aria-labelledby="type-h">
+    <p class="eyebrow">Typography</p>
+    <h2 id="type-h">Type</h2>
+    <p>Headings are set in Fraunces on the website (loaded as <code>--font-fraunces</code>); Georgia is the system fallback and is what the SVG logos embed. Body text uses the system sans stack.</p>
+    <div class="type">
+      <div class="typebox">
+        <p class="sample" style="font-family:Georgia,serif">Good chicken. Great meals.</p>
+        <p><b>Display — Fraunces / Georgia serif.</b> Large, light, tight letter-spacing (−0.03 to −0.05em). Italic for emphasis words only, in signature red.</p>
+      </div>
+      <div class="typebox">
+        <p class="sample" style="font-family:inherit;font-size:22px;letter-spacing:0">From a quick weekday curry to a Sunday family feast.</p>
+        <p><b>Body — system sans.</b> 16px minimum, line-height 1.65, in body gray on white.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="motion-h">
+    <p class="eyebrow">Motion</p>
+    <h2 id="motion-h">Motion</h2>
+    <p>Motion is quiet and purposeful — it should never delay or hide content.</p>
+    <ul class="rules">
+      <li>One-time entrances only: 600ms fade-and-rise (18px), staggered by at most 120ms.</li>
+      <li>The hero photograph settles once on first load: 900ms, scale 1.04 → 1.</li>
+      <li>No parallax, carousels, marquees or looping animation.</li>
+      <li>With <code>prefers-reduced-motion</code>, everything renders static — no animation at all.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="usage-h">
+    <p class="eyebrow">Usage</p>
+    <h2 id="usage-h">Clear space &amp; rules</h2>
+    <div class="clearspace">
+      <div class="cs-demo"><img src="mark.svg" alt="Emblem clear-space demonstration"></div>
+      <div>
+        <p>Give the logo room to breathe: clear space equals <b>¼ of the emblem width</b> on all sides.</p>
+        <p>Minimum sizes — full logo: <b>160px</b> digital / 40mm print; emblem alone: <b>24px</b> digital.</p>
+      </div>
+    </div>
+    <ul class="rules">
+      <li><b>Do</b> keep the emblem’s proportions — never stretch, crop or rotate it.</li>
+      <li><b>Do</b> place the logo on white, neutral, black or photography with enough contrast — never on low-contrast busy backgrounds.</li>
+      <li><b>Do</b> keep the signature-red comb; it disappears only in the monochrome version.</li>
+      <li><b>Don’t</b> use the leaf wing to imply organic or any certification — it is a decorative motif.</li>
+      <li><b>Don’t</b> add claims the business hasn’t verified (free-delivery thresholds, ratings, farm sourcing) to brand materials.</li>
+      <li><b>Tone:</b> warm, plain and honest — write like a good neighbour, not an advert.</li>
+      <li><b>Photography:</b> natural light, real meals, real kitchens. No studio gloss.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="files-h">
+    <p class="eyebrow">Downloads</p>
+    <h2 id="files-h">Everything in one file</h2>
+    <div class="dl" style="display:flex;flex-direction:column;gap:8px;font-size:15px">
+      <a href="brand-kit.zip" download>brand-kit.zip — all SVGs, PNGs, favicons, this page and the README</a>
+      <a href="logo-horizontal.svg" download>logo-horizontal.svg</a>
+      <a href="logo-stacked.svg" download>logo-stacked.svg</a>
+      <a href="logo-reversed.svg" download>logo-reversed.svg</a>
+      <a href="logo-monochrome.svg" download>logo-monochrome.svg</a>
+      <a href="mark.svg" download>mark.svg</a>
+      <a href="mark-reversed.svg" download>mark-reversed.svg (for dark backgrounds)</a>
+      <a href="logo-horizontal.png" download>logo-horizontal.png (1260×360, transparent)</a>
+      <a href="logo-stacked.png" download>logo-stacked.png (840×900, transparent)</a>
+      <a href="logo-reversed.png" download>logo-reversed.png (1260×360, transparent)</a>
+      <a href="mark.png" download>mark.png (512×512, transparent)</a>
+      <a href="mark-reversed.png" download>mark-reversed.png (512×512, transparent)</a>
+      <a href="favicon.svg" download>favicon.svg</a>
+      <a href="favicon.ico" download>favicon.ico (16/32/48)</a>
+      <a href="apple-touch-icon.png" download>apple-touch-icon.png (180×180)</a>
+      <a href="README.md" download>README.md — sources &amp; notes</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;width:min(1080px, calc(100% - 48px))">
+    <span>© <span id="y">2025</span> VT Fresh Chicken. Brand kit v1.</span>
+    <a href="/">Back to the shop</a>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>

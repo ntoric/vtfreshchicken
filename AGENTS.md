@@ -1,6 +1,6 @@
 # TruCommerce
 
-Multitenant ecommerce platform: Go + gin backend, Next.js frontstore, Vite backoffice, PostgreSQL, Redis, Docker.
+Single-store ecommerce platform: Go + gin backend, Next.js frontstore, Vite backoffice, PostgreSQL, Redis, Docker.
 
 ## Quick start
 
@@ -13,6 +13,7 @@ Wait ~30s for migrations + seed, then:
 | Service      | URL                          |
 |--------------|------------------------------|
 | Frontstore   | http://localhost:13000       |
+| Shop         | http://localhost:13000/shop  |
 | Backoffice   | http://localhost:13000/backoffice |
 | Backend API  | http://localhost:18080       |
 | MCP Server   | http://localhost:9100        |
@@ -23,41 +24,30 @@ Wait ~30s for migrations + seed, then:
 
 ## Credentials
 
-- **Superadmin**: `admin@trucommerce.app` / `admin12345` (platform-wide, login via Backoffice → Superadmin tab)
-- **Demo tenant admin**: `demo@trucommerce.app` / `admin123` (business_admin for the `demo` tenant)
-- **Demo tenant slug**: `demo`
-- Frontstore: http://localhost:13000/t/demo
-
-> **Note**: These credentials are auto-created on first startup via `SEED_SUPERADMIN_EMAIL`/`SEED_SUPERADMIN_PASSWORD` in `.env`. For a fresh production install, leave these unset and use the interactive setup wizard at `/setup` (Backoffice) to create the first superadmin and store.
+- **Superadmin**: `admin@trucommerce.app` / `admin12345` (internal platform role, seeded via `SEED_SUPERADMIN_EMAIL`/`SEED_SUPERADMIN_PASSWORD` in `.env`; login via `POST /api/platform/auth/login` or the hidden backoffice UI at `/backoffice/root-access` — intentionally unlinked)
+- **Store admin**: created via the setup wizard at `/setup` on first run
 
 ## Initial Setup / Installation Flow
 
-For a fresh database with no superadmin and no tenants, the Backoffice provides an interactive setup wizard:
+For a fresh database with no store, the Backoffice provides a single-step setup wizard:
 
 1. Navigate to the Backoffice (`http://localhost:13000/backoffice`). The login page checks `/api/setup/status` and redirects to `/setup` if setup is needed.
-2. The wizard guides through:
-   - **Step 1**: Create the platform superadmin (email, name, password)
-   - **Step 2**: Create the first store/tenant + business admin (slug, name, brand color, admin credentials)
-3. On completion, the wizard creates: superadmin, tenant, business admin, tenant settings, and default permissions.
+2. The wizard collects: store name, description, brand color, and the store admin's name/email/password.
+3. On completion it creates: the store (tenant row), business admin, store settings, and default permissions.
 
 ### Setup API endpoints (public, no auth)
 
-- `GET /api/setup/status` — returns `{ needs_setup, needs_tenant, has_superadmin, has_tenants, setup_complete, ... }`
-- `POST /api/setup/complete` — full setup (superadmin + tenant + admin). Only works when setup is needed. Rejected with 409 after setup is complete.
-- `POST /api/platform/setup/create-tenant` — create first tenant only (requires superadmin auth, used when superadmin exists but no tenants).
-
-### Auto-bootstrap vs setup wizard
-
-- When `SEED_SUPERADMIN_EMAIL` is set in `.env`, the backend auto-creates a superadmin on first startup. The setup wizard then only needs to create the first tenant.
-- When `SEED_SUPERADMIN_EMAIL` is empty (default), no auto-bootstrap occurs. The setup wizard handles the full installation.
+- `GET /api/setup/status` — returns `{ needs_setup, has_store, setup_complete, has_superadmin, superadmin_count, tenant_count }`
+- `POST /api/setup/complete` — creates the store + its admin. Payload: `{ store_name, store_slug?, store_description?, admin_email, admin_password, admin_name, default_language?, supported_languages?, brand_color? }`. Rejected with 409 once a store exists.
 
 ## Architecture
 
-- **Multitenancy**: path-based — `/api/t/:tenant/...`. Tenant resolved by middleware; JWT carries tenant_id; RBAC enforces tenant match.
-- **Roles**: `superadmin` (platform), `business_admin` (tenant), `staff` (tenant), `customer` (tenant).
-- **Auth**: JWT access tokens (15m) + refresh tokens stored in Redis (30d).
+- **Single store**: the platform is single-store focused. The `tenants` table still exists internally (every domain row keeps `tenant_id`), but exactly one store is used. `middleware.ResolveStore` loads it on every `/api` request — pinned by `STORE_SLUG` if set, otherwise the first tenant by `created_at`.
+- **URL scheme**: there is no tenant segment. API is `/api/...`, storefront is `/` (branded landing), `/shop` (catalog browsing), `/products/:slug`, `/cart`, `/checkout`, `/orders`, `/account`, `/wishlist`, `/p/:slug` (builder pages).
+- **Roles**: `superadmin` (internal platform role — bypasses tenant match/permissions, used for API/MCP access), `business_admin`, `staff`, `customer`.
+- **Auth**: JWT access tokens (15m) + refresh tokens stored in Redis (30d). `POST /api/auth/login` for store users; `POST /api/platform/auth/login` for superadmin.
 - **Multi-currency**: exchange rates in `exchange_rates` table, cached in-memory (5m TTL), conversion applied to storefront prices.
-- **Multi-lingual**: `Accept-Language` header resolved against tenant supported languages; product/category translations in DB.
+- **Multi-lingual**: `Accept-Language` header resolved against store supported languages; product/category translations in DB.
 - **Catalog**: categories (hierarchical), attributes (filterable + variant-defining), attribute options, products, variants (with variant attribute values), product attribute values.
 - **Offers**: percentage/fixed, targeted to all/category/product; applied automatically to storefront prices.
 - **Discount codes**: percentage/fixed, min subtotal, max uses, validity window; validated via `/discount/validate`.
@@ -68,14 +58,14 @@ For a fresh database with no superadmin and no tenants, the Backoffice provides 
 backend/
   cmd/api/main.go          # entrypoint, router wiring, superadmin bootstrap
   internal/
-    config/                # env config
+    config/                # env config (incl. STORE_SLUG)
     db/                    # pgx pool + embedded SQL migrations
       migrations/          # 0001_init.sql, 0002_seed.sql
     models/                # domain structs
     auth/                  # JWT + bcrypt + Redis refresh tokens
-    middleware/            # tenant resolution, JWT auth, RBAC, tenant match
+    middleware/            # single-store resolution, JWT auth, RBAC, tenant match
     services/              # store (all DB queries)
-    handlers/              # HTTP handlers (auth, tenant, catalog, storefront, dashboard)
+    handlers/              # HTTP handlers (auth, catalog, storefront, dashboard, ...)
     currency/              # exchange rate conversion service
     i18n/                  # language resolution
     redis/                 # redis client
@@ -83,171 +73,126 @@ backend/
 
 Build: `cd backend && go build ./...`
 Vet: `cd backend && go vet ./...`
+Test: `cd backend && go test ./...`
 
 ## Frontstore (Next.js 14 App Router)
 
 - TailwindCSS, TanStack Query
-- Server-side fetch uses `INTERNAL_API_BASE_URL` (docker service name); client-side uses `NEXT_PUBLIC_API_BASE_URL` (host port).
-- Routes: `/` (landing), `/t/:tenant` (storefront listing + filters), `/t/:tenant/products/:slug` (detail with variants)
+- Server-side fetch uses `INTERNAL_API_BASE_URL` (docker service name); client-side uses the `/api` rewrite proxy.
+- Routes: `/` (VT Fresh Chicken branded landing), `/shop` (catalog + filters), `/products/:slug` (detail with variants), `/cart`, `/checkout`, `/orders`, `/account/*`, `/wishlist`, `/p/:slug` (builder pages), `/about`, `/contact`, `/privacy-policy`, `/terms`, `/cookie-policy`
+- Root layout fetches `/api/bootstrap` server-side, sets brand CSS vars, wraps everything in `StorefrontShell` (auth/cart/wishlist/currency providers + drawers + cookie banner).
 
 Typecheck: `cd frontstore && npx tsc --noEmit`
+Tests: `cd frontstore && npm test`
 
 ## Backoffice (Vite + React + TS)
 
 - React Router, TanStack Query, TailwindCSS
-- Pages: Dashboard, Products (CRUD + variants + variant attributes + product attributes + multi-image gallery), Categories (hierarchical with parent selection), Attributes (CRUD with options + edit support), Offers, Discounts, Orders, Order Detail (workflow + payment transactions), Tax (classes/zones/rates), Shipping (methods/zones/rates), Payments (transactions/refunds/gateways), Customers (list/search/filter/detail/edit/disable/delete + stats), Users & Staff, Tenants (superadmin), Settings.
-- Login supports both superadmin (platform) and tenant admin modes.
+- Pages: Dashboard, Products (CRUD + variants + attributes + multi-image gallery), Categories, Attributes, Offers, Discounts, Orders, Order Detail, Returns, Tax, Shipping, Payments, Customers, Users & Staff, Permissions, Notifications, Pages (builder), Reports, Exports, Settings, Developer (`/developer` — superadmin only; payment-method enable/disable + per-gateway credentials in `payment_gateway_configs.config`, which drive `GET /api/payment/methods` and are passed to gateways at payment time, taking precedence over env vars like `RAZORPAY_KEY_ID`).
+- Single store login form (`/login`) — email + password, no tenant/superadmin tabs.
+- Setup wizard (`/setup`) — single step: store details + admin account.
+- API client (`src/lib/api.ts`): all calls hit `/api/...` directly; legacy `tenant` first-args remain in signatures but are ignored.
 
-Typecheck: `cd backoffice && npx tsc --noEmit`
+Typecheck: `cd backoffice && npx tsc -b`
+Tests: `cd backoffice && npm test`
 
 ## Key API endpoints
 
-### Platform (superadmin)
-- `POST /api/platform/auth/login`
-- `GET /api/platform/me`
-- `GET /api/platform/tenants`
-- `POST /api/platform/tenants` (create tenant + business admin)
+### Setup / platform (public or superadmin)
+- `GET /api/setup/status`
+- `POST /api/setup/complete`
+- `POST /api/platform/auth/login` — superadmin login (internal; no platform UI)
 
-### Tenant-scoped public
-- `GET /api/t/:tenant/bootstrap` — settings, currencies, languages, categories, attributes
-- `GET /api/t/:tenant/products` — listing with filters (`?category=&search=&min_price=&max_price=&currency=&attr=size:s&attr=color:red`)
-- `GET /api/t/:tenant/products/:slug` — detail with variants + attributes
-- `GET /api/t/:tenant/discount/validate?code=&subtotal=`
-- `POST /api/t/:tenant/auth/register` — customer signup
-- `POST /api/t/:tenant/auth/login` — tenant user login
+### Public (store)
+- `GET /api/bootstrap` — settings, currencies, languages, categories, attributes
+- `GET /api/products` — listing with filters (`?category=&search=&min_price=&max_price=&currency=&attr=size:s&attr=color:red`)
+- `GET /api/products/:slug` — detail with variants + attributes
+- `GET /api/discount/validate?code=&subtotal=`
+- `GET /api/categories`, `GET /api/attributes`, `GET /api/currencies`, `GET /api/languages`, `GET /api/info`
+- `GET /api/page/:slug` — published builder page
+- `POST /api/contact`, `POST /api/tax/calculate`, `POST /api/shipping/calculate`
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/register-from-order`, `POST /api/auth/refresh`
+- Cart (`/api/cart*`), wishlist (`/api/wishlist*`), reviews (`/api/reviews/:productId`), checkout (`/api/checkout`), payment methods (`/api/payment/methods`)
 
-### Tenant-scoped admin (auth + role required)
-- `GET /api/t/:tenant/dashboard/stats`
-- `GET /api/t/:tenant/products/admin` — admin product list (all statuses)
-- `GET /api/t/:tenant/products/admin/:id` — get product by ID with full details (variants, attributes, images)
-- `POST/PUT/DELETE /api/t/:tenant/products[/:id]` — create/update/delete with full sync of variants, attributes, and images
-- `POST /api/t/:tenant/upload/image` — upload a single image (multipart/form-data, field "file"); returns `{url, filename, size, type}`
-- `POST /api/t/:tenant/upload/images` — upload multiple images (multipart/form-data, field "files"); returns `{uploaded: [...], errors: [...], total}`
-- `POST/PUT/DELETE /api/t/:tenant/categories[/:id]` — hierarchical categories with parent_id
-- `POST/PUT/DELETE /api/t/:tenant/attributes[/:id]` — attribute CRUD with options sync
-- `GET/POST/PUT/DELETE /api/t/:tenant/offers[/:id]` — offer CRUD with target sync (all/product/category) + date windows
-- `GET /api/t/:tenant/discounts/stats` — discount summary statistics
-- `GET/POST/PUT/DELETE /api/t/:tenant/discounts[/:id]` — discount code CRUD with max_uses, date windows, min_subtotal
-- `GET /api/t/:tenant/users`
-- `POST /api/t/:tenant/users/staff`
-- `GET /api/t/:tenant/customers` — list customers (search, status filter, pagination)
-- `GET /api/t/:tenant/customers/stats` — customer summary statistics
-- `GET /api/t/:tenant/customers/:id` — customer detail with order stats + addresses
-- `PUT /api/t/:tenant/customers/:id` — update customer (name, phone, active, marketing consent, admin notes)
-- `DELETE /api/t/:tenant/customers/:id` — hard-delete a customer
-- `GET/PUT /api/t/:tenant/settings`
-- `GET/POST/PUT/DELETE /api/t/:tenant/tax/classes[/:classId]` — tax class CRUD
-- `GET/POST/PUT/DELETE /api/t/:tenant/tax/zones[/:zoneId]` — tax zone CRUD
-- `GET/POST/PUT/DELETE /api/t/:tenant/tax/rates[/:rateId]` — tax rate CRUD
-- `GET/POST/PUT/DELETE /api/t/:tenant/shipping/methods[/:methodId]` — shipping method CRUD
-- `GET/POST/PUT/DELETE /api/t/:tenant/shipping/zones[/:zoneId]` — shipping zone CRUD
-- `GET/POST/PUT/DELETE /api/t/:tenant/shipping/rates[/:rateId]` — shipping rate CRUD
-- `GET /api/t/:tenant/payments/transactions` — list payment transactions (filter by status, gateway)
-- `GET /api/t/:tenant/payments/transactions/:txnId` — get single payment transaction
-- `GET /api/t/:tenant/payments/orders/:orderId/transactions` — list transactions for an order
-- `POST /api/t/:tenant/payments/transactions/:txnId/refund` — refund a transaction (full or partial)
-- `GET /api/t/:tenant/payments/gateways` — list gateway configurations
-- `PUT /api/t/:tenant/payments/gateways/:configId` — update gateway config (enabled, test mode, display name)
-- `GET /api/t/:tenant/payments/stats` — payment statistics (collected, refunded, net revenue, by gateway)
+### Authenticated store users
+- `GET /api/me`, `GET /api/me/permissions`, `GET /api/me/export`, `DELETE /api/me/delete`
+- `GET/PUT /api/settings`
+- `GET/POST/DELETE /api/addresses*`
+- `GET /api/wallet`, `POST /api/wallet/topup`, `GET /api/wallet/transactions`
+- `GET /api/my-returns`, `GET /api/me/reviews`, `GET /api/me/purchased-products`
 
-### Tenant-scoped returns (admin, auth + role required)
-- `GET /api/t/:tenant/returns` — list returns with filters (status, type, search)
-- `GET /api/t/:tenant/returns/counts` — returns counts grouped by status
-- `GET /api/t/:tenant/returns/:id` — get a single return with items
-- `GET /api/t/:tenant/orders/admin/:orderId/returns` — list returns for an order
-- `POST /api/t/:tenant/orders/admin/:orderId/returns` — create a return/replacement/exchange request
-- `PUT /api/t/:tenant/returns/:id/status` — transition return status (approve, reject, complete, cancel)
-
-### Tenant-scoped returns (customer, auth required)
-- `GET /api/t/:tenant/my-returns` — list the logged-in customer's returns (paginated)
-- `GET /api/t/:tenant/orders/:orderId/returns` — list returns for the customer's own order
-- `POST /api/t/:tenant/orders/:orderId/returns` — create a return request for the customer's own order
-
-### Tenant-scoped store pages (public)
-- `GET /api/t/:tenant/page/:slug` — fetch a published page by slug (for storefront rendering)
-
-### Tenant-scoped store pages (admin, auth + role required)
-- `GET /api/t/:tenant/pages` — list all store pages
-- `GET /api/t/:tenant/pages/:id` — get a single store page by ID
-- `POST /api/t/:tenant/pages` — create a new store page
-- `PUT /api/t/:tenant/pages/:id` — update a store page (blocks, slug, title, status, SEO)
-- `DELETE /api/t/:tenant/pages/:id` — delete a store page (system pages are protected)
-
-### Tenant-scoped wallet (customer, auth required)
-- `GET /api/t/:tenant/wallet` — get customer wallet balance (auto-creates on first access)
-- `POST /api/t/:tenant/wallet/topup` — top up wallet via any payment gateway (amount, payment_method, payment_details)
-- `GET /api/t/:tenant/wallet/transactions` — list customer's wallet transactions (paginated)
-
-### Tenant-scoped wallet (admin, auth + role required)
-- `GET /api/t/:tenant/wallet/stats` — aggregate wallet stats (wallet count, total balance, topups, purchases)
-- `GET /api/t/:tenant/wallet/all` — list all wallet transactions in tenant (paginated)
-- `GET /api/t/:tenant/wallet/:userId` — get a customer's wallet
-- `GET /api/t/:tenant/wallet/:userId/transactions` — list a customer's wallet transactions (paginated)
-- `POST /api/t/:tenant/wallet/:userId/adjust` — admin credit/debit a customer's wallet (amount, description)
-
-### Tenant-scoped public (tax + shipping)
-- `POST /api/t/:tenant/tax/calculate` — calculate tax for cart items + shipping address (returns breakdown)
-- `POST /api/t/:tenant/shipping/calculate` — get available shipping options for subtotal + shipping address
+### Admin (business_admin + staff; permission-gated)
+- `GET /api/dashboard/stats`
+- Products: `GET /api/products/admin`, `GET /api/products/admin/:id`, `POST/PUT/DELETE /api/products[/:id]`
+- Categories: `POST/PUT/DELETE /api/categories[/:id]` · Attributes: `POST/PUT/DELETE /api/attributes[/:id]`
+- Offers: `GET/POST/PUT/DELETE /api/offers[/:id]` · Discounts: `GET/POST/PUT/DELETE /api/discounts[/:id]` + `GET /api/discounts/stats`
+- Orders: `GET /api/orders/admin`, `GET /api/orders/counts`, `GET/PUT /api/orders/admin/:orderId[/status|/notes]`
+- Returns: `GET /api/returns`, `GET /api/returns/counts`, `GET /api/returns/:id`, `PUT /api/returns/:id/status`
+- Inventory: `GET /api/inventory`, `GET /api/inventory/stats`, `POST /api/inventory/adjust`, `GET /api/inventory/movements`
+- Vendors: `GET/POST/PUT/DELETE /api/vendors[/:id]`
+- Customers: `GET /api/customers`, `GET /api/customers/stats`, `GET/PUT/DELETE /api/customers/:id`
+- Users/staff: `GET /api/users`, `GET /api/users/stats`, `POST /api/users/staff`, `GET/PUT/DELETE /api/users/:id`, `PUT /api/users/:id/active`, `PUT /api/users/:id/password`
+- Permissions: `GET /api/permissions`, `GET /api/permissions/roles`, `GET/PUT /api/permissions/roles/:role`, `PUT /api/permissions/roles/:role/toggle`, `POST /api/permissions/seed`
+- Tax: `GET/POST/PUT/DELETE /api/tax/(classes|zones|rates)/[:id]`
+- Shipping: `GET/POST/PUT/DELETE /api/shipping/(methods|zones|rates|providers)/[:id]`, shipments under `/api/shipping/orders/:orderId/shipments`
+- Payments: `GET /api/payments/transactions`, `GET /api/payments/transactions/:txnId`, `POST /api/payments/transactions/:txnId/refund`, `GET/PUT /api/payments/gateways[/:configId]`, `GET /api/payments/stats`
+- Wallet admin: `GET /api/wallet/stats`, `GET /api/wallet/all`, `GET /api/wallet/:userId[/transactions]`, `POST /api/wallet/:userId/adjust`
+- Pages: `GET/POST/PUT/DELETE /api/pages[/:id]` · Contact: `GET/PUT/DELETE /api/contact/submissions[/:id]`
+- Notifications: events, templates, preview, send, logs under `/api/notifications/*`
+- Exports: `GET/POST /api/exports`, `GET /api/exports/types`, `GET /api/exports/estimate`, `GET /api/exports/:id`, `GET /api/exports/download/:id`
+- Uploads: `POST /api/upload/image`, `POST /api/upload/images`
+- SMTP: `GET/PUT /api/settings/smtp`, `POST /api/settings/smtp/test`
 
 ## Notes
 
 - Next.js 14.2.x has open DoS/cache-poisoning advisories (see `npm audit`); upgrade to Next 16 for production (breaking change).
 - The backend dev container runs `go run ./cmd/api` (air not available for Go 1.23); restart with `docker compose restart backend` after code changes.
 - Frontend dev servers have hot reload via volume mounts.
+- Old multitenant URLs (`/api/t/:slug/...`, frontstore `/:slug/...`) are gone — update any external integrations.
+- `STORE_SLUG` env var optionally pins which tenant row the store resolves to; default = first tenant by `created_at`.
 
 ## MCP Server (AI Integration)
 
-The platform exposes a complete [Model Context Protocol](https://modelcontextprotocol.io) server (`backend/cmd/mcp-server`) that wraps all backend API functionalities for AI client integration (Claude Desktop, Cursor, custom agents, etc.). It uses [`mark3labs/mcp-go`](https://github.com/mark3labs/mcp-go).
+The platform exposes a [Model Context Protocol](https://modelcontextprotocol.io) server (`backend/cmd/mcp-server`) that wraps the store API for AI clients (Claude Desktop, Cursor, custom agents). It uses [`mark3labs/mcp-go`](https://github.com/mark3labs/mcp-go).
 
 ### Transports
 
-- **stdio** (default): for local AI clients that spawn the server as a subprocess.
+- **stdio** (default): local AI clients that spawn the server as a subprocess.
 - **sse**: HTTP+SSE for remote/networked clients. Runs on port `9100` in Docker.
 
 ### Running
 
 The `mcp-server` service is included in `docker-compose.yml` and starts automatically with `docker compose up`. It serves SSE on `http://localhost:9100`.
 
-To run locally (stdio):
-
 ```bash
 cd backend
-MCP_API_BASE_URL=http://localhost:18080 MCP_DEFAULT_TENANT=demo go run ./cmd/mcp-server
-```
-
-To run locally (SSE):
-
-```bash
-cd backend
-go run ./cmd/mcp-server --transport sse --addr :9100
+MCP_API_BASE_URL=http://localhost:18080 go run ./cmd/mcp-server            # stdio
+go run ./cmd/mcp-server --transport sse --addr :9100                       # SSE
 ```
 
 ### Authentication
 
-The MCP server authenticates against the backend API. Two options:
-
-1. **Per-session login** (recommended): call the `platform_login` (superadmin) or `tenant_login` (tenant user) tool at the start of a session. The token is cached for subsequent calls.
-2. **Auto-login at startup**: set `MCP_AUTH_EMAIL`, `MCP_AUTH_PASSWORD`, and optionally `MCP_AUTH_TENANT` env vars. If `MCP_AUTH_TENANT` is set, tenant login is used; otherwise superadmin login.
+1. **Per-session login** (recommended): call `store_login` (store user) or `platform_login` (superadmin) at the start of a session. The token is cached for subsequent calls.
+2. **Auto-login at startup**: set `MCP_AUTH_EMAIL` + `MCP_AUTH_PASSWORD` (store user login by default). Set `MCP_AUTH_PLATFORM=true` for superadmin login.
 
 ### Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MCP_API_BASE_URL` | `http://localhost:18080` | Backend API URL |
-| `MCP_DEFAULT_TENANT` | `demo` | Default tenant slug for tenant-scoped tools |
 | `MCP_TRANSPORT` | `stdio` | Transport: `stdio` or `sse` |
 | `MCP_ADDR` | `:9100` | Listen address for SSE transport |
 | `MCP_HOST_PORT` | `9100` | Host port mapping for SSE in Docker |
 | `MCP_AUTH_EMAIL` | (empty) | Optional auto-login email |
 | `MCP_AUTH_PASSWORD` | (empty) | Optional auto-login password |
-| `MCP_AUTH_TENANT` | (empty) | Optional tenant slug for auto-login (empty = superadmin) |
+| `MCP_AUTH_PLATFORM` | (empty) | `true` = superadmin login; default = store user |
 
 ### Tool categories
 
-The server registers 200+ tools covering every backend endpoint:
+The server registers 200+ tools covering every store endpoint:
 
-- **Auth**: `platform_login`, `tenant_login`, `register_customer`, `get_me`, `get_my_permissions`, `refresh_token`, `export_my_data`, `delete_my_account`
-- **Platform (superadmin)**: `list_tenants`, `get_tenant`, `create_tenant`, `update_tenant`, `set_tenant_active`, `get_tenant_store_stats`, `list_all_users`, `get_platform_stats`, `get_developer_settings`, `get_platform_health`, `get_setup_status`, `complete_setup`
+- **Auth**: `store_login`, `platform_login`, `register_customer`, `get_me`, `get_my_permissions`, `refresh_token`, `export_my_data`, `delete_my_account`
+- **Setup**: `get_setup_status`, `complete_setup`
 - **Catalog**: products, categories, attributes, offers, discounts (CRUD + list + validate)
 - **Orders**: `list_orders`, `get_order`, `get_order_counts`, `update_order_status`, `update_order_notes`
 - **Returns**: `list_returns`, `get_return`, `get_return_counts`, `list_order_returns`, `create_return`, `update_return_status`
@@ -270,35 +215,15 @@ The server registers 200+ tools covering every backend endpoint:
 - **Checkout**: `place_order`, my orders, my order detail, my shipments, track shipment, my returns, create my return, create payment order
 - **Addresses**: list, save, delete
 - **Contact**: submit, list submissions, mark read, delete
-- **Settings**: tenant settings, SMTP settings (get, update, test)
+- **Settings**: store settings, SMTP settings (get, update, test)
 - **Permissions**: list, list by role, get role, set role, toggle, seed defaults
-
-### Claude Desktop configuration example
-
-Add to `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "trucommerce": {
-      "command": "go",
-      "args": ["run", "./cmd/mcp-server"],
-      "cwd": "/path/to/trucommerce/backend",
-      "env": {
-        "MCP_API_BASE_URL": "http://localhost:18080",
-        "MCP_DEFAULT_TENANT": "demo"
-      }
-    }
-  }
-}
-```
 
 ### Implementation
 
-- `backend/internal/mcp/client.go` — HTTP client wrapping the backend API with JWT auth and tenant scoping.
-- `backend/internal/mcp/server.go` — MCP server creation and tool registration orchestration.
-- `backend/internal/mcp/helpers.go` — Argument extraction, query/body building, and result helpers.
-- `backend/internal/mcp/tools_*.go` — Tool registration by domain (auth, catalog, orders, customers, payments, shipping, tax, etc.).
+- `backend/internal/mcp/client.go` — HTTP client wrapping the backend API with JWT auth (`APIPath` builds `/api/...` URLs).
+- `backend/internal/mcp/server.go` — MCP server creation and tool registration.
+- `backend/internal/mcp/helpers.go` — Argument extraction, query/body building, result helpers.
+- `backend/internal/mcp/tools_*.go` — Tool registration by domain.
 - `backend/cmd/mcp-server/main.go` — Entry point with stdio/SSE transport selection.
 
 Build: `cd backend && go build ./cmd/mcp-server`
@@ -306,7 +231,7 @@ Test: `cd backend && go test ./internal/mcp/`
 
 ## Configuration
 
-All configuration is driven by environment variables. See `.env.example` for the complete reference with documentation for every variable.
+All configuration is driven by environment variables. See `.env.example` for the complete reference.
 
 ### Quick reference
 
@@ -314,60 +239,24 @@ All configuration is driven by environment variables. See `.env.example` for the
 |----------|---------|-------------|
 | `APP_ENV` | `development` | `development` / `staging` / `production` |
 | `PORT` | `8080` | Backend HTTP port |
-| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
-| `LOG_FORMAT` | `text` | `text` / `json` (json for production) |
+| `STORE_SLUG` | (empty) | Pin the store to a specific tenant slug (default: first tenant) |
 | `POSTGRES_DSN` | (from PG user/pass/db) | Full PostgreSQL connection string |
-| `DB_MAX_CONNS` | `20` | Max DB pool connections |
-| `DB_MIN_CONNS` | `2` | Min DB pool connections |
 | `REDIS_ADDR` | `redis:6379` | Redis address |
-| `REDIS_PASSWORD` | (empty) | Redis password |
 | `JWT_SECRET` | `dev-secret-change-me` | **Must be >=32 chars in production** |
 | `JWT_ACCESS_TTL` | `15m` | Access token TTL |
 | `JWT_REFRESH_TTL` | `720h` | Refresh token TTL (30 days) |
+| `SEED_SUPERADMIN_EMAIL` | (empty) | Optional superadmin bootstrap on first startup |
+| `SEED_SUPERADMIN_PASSWORD` | (empty) | Superadmin password |
 | `CORS_ALLOWED_ORIGINS` | localhost origins | Comma-separated allowed origins |
-| `HTTP_READ_TIMEOUT` | `30s` | HTTP server read timeout |
-| `HTTP_WRITE_TIMEOUT` | `30s` | HTTP server write timeout |
-| `HTTP_IDLE_TIMEOUT` | `120s` | HTTP server idle timeout |
-| `SHUTDOWN_TIMEOUT` | `15s` | Graceful shutdown wait |
-| `RATE_LIMIT_ENABLED` | `false` | Enable per-IP rate limiting |
-| `COOKIE_SECURE` | `false` | **Must be `true` in production** |
-| `ENABLE_TEST_PAYMENTS` | `true` | **Must be `false` in production** |
-| `RAZORPAY_KEY_ID` | (empty) | Razorpay gateway key (empty = mock mode) |
-| `SMTP_HOST` | (empty) | SMTP server for email (empty = disabled) |
 
-### Production deployment
+## Multi-branch (outlets)
 
-```bash
-# 1. Copy and edit .env for production
-cp .env.example .env
-# Edit .env: set APP_ENV=production, strong JWT_SECRET, COOKIE_SECURE=true,
-#   ENABLE_TEST_PAYMENTS=false, SMTP credentials, payment keys, etc.
+The store supports multiple branches, each with its own delivery service area (center lat/lng + radius_km + named areas). Migration `0040_branches.sql` seeds a default branch from the legacy `tenant_settings.service_area`.
 
-# 2. Build and start with the production override
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
-
-The production override (`docker-compose.prod.yml`):
-- Builds production Docker targets (no dev servers, no source mounts)
-- Removes PostgreSQL and Redis port exposure to the host
-- Enables Redis password requirement
-- Sets `restart: always` on all services
-- Enforces `COOKIE_SECURE=true`, `ENABLE_TEST_PAYMENTS=false`, `RATE_LIMIT_ENABLED=true`
-
-### Config validation
-
-The backend validates configuration on startup and will refuse to start in production mode if:
-- `JWT_SECRET` is the default value or less than 32 characters
-- `COOKIE_SECURE` is false
-- `ENABLE_TEST_PAYMENTS` is true
-
-### Host port overrides
-
-All host-side ports can be overridden via env vars without editing docker-compose.yml:
-
-| Variable | Default |
-|----------|---------|
-| `POSTGRES_HOST_PORT` | `15432` |
-| `REDIS_HOST_PORT` | `16379` |
-| `BACKEND_HOST_PORT` | `18080` |
-| `FRONTSTORE_HOST_PORT` | `13000` |
+- **Roles**: `branch_manager` is bound to a branch via `users.branch_id`; `staff` can also be branch-assigned. Their JWT carries `bid`; the backend scopes orders, customers, inventory and stock movements to it automatically.
+- **Checkout**: `POST /api/checkout` accepts `delivery_area`, `delivery_lat`, `delivery_lng`. When active branches exist the order is assigned to the nearest covering branch (else 422). `orders.branch_id` records it.
+- **Inventory**: `branch_stock` is a per-branch overlay — when a row exists it is enforced at checkout; otherwise items draw from shared `products.stock`/`variants.stock`.
+- **Offers/discounts**: `branch_id NULL` = all branches; branch-bound codes validate only for that branch.
+- **API**: admin `GET/POST/PUT/DELETE /api/branches[/:id]` + `PUT /api/branches/:id/default` (perms `branches.view`/`branches.manage`); public `GET /api/delivery/check?lat=&lng=&area=`; `GET /api/bootstrap` includes `branches`.
+- **Backoffice**: `/backoffice/branches` manages outlets; `/backoffice/b/:slug/...` is the branch-scoped backoffice (same pages, scoped data). Admin scoping also works via `X-Branch-Id` header or `?branch_id=`.
+- Branch-scoped users are redirected to `/b/<slug>` after login.

@@ -6,18 +6,17 @@ import { ProductCard } from "@/components/ProductCard";
 import type { Currency, Product } from "@/types";
 
 interface SimilarProductsProps {
-  tenant: string;
   product: Product;
   currency?: Currency;
   lang?: string;
 }
 
-export function SimilarProducts({ tenant, product, currency, lang }: SimilarProductsProps) {
+export function SimilarProducts({ product, currency, lang }: SimilarProductsProps) {
   // Fetch products in the same category, excluding the current product
   const similarQ = useQuery({
-    queryKey: ["similar-products", tenant, product.id, product.category_slug, currency?.code, lang],
+    queryKey: ["similar-products", product.id, product.category_slug, currency?.code, lang],
     queryFn: () =>
-      fetchProducts(tenant, {
+      fetchProducts({
         category: product.category_slug,
         exclude: product.id,
         limit: 8,
@@ -30,9 +29,9 @@ export function SimilarProducts({ tenant, product, currency, lang }: SimilarProd
 
   // If no category-similar products, fall back to featured products
   const fallbackQ = useQuery({
-    queryKey: ["featured-products", tenant, product.id, currency?.code, lang],
+    queryKey: ["featured-products", product.id, currency?.code, lang],
     queryFn: () =>
-      fetchProducts(tenant, {
+      fetchProducts({
         featured: true,
         exclude: product.id,
         limit: 8,
@@ -90,7 +89,7 @@ export function SimilarProducts({ tenant, product, currency, lang }: SimilarProd
           <ProductCard
             key={p.id}
             product={p}
-            tenant={tenant}
+           
             currency={currency}
           />
         ))}

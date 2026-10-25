@@ -69,8 +69,25 @@ func (h *WalletHandler) TopUp(c *gin.Context) {
 		return
 	}
 
+	// Enforce the store's gateway configuration — a disabled gateway cannot
+	// be used even if a stale client submits it directly.
+	gwCfg, gErr := h.store.GetPaymentGatewayConfig(c.Request.Context(), tid, req.PaymentMethod)
+	if gErr != nil {
+		errResponse(c, http.StatusInternalServerError, gErr.Error())
+		return
+	}
+	if gwCfg != nil && !gwCfg.IsEnabled {
+		errResponse(c, http.StatusBadRequest, "payment method is disabled: "+req.PaymentMethod)
+		return
+	}
+
 	// Build payment details map
 	detailsMap := buildPaymentDetailsMap(req.PaymentDetails)
+
+	var gwConfig map[string]interface{}
+	if gwCfg != nil {
+		gwConfig = gwCfg.Config
+	}
 
 	// Process the top-up payment
 	payResult, err := gateway.ProcessPayment(c.Request.Context(), payment.PaymentRequest{
@@ -80,6 +97,7 @@ func (h *WalletHandler) TopUp(c *gin.Context) {
 		CustomerName:  "",
 		CustomerEmail:  userEmail(c),
 		Details:       detailsMap,
+		Config:        gwConfig,
 	})
 	if err != nil {
 		errResponse(c, http.StatusPaymentRequired, "payment processing failed: "+err.Error())
