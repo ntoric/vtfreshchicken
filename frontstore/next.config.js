@@ -5,6 +5,11 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
       { protocol: "http", hostname: "**" },
     ],
+    // AVIF is ~25-35% smaller than WebP at the same quality — matters on
+    // bandwidth-constrained origins. Optimizer output is content-addressed,
+    // so a long TTL is safe and avoids revalidation churn for repeat visitors.
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
     dangerouslyAllowSVG: true,
   },
   async rewrites() {

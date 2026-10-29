@@ -1,0 +1,15 @@
+# Optional edge proxy for staging/production.
+# Provides: automatic HTTPS (Let's Encrypt), HTTP/2 + HTTP/3, and
+# zstd/brotli/gzip compression in front of the Next.js frontstore.
+#
+# Requirements:
+#   - DNS A record for SITE_DOMAIN pointing at this host
+#   - Ports 80 and 443 (TCP + UDP) reachable from the internet
+#
+# Enable with:
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile edge up -d
+
+{$SITE_DOMAIN} {
+	encode zstd br gzip
+	reverse_proxy frontstore:3000
+}

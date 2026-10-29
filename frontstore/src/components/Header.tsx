@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
+import { LazyMotion, domAnimation, m, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { Menu, X, Search, ShoppingBag, Heart, User, ChevronDown, LogOut, Package, RotateCcw, LayoutDashboard, MapPin } from "lucide-react";
 import type { BootstrapResponse } from "@/types";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -129,6 +129,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
   }
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <>
       {/* Announcement bar — scrolls away */}
       <div
@@ -241,7 +242,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                   {moreOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0, y: -8, scale: 0.97 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -258,7 +259,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                             {it.label}
                           </Link>
                         ))}
-                      </motion.div>
+                      </m.div>
                     </>
                   )}
                 </AnimatePresence>
@@ -308,7 +309,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                   {menuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -338,7 +339,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                         <button onClick={handleLogout} className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors">
                           <LogOut className="w-4 h-4" /> Sign Out
                         </button>
-                      </motion.div>
+                      </m.div>
                     </>
                   )}
                 </AnimatePresence>
@@ -370,7 +371,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
               <Heart className="w-5 h-5 text-gray-700 group-hover:text-rose-500 transition-colors" strokeWidth={1.8} />
               <AnimatePresence>
                 {wishlistCount > 0 && (
-                  <motion.span
+                  <m.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
@@ -378,7 +379,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                     className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-sm"
                   >
                     {wishlistCount}
-                  </motion.span>
+                  </m.span>
                 )}
               </AnimatePresence>
             </button>
@@ -392,7 +393,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
               <ShoppingBag className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transition-colors" strokeWidth={1.8} />
               <AnimatePresence>
                 {itemCount > 0 && (
-                  <motion.span
+                  <m.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
@@ -401,7 +402,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                     style={{ backgroundColor: brandColor }}
                   >
                     {itemCount}
-                  </motion.span>
+                  </m.span>
                 )}
               </AnimatePresence>
             </button>
@@ -411,7 +412,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
         {/* Mobile search bar — expandable */}
         <AnimatePresence>
           {searchOpen && (
-            <motion.div
+            <m.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -431,7 +432,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                   />
                 </div>
               </form>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
@@ -452,7 +453,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -460,7 +461,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 xl:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <motion.div
+            <m.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -582,11 +583,12 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           </>
         )}
       </AnimatePresence>
       </header>
     </>
+    </LazyMotion>
   );
 }

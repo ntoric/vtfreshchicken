@@ -1,0 +1,97 @@
+# =============================================================================
+# TruCommerce — Production Docker Compose Override
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# This override applies production-safe settings on top of the base compose file:
+#   - Builds production Docker targets (no volume mounts, no dev servers)
+#   - Enables restart policies
+#   - Enforces security-related env vars
+#   - Removes source code volume mounts
+# =============================================================================
+
+services:
+  backend:
+    image: ntoric/vtchicken_backend:latest
+    restart: always
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+    environment:
+      APP_ENV: production
+      LOG_FORMAT: json
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      COOKIE_SECURE: "true"
+      ENABLE_TEST_PAYMENTS: "false"
+      RATE_LIMIT_ENABLED: "true"
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - ./uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${BACKEND_HOST_PORT:-8080}/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - vtchicken-network
+      - generic-network
+
+  frontstore:
+    image: ntoric/vtchicken_frontstore:latest
+    restart: always
+    ports:
+      - "${FRONTSTORE_HOST_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      INTERNAL_API_BASE_URL: http://backend:8080
+      INTERNAL_BACKOFFICE_URL: http://backoffice:5173
+      NODE_ENV: production
+    volumes: [] # No source mounts in production
+    networks:
+      - vtchicken-network
+
+  backoffice:
+    image: ntoric/vtchicken_backoffice:latest
+    restart: always
+    environment:
+      VITE_API_BASE_URL: http://backend:8080
+    volumes: [] # No source mounts in production
+    networks:
+      - vtchicken-network
+
+  # Optional edge proxy: HTTPS + HTTP/2/3 + brotli/zstd in front of the
+  # frontstore (the origin's uplink is bandwidth-constrained, so serving
+  # compressed responses over a multiplexed connection helps a lot).
+  # Requires DNS for SITE_DOMAIN pointing at this host + ports 80/443 open.
+  # Enable: docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile edge up -d
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    profiles: ["edge"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-vtchicken.mohammedshahid.in}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontstore
+    networks:
+      - vtchicken-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  generic-network:
+    name: generic-network
+    external: true
+  vtchicken-network:
+    name: vtchicken-network
+    driver: bridge

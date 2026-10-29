@@ -290,3 +290,12 @@ Endpoints (`/api/delivery`, authed):
 - Optional vars: `INTERNAL_API_BASE_URL`, `INTERNAL_BACKOFFICE_URL` — baked into the frontstore image at build time (next.config.js rewrites); defaults are the compose service names
 - Platform: `linux/amd64` (uncomment QEMU + `platforms` in the workflow for multi-arch)
 - Each service dir has a `.dockerignore`; `backend/` intentionally keeps `.git/` in context for version stamping (`git describe` in the Dockerfile)
+
+## Staging deployment & performance
+
+- Staging: `http://222.167.207.53:5000/` (`/opt/vtc` on `ntoric001`, `docker-compose.yml` + `docker-compose.staging.yml`, `FRONTSTORE_HOST_PORT=5000`). Intended domain: `vtchicken.mohammedshahid.in`.
+- The origin uplink is bandwidth-constrained — minimizing bytes and enabling edge caching matter more than render optimizations.
+- Frontstore: public fetches (`fetchBootstrap`, `fetchProduct`, `fetchStorePage`) use Next data-cache `revalidate` instead of `no-store`, so most routes prerender as static/ISR. Note: `next build` runs without a reachable backend → the first request(s) after deploy may serve the "Store unavailable" fallback until the first revalidation (≤60s). Hit `/` once post-deploy to warm the cache.
+- `next.config.js`: image optimizer serves AVIF + WebP with `minimumCacheTTL: 86400`.
+- Optional Caddy edge proxy (HTTPS + HTTP/2/3 + brotli/zstd): `docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile edge up -d` — needs DNS for `SITE_DOMAIN` + ports 80/443. A CDN (e.g. Cloudflare) in front is the bigger win since `_next/static` and optimized images are immutable/cacheable.
+- `frontstore/src/components/LandingPage.tsx` is currently unused (homepage renders `LandingHome.tsx`); framer-motion ships via `Header.tsx` only, using `LazyMotion` + `m` (domAnimation feature bundle).

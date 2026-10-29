@@ -52,12 +52,17 @@ export function generateIdempotencyKey(): string {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 11);
 }
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+async function fetchJson<T>(url: string, init?: RequestInit & { revalidate?: number }): Promise<T> {
+  const { revalidate, ...rest } = init ?? {};
   const res = await fetch(url, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers as Record<string, string> || {}) },
-    cache: "no-store",
+    ...rest,
+    headers: { "Content-Type": "application/json", ...authHeaders(), ...(rest.headers as Record<string, string> || {}) },
     credentials: "include",
+    // Public reads opt into Next's data cache so pages can be served from
+    // ISR/CDN; everything else stays uncached (mutations, auth-scoped data).
+    ...(revalidate != null
+      ? ({ next: { revalidate } } as RequestInit)
+      : { cache: "no-store" as const }),
   });
   if (!res.ok) {
     // Auto-logout on 401 (expired/invalid token) — dispatch a global event
@@ -72,7 +77,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export async function fetchBootstrap(): Promise<BootstrapResponse> {
-  return fetchJson<BootstrapResponse>(`${API}/bootstrap`);
+  return fetchJson<BootstrapResponse>(`${API}/bootstrap`, { revalidate: 60 });
 }
 
 export interface ProductQuery {
@@ -127,7 +132,7 @@ export async function fetchProduct(
   if (branchId) params.set("branch_id", branchId);
   const headers: Record<string, string> = {};
   if (lang) headers["Accept-Language"] = lang;
-  return fetchJson(`${API}/products/${slug}?${params}`, { headers });
+  return fetchJson(`${API}/products/${slug}?${params}`, { headers, revalidate: 300 });
 }
 
 // ---- Cart ----
@@ -602,5 +607,5 @@ export async function fetchOrderReturnEligibility(
 }
 
 export async function fetchStorePage(slug: string): Promise<StorePage> {
-  return fetchJson<StorePage>(`${API}/page/${slug}`);
+  return fetchJson<StorePage>(`${API}/page/${slug}`, { revalidate: 300 });
 }
