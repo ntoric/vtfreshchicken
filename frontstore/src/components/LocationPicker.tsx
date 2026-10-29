@@ -3,7 +3,10 @@
 import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Search, X, Check, LocateFixed, Loader2, AlertCircle, MapPinOff, Store } from "lucide-react";
-import { useLocation, haversineKm } from "@/lib/location";
+import { useLocation, haversineKm, branchEffectiveRadiusKm, deliveryChargeForPoint } from "@/lib/location";
+import { useBootstrap, useModuleEnabled } from "@/lib/bootstrap";
+import { useCurrencyLang } from "@/lib/currency-lang";
+import { formatPrice, getCurrencySymbol } from "@/lib/format";
 import { checkDeliveryLocation } from "@/lib/api";
 import type { Branch, BranchMatch } from "@/types";
 
@@ -67,6 +70,10 @@ async function geocodeName(name: string): Promise<{ lat: number; lng: number; la
 
 export function LocationPicker() {
   const { area, config, branches, areaGroups, pickerOpen, setArea, closePicker, isPointServiceable, isAreaServiceable, branchForPoint, branchForArea } = useLocation();
+  const bootstrap = useBootstrap();
+  const shippingModuleOn = useModuleEnabled("shipping");
+  const { currency } = useCurrencyLang();
+  const currencyObj = getCurrencySymbol(bootstrap?.currencies ?? [], currency);
   const [mode, setMode] = useState<Mode>("list");
   const [query, setQuery] = useState("");
   const [custom, setCustom] = useState("");
@@ -113,9 +120,13 @@ export function LocationPicker() {
   const clientMatches = useCallback(
     (la: number, ln: number): BranchMatch[] =>
       branches
-        .filter((b) => b.radius_km > 0)
-        .map((b) => ({ branch: b, distance_km: haversineKm(la, ln, b.center_lat, b.center_lng) }))
-        .filter((m) => (m.distance_km ?? Infinity) <= m.branch.radius_km)
+        .filter((b) => branchEffectiveRadiusKm(b) > 0)
+        .map((b) => ({
+          branch: b,
+          distance_km: haversineKm(la, ln, b.center_lat, b.center_lng),
+          delivery_charge: deliveryChargeForPoint(b, la, ln) ?? undefined,
+        }))
+        .filter((m) => (m.distance_km ?? Infinity) <= branchEffectiveRadiusKm(m.branch))
         .sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0)),
     [branches],
   );
@@ -206,11 +217,28 @@ export function LocationPicker() {
     ? areaGroups.map((g) => ({ ...g, areas: g.areas.filter((a) => a.toLowerCase().includes(q)) })).filter((g) => g.areas.length > 0)
     : areaGroups;
   const totalAreas = groups.reduce((n, g) => n + g.areas.length, 0);
+  // Service circles: one ring per delivery zone (outermost = the delivery
+  // boundary shown solid), or the plain radius circle when no zones exist.
   const circles = hasBranches
-    ? branches.filter((b) => b.radius_km > 0).map((b) => ({ center: [b.center_lat, b.center_lng] as [number, number], radiusKm: b.radius_km }))
+    ? branches.flatMap((b) => {
+        const rings = (b.service_zones ?? [])
+          .map((z) => z.radius_km)
+          .filter((r) => r > 0)
+          .sort((x, y) => x - y);
+        const center: [number, number] = [b.center_lat, b.center_lng];
+        if (rings.length === 0) {
+          return b.radius_km > 0 ? [{ center, radiusKm: b.radius_km, outer: true }] : [];
+        }
+        return rings.map((r, i) => ({ center, radiusKm: r, outer: i === rings.length - 1 }));
+      })
     : config.enabled && config.radius_km > 0
-      ? [{ center: defaultCenter, radiusKm: config.radius_km }]
+      ? [{ center: defaultCenter, radiusKm: config.radius_km, outer: true }]
       : [];
+
+  // Zone delivery fee for the selected branch at the pinned point — shown
+  // only while the dedicated shipping module is disabled.
+  const selMatch = matches.find((m) => m.branch.id === (selBranch?.id ?? matches[0]?.branch.id));
+  const zoneFee = !shippingModuleOn ? selMatch?.delivery_charge : undefined;
 
   return (
     <>
@@ -353,7 +381,14 @@ export function LocationPicker() {
                     <span className="truncate text-stone-800">
                       <strong>{resolved.name}</strong>
                       {resolved.serviceable ? (
-                        <span className="text-emerald-600 text-xs ml-1.5">delivery available</span>
+                        <span className="text-emerald-600 text-xs ml-1.5">
+                          delivery available
+                          {zoneFee != null && (
+                            zoneFee > 0
+                              ? ` · ${formatPrice(zoneFee, currencyObj)} fee`
+                              : " · free delivery"
+                          )}
+                        </span>
                       ) : (
                         <span className="text-rose-500 text-xs ml-1.5">outside delivery area</span>
                       )}

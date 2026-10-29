@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
-import { usePagination, Pagination } from "@/components/Pagination";
+import { Pagination } from "@/components/Pagination";
 import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { ActionMenu } from "@/components/ActionMenu";
@@ -20,19 +20,26 @@ const ROLE_LABELS: Record<string, string> = {
   branch_manager: "Branch Manager",
   staff: "Staff",
   customer: "Customer",
+  delivery_partner: "Delivery Partner",
 };
 
 export function Users() {
   const { tenant, user: currentUser } = useAuth();
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["users", tenant], queryFn: () => api.listUsers(tenant) });
+  const [roleFilter, setRoleFilter] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const limit = 10;
+  const q = useQuery({
+    queryKey: ["users", tenant, roleFilter, search, page],
+    queryFn: () => api.listUsers(tenant, { role: roleFilter || undefined, search: search || undefined, limit, offset: page * limit }),
+  });
   const statsQ = useQuery({ queryKey: ["user-stats", tenant], queryFn: () => api.userStats(tenant) });
   const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "staff", branch_id: "" });
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "staff", branch_id: "", branch_ids: [] as string[] });
+  const resetForm = () => setForm({ email: "", full_name: "", password: "", role: "staff", branch_id: "", branch_ids: [] });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>("");
-  const [search, setSearch] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
 
   const canManage = currentUser?.role === "superadmin" || currentUser?.role === "business_admin";
@@ -48,21 +55,13 @@ export function Users() {
       qc.invalidateQueries({ queryKey: ["users", tenant] });
       qc.invalidateQueries({ queryKey: ["user-stats", tenant] });
       setShowForm(false);
-      setForm({ email: "", full_name: "", password: "", role: "staff", branch_id: "" });
+      resetForm();
     },
   });
 
-  const allUsers = q.data?.items ?? [];
-  const filtered = allUsers.filter((u) => {
-    if (roleFilter && u.role !== roleFilter) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      if (!u.email.toLowerCase().includes(s) && !u.full_name.toLowerCase().includes(s)) return false;
-    }
-    return true;
-  });
-
-  const pg = usePagination(filtered, 10);
+  const filtered = q.data?.items ?? [];
+  const total = q.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   if (selectedUser) {
     return <UserDetail user={selectedUser} onBack={() => setSelectedUser(null)} />;
@@ -72,10 +71,10 @@ export function Users() {
     <div>
       <PageHeader
         title="Users & Roles"
-        subtitle={`${q.data?.items.length ?? 0} users`}
+        subtitle={`${total} users`}
         action={canManage ? (
           <div className="flex items-center gap-2">
-            <button onClick={() => setExportOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition">
+            <button onClick={() => setExportOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition">
               <Download className="w-4 h-4" /> Export
             </button>
             <button onClick={() => setShowForm((s) => !s)} className="bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-brand-dark">
@@ -86,53 +85,69 @@ export function Users() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
         <StatCard label="Total" value={statsQ.data?.total ?? "—"} />
         <StatCard label="Customers" value={statsQ.data?.customers ?? "—"} />
         <StatCard label="Staff" value={statsQ.data?.staff ?? "—"} />
         <StatCard label="Admins" value={statsQ.data?.admins ?? "—"} />
+        <StatCard label="Partners" value={statsQ.data?.delivery_partners ?? "—"} />
         <StatCard label="Active" value={statsQ.data?.active ?? "—"} />
         <StatCard label="Inactive" value={statsQ.data?.inactive ?? "—"} />
       </div>
 
+      {/* Add user modal */}
       {showForm && canManage && (
-        <div className="bg-white rounded-2xl border p-6 mb-6 space-y-4">
-          <h3 className="font-semibold">Add Staff / Admin</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inp} />
-            <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4">
+            <h3 className="font-semibold text-lg">Add Staff / Admin</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inp} />
+              <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input type="password" placeholder="Password (min 6 chars)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inp} />
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, branch_id: "", branch_ids: [] })} className={inp}>
+                <option value="staff">Staff</option>
+                <option value="branch_manager">Branch Manager</option>
+                <option value="delivery_partner">Delivery Partner</option>
+                <option value="business_admin">Business Admin</option>
+              </select>
+            </div>
+            {(form.role === "staff" || form.role === "branch_manager") && (
+              <select value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })} className={inp}>
+                <option value="">No branch (store-wide)</option>
+                {(branchesQ.data?.items ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            )}
+            {form.role === "delivery_partner" && (
+              <BranchChecklist
+                branches={branchesQ.data?.items ?? []}
+                selected={form.branch_ids}
+                onChange={(ids) => setForm({ ...form, branch_ids: ids })}
+              />
+            )}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button onClick={() => create.mutate()} disabled={!form.email || !form.full_name || form.password.length < 6 || (form.role === "delivery_partner" && form.branch_ids.length === 0) || create.isPending} className="inline-flex items-center gap-2 bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50">
+                {create.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Create
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="password" placeholder="Password (min 6 chars)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inp} />
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inp}>
-              <option value="staff">Staff</option>
-              <option value="branch_manager">Branch Manager</option>
-              <option value="business_admin">Business Admin</option>
-            </select>
-          </div>
-          {(form.role === "staff" || form.role === "branch_manager") && (
-            <select value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })} className={inp}>
-              <option value="">No branch (store-wide)</option>
-              {(branchesQ.data?.items ?? []).map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          )}
-          <button onClick={() => create.mutate()} disabled={!form.email || !form.full_name || form.password.length < 6 || create.isPending} className="inline-flex items-center gap-2 bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50">
-            {create.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Create
-          </button>
         </div>
       )}
 
       {/* Filters */}
       <div className="flex gap-3 mb-4">
-        <input placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} className={inp + " max-w-xs"} />
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={inp + " max-w-[180px]"}>
+        <input placeholder="Search by name or email…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} className={inp + " max-w-xs"} />
+        <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }} className={inp + " max-w-[180px]"}>
           <option value="">All roles</option>
           <option value="business_admin">Business Admin</option>
           <option value="branch_manager">Branch Manager</option>
           <option value="staff">Staff</option>
+          <option value="delivery_partner">Delivery Partner</option>
           <option value="customer">Customer</option>
         </select>
       </div>
@@ -142,7 +157,7 @@ export function Users() {
       ) : (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
@@ -153,10 +168,10 @@ export function Users() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pg.pageItems.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedUser(u)}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{u.full_name}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email}</td>
+              {filtered.map((u) => (
+                <tr key={u.id} className="hover:bg-neutral-50 cursor-pointer" onClick={() => setSelectedUser(u)}>
+                  <td className="px-4 py-3 font-medium text-neutral-900">{u.full_name}</td>
+                  <td className="px-4 py-3 text-neutral-600">{u.email}</td>
                   <td className="px-4 py-3">
                     <RoleBadge role={u.role} />
                   </td>
@@ -164,10 +179,10 @@ export function Users() {
                     {u.is_active ? (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Disabled</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500">Disabled</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-400">
+                  <td className="px-4 py-3 text-xs text-neutral-400">
                     {u.last_login_at ? new Date(u.last_login_at).toLocaleDateString() : "Never"}
                   </td>
                   <td className="px-4 py-3">
@@ -178,11 +193,11 @@ export function Users() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No users found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No users found.</td></tr>
               )}
             </tbody>
           </table>
-          <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} start={pg.start} end={pg.end} onPage={pg.setPage} />
+          <Pagination page={page} totalPages={totalPages} total={total} start={page * limit} end={Math.min((page + 1) * limit, total)} onPage={setPage} />
         </div>
       )}
       <ExportDialog
@@ -211,6 +226,7 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
     admin_notes: user.admin_notes || "",
     is_active: user.is_active,
     branch_id: user.branch_id || "",
+    branch_ids: user.branch_ids ?? [],
   });
   const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
 
@@ -249,13 +265,13 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
 
   return (
     <div>
-      <button onClick={onBack} className="text-sm text-slate-500 hover:text-slate-900 mb-4 inline-flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Back to users</button>
+      <button onClick={onBack} className="text-sm text-neutral-500 hover:text-neutral-900 mb-4 inline-flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Back to users</button>
       <PageHeader
         title={user.full_name}
         subtitle={user.email}
         action={canManage && !isSelf ? (
           <div className="flex gap-2">
-            <button onClick={() => setEditing(!editing)} className="border px-3 py-1.5 rounded-md text-sm font-medium hover:bg-slate-50">
+            <button onClick={() => setEditing(!editing)} className="border px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50">
               {editing ? "Cancel" : "Edit"}
             </button>
             <button
@@ -288,21 +304,32 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role">
-              <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })} className={inp}>
+              <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole, branch_id: "", branch_ids: [] })} className={inp}>
                 <option value="customer">Customer</option>
                 <option value="staff">Staff</option>
                 <option value="branch_manager">Branch Manager</option>
+                <option value="delivery_partner">Delivery Partner</option>
                 <option value="business_admin">Business Admin</option>
               </select>
             </Field>
-            <Field label="Branch">
-              <select value={editForm.branch_id} onChange={(e) => setEditForm({ ...editForm, branch_id: e.target.value })} className={inp}>
-                <option value="">No branch (store-wide)</option>
-                {(branchesQ.data?.items ?? []).map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </Field>
+            {editForm.role === "delivery_partner" ? (
+              <Field label="Allocated Branches (at least one)">
+                <BranchChecklist
+                  branches={branchesQ.data?.items ?? []}
+                  selected={editForm.branch_ids}
+                  onChange={(ids) => setEditForm({ ...editForm, branch_ids: ids })}
+                />
+              </Field>
+            ) : (
+              <Field label="Branch">
+                <select value={editForm.branch_id} onChange={(e) => setEditForm({ ...editForm, branch_id: e.target.value })} className={inp}>
+                  <option value="">No branch (store-wide)</option>
+                  {(branchesQ.data?.items ?? []).map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Active">
               <select value={editForm.is_active ? "true" : "false"} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.value === "true" })} className={inp}>
                 <option value="true">Active</option>
@@ -313,7 +340,7 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
           <Field label="Admin Notes">
             <textarea value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={3} className={inp} />
           </Field>
-          <button onClick={() => update.mutate()} disabled={update.isPending} className="inline-flex items-center gap-2 bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50">
+          <button onClick={() => update.mutate()} disabled={update.isPending || (editForm.role === "delivery_partner" && editForm.branch_ids.length === 0)} className="inline-flex items-center gap-2 bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50">
             {update.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             {update.isPending ? "Saving…" : "Save Changes"}
           </button>
@@ -325,7 +352,7 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
             <DetailRow label="Email" value={user.email} />
             <DetailRow label="Phone" value={user.phone || "—"} />
             <DetailRow label="Role" value={ROLE_LABELS[user.role] || user.role} />
-            <DetailRow label="Branch" value={user.branch_name || "—"} />
+            <DetailRow label={user.role === "delivery_partner" ? "Allocated Branches" : "Branch"} value={user.role === "delivery_partner" ? (user.branch_names?.join(", ") || "—") : (user.branch_name || "—")} />
             <DetailRow label="Status" value={user.is_active ? "Active" : "Disabled"} />
             <DetailRow label="Admin Notes" value={user.admin_notes || "—"} />
             <DetailRow label="Marketing Consent" value={user.marketing_consent ? "Yes" : "No"} />
@@ -379,8 +406,8 @@ function UserDetail({ user, onBack }: { user: User; onBack: () => void }) {
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-white rounded-2xl border p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-lg font-semibold mt-1 text-slate-900">{value}</p>
+      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="text-lg font-semibold mt-1 text-neutral-900">{value}</p>
     </div>
   );
 }
@@ -389,21 +416,50 @@ function RoleBadge({ role }: { role: string }) {
   const colors: Record<string, string> = {
     superadmin: "bg-purple-100 text-purple-700",
     business_admin: "bg-blue-100 text-blue-700",
-    staff: "bg-slate-100 text-slate-600",
+    branch_manager: "bg-sky-100 text-sky-700",
+    staff: "bg-neutral-100 text-neutral-600",
     customer: "bg-emerald-50 text-emerald-600",
+    delivery_partner: "bg-emerald-100 text-emerald-700",
   };
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colors[role] || colors.staff}`}>{ROLE_LABELS[role] || role}</span>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="text-sm font-medium text-slate-700">{label}</label><div className="mt-1">{children}</div></div>;
+  return <div><label className="text-sm font-medium text-neutral-700">{label}</label><div className="mt-1">{children}</div></div>;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="font-medium text-slate-900">{value}</p>
+      <p className="text-xs text-neutral-400">{label}</p>
+      <p className="font-medium text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+// Checkbox list used to allocate one or more branches to a delivery partner.
+function BranchChecklist({ branches, selected, onChange }: { branches: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
+  if (branches.length === 0) {
+    return <p className="text-xs text-neutral-400 italic">No branches configured — create one under Branches first.</p>;
+  }
+  const toggle = (id: string, on: boolean) =>
+    onChange(on ? [...selected, id] : selected.filter((x) => x !== id));
+  return (
+    <div className="border rounded-lg p-3 space-y-1.5 max-h-40 overflow-y-auto">
+      {branches.map((b) => (
+        <label key={b.id} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={selected.includes(b.id)}
+            onChange={(e) => toggle(b.id, e.target.checked)}
+            className="rounded border-neutral-300"
+          />
+          {b.name}
+        </label>
+      ))}
+      {selected.length === 0 && (
+        <p className="text-[11px] text-amber-600">Select at least one branch.</p>
+      )}
     </div>
   );
 }

@@ -64,7 +64,7 @@ export function ActionMenu({ items, align = "right" }: ActionMenuProps) {
     ? createPortal(
         <div
           id="action-menu-portal"
-          className="fixed min-w-[160px] bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-[9999]"
+          className="fixed min-w-[160px] bg-white rounded-xl shadow-lg border border-neutral-100 py-1.5 z-[9999]"
           style={{
             top: menuPos.top,
             left: align === "right" ? Math.max(8, menuPos.left - 160) : menuPos.left,
@@ -75,7 +75,7 @@ export function ActionMenu({ items, align = "right" }: ActionMenuProps) {
             const cls = `flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium transition ${
               item.variant === "danger"
                 ? "text-rose-600 hover:bg-rose-50"
-                : "text-slate-700 hover:bg-slate-50"
+                : "text-neutral-700 hover:bg-neutral-50"
             }`;
             return item.href ? (
               <a key={i} href={item.href} target="_blank" rel="noreferrer" className={cls} onClick={() => setOpen(false)}>
@@ -112,7 +112,7 @@ export function ActionMenu({ items, align = "right" }: ActionMenuProps) {
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+        className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
         aria-label="Actions"
       >
         <MoreVertical className="w-4 h-4" />

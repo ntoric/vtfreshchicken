@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/Skeletons";
@@ -41,6 +41,11 @@ export function Login() {
     try {
       const res = await api.storeLogin(email, password);
       login(res.user, res.access_token, res.tenant_slug, res.tenant_name);
+      // Delivery partners go straight to their portal.
+      if (res.user.role === "delivery_partner") {
+        navigate("/delivery");
+        return;
+      }
       // Branch-bound staff land directly inside their branch backoffice.
       if (res.user.branch_id) {
         try {
@@ -64,26 +69,26 @@ export function Login() {
 
   if (checkingSetup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-900 via-red-900 to-neutral-900">
         <Spinner size={32} className="text-white" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-900 via-red-900 to-neutral-900 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand text-white font-bold text-xl mb-3">
             TC
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">TruCommerce</h1>
-          <p className="text-slate-500 text-sm mt-1">Backoffice Sign In</p>
+          <h1 className="text-2xl font-bold text-neutral-900">TruCommerce</h1>
+          <p className="text-neutral-500 text-sm mt-1">Backoffice Sign In</p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
             <input
               type="email"
               value={email}
@@ -94,7 +99,7 @@ export function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Password</label>
             <input
               type="password"
               value={password}
@@ -117,6 +122,11 @@ export function Login() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+
+        <p className="text-center text-xs text-neutral-400 mt-6">
+          Delivery partner?{" "}
+          <Link to="/delivery/login" className="text-brand hover:underline">Sign in here</Link>
+        </p>
       </div>
     </div>
   );

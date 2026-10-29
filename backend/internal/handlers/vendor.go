@@ -31,12 +31,13 @@ type vendorReq struct {
 }
 
 func (h *VendorHandler) List(c *gin.Context) {
-	vendors, err := h.store.ListVendors(c.Request.Context(), tenantID(c))
+	limit, offset := pagingParams(c)
+	vendors, total, err := h.store.ListVendorsPaged(c.Request.Context(), tenantID(c), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": vendors})
+	c.JSON(http.StatusOK, gin.H{"items": vendors, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *VendorHandler) Get(c *gin.Context) {

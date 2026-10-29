@@ -1,6 +1,6 @@
 export type UUID = string;
 
-export type UserRole = "superadmin" | "business_admin" | "branch_manager" | "staff" | "customer";
+export type UserRole = "superadmin" | "business_admin" | "branch_manager" | "staff" | "customer" | "delivery_partner";
 
 export interface User {
   id: UUID;
@@ -16,6 +16,11 @@ export interface User {
   admin_notes?: string;
   last_login_at?: string;
   created_at: string;
+  /** Delivery partner branch allocations (delivery_partner role only). */
+  branch_ids?: UUID[];
+  branch_names?: string[];
+  /** Partner's in-flight deliveries (ready+shipped) — partners list only. */
+  active_deliveries?: number;
 }
 
 export interface UserStats {
@@ -23,6 +28,7 @@ export interface UserStats {
   customers: number;
   staff: number;
   admins: number;
+  delivery_partners: number;
   active: number;
   inactive: number;
 }
@@ -386,6 +392,7 @@ export interface Category {
   id: UUID;
   tenant_id: UUID;
   parent_id?: UUID;
+  parent_name?: string;
   slug: string;
   name: string;
   description: string;
@@ -412,6 +419,7 @@ export interface Attribute {
   is_filterable: boolean;
   is_variant: boolean;
   is_batch: boolean;
+  is_internal: boolean;
   options?: AttributeOption[];
 }
 
@@ -450,6 +458,8 @@ export interface Product {
   tenant_id: UUID;
   category_id?: UUID;
   category_slug?: string;
+  branch_id?: UUID;    // unset = available at all branches
+  branch_name?: string; // joined for admin display
   slug: string;
   name: string;
   description: string;
@@ -579,6 +589,47 @@ export interface AuthResponse {
   tenant_slug?: string;
 }
 
+// ---- Reviews ----
+
+export interface ReviewImage {
+  id: UUID;
+  review_id: UUID;
+  url: string;
+  alt: string;
+  sort_order: number;
+}
+
+export interface Review {
+  id: UUID;
+  tenant_id: UUID;
+  product_id: UUID;
+  user_id?: UUID;
+  author_name: string;
+  rating: number;
+  title: string;
+  body: string;
+  is_verified: boolean;
+  is_approved: boolean;
+  created_at: string;
+  images?: ReviewImage[];
+  product_name?: string;
+  product_slug?: string;
+  product_image?: string;
+}
+
+export interface ReviewStats {
+  total: number;
+  approved: number;
+  pending: number;
+  avg_rating: number;
+}
+
+export interface ReviewListResponse {
+  items: Review[];
+  total: number;
+  stats?: ReviewStats;
+}
+
 // ---- Orders ----
 
 export interface OrderItem {
@@ -618,6 +669,19 @@ export interface TaxBreakdownLine {
   compound: boolean;
 }
 
+export interface OrderHandoff {
+  id: UUID;
+  order_id: UUID;
+  from_branch_id: UUID;
+  from_branch_name?: string;
+  to_branch_id: UUID;
+  to_branch_name?: string;
+  item_ids?: UUID[];      // empty = whole order
+  status: string;         // pending | accepted | rejected | cancelled
+  note: string;
+  created_at: string;
+}
+
 export interface Order {
   id: UUID;
   tenant_id: UUID;
@@ -652,6 +716,10 @@ export interface Order {
   return_id?: UUID;
   order_tag?: string; // 'replacement', 'exchange', or empty for normal orders
   tax_breakdown?: TaxBreakdownLine[];
+  // Local-delivery partner assignment
+  delivery_partner_id?: UUID;
+  delivery_partner_name?: string;
+  delivery_assigned_at?: string;
 }
 
 export interface OrderWithDetails extends Order {
@@ -660,6 +728,7 @@ export interface OrderWithDetails extends Order {
 }
 
 export interface AddressInput {
+  label?: string;
   line1: string;
   line2?: string;
   city: string;
@@ -692,13 +761,14 @@ export interface UpdateOrderStatusRequest {
 
 // Valid order status transitions
 export const ORDER_STATUSES = [
-  "pending", "paid", "processing", "shipped", "delivered", "fulfilled", "cancelled", "refunded", "failed",
+  "pending", "paid", "processing", "ready", "shipped", "delivered", "fulfilled", "cancelled", "refunded", "failed",
 ] as const;
 
 export const ORDER_STATUS_TRANSITIONS: Record<string, string[]> = {
   pending: ["paid", "cancelled"],
   paid: ["processing", "cancelled", "refunded"],
-  processing: ["shipped", "delivered", "cancelled"],
+  processing: ["ready", "shipped", "delivered", "cancelled"],
+  ready: ["shipped", "processing", "cancelled"],
   shipped: ["delivered"],
   delivered: ["fulfilled"],
   fulfilled: [],
@@ -711,7 +781,8 @@ export const ORDER_STATUS_LABELS: Record<string, { label: string; color: string;
   pending: { label: "Pending", color: "text-amber-700", bg: "bg-amber-100" },
   paid: { label: "Paid", color: "text-emerald-700", bg: "bg-emerald-100" },
   processing: { label: "Processing", color: "text-blue-700", bg: "bg-blue-100" },
-  shipped: { label: "Shipped", color: "text-indigo-700", bg: "bg-indigo-100" },
+  ready: { label: "Ready", color: "text-indigo-700", bg: "bg-indigo-100" },
+  shipped: { label: "Shipped", color: "text-red-700", bg: "bg-red-100" },
   delivered: { label: "Delivered", color: "text-emerald-700", bg: "bg-emerald-100" },
   fulfilled: { label: "Fulfilled", color: "text-cyan-700", bg: "bg-cyan-100" },
   cancelled: { label: "Cancelled", color: "text-rose-700", bg: "bg-rose-100" },
@@ -820,7 +891,7 @@ export const RETURN_STATUS_LABELS: Record<string, { label: string; color: string
   approved: { label: "Approved", color: "text-blue-700", bg: "bg-blue-100" },
   rejected: { label: "Rejected", color: "text-rose-700", bg: "bg-rose-100" },
   completed: { label: "Completed", color: "text-emerald-700", bg: "bg-emerald-100" },
-  cancelled: { label: "Cancelled", color: "text-slate-700", bg: "bg-slate-100" },
+  cancelled: { label: "Cancelled", color: "text-neutral-700", bg: "bg-neutral-100" },
 };
 
 export const REFUND_METHODS = ["original", "wallet", "store_credit", "none"] as const;
@@ -1001,13 +1072,13 @@ export interface ProviderTestResult {
 }
 
 export const SHIPMENT_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: "Pending", color: "text-slate-700", bg: "bg-slate-100" },
+  pending: { label: "Pending", color: "text-neutral-700", bg: "bg-neutral-100" },
   booked: { label: "Booked", color: "text-blue-700", bg: "bg-blue-100" },
-  picked_up: { label: "Picked Up", color: "text-indigo-700", bg: "bg-indigo-100" },
+  picked_up: { label: "Picked Up", color: "text-red-700", bg: "bg-red-100" },
   in_transit: { label: "In Transit", color: "text-amber-700", bg: "bg-amber-100" },
   out_for_delivery: { label: "Out for Delivery", color: "text-orange-700", bg: "bg-orange-100" },
   delivered: { label: "Delivered", color: "text-emerald-700", bg: "bg-emerald-100" },
-  cancelled: { label: "Cancelled", color: "text-slate-500", bg: "bg-slate-100" },
+  cancelled: { label: "Cancelled", color: "text-neutral-500", bg: "bg-neutral-100" },
   failed: { label: "Failed", color: "text-rose-700", bg: "bg-rose-100" },
 };
 
@@ -1053,6 +1124,19 @@ export interface PaymentGatewayConfig {
   is_test_mode: boolean;
   sort_order: number;
   config?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+// Store module / feature flag managed under Developer → Modules & Features.
+export interface StoreModule {
+  id: UUID;
+  tenant_id: UUID;
+  module_code: string;
+  display_name: string;
+  description: string;
+  is_enabled: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -1492,11 +1576,11 @@ export const BLOCK_TYPES: {
   defaultProps: Record<string, any>;
 }[] = [
   // Core blocks
-  { type: "hero", label: "Hero Section", icon: "Image", category: "Core", defaultProps: { title: "Welcome to our store", subtitle: "Discover amazing products", buttonText: "Shop Now", buttonLink: "", backgroundImage: "", align: "center", textColor: "#ffffff", backgroundColor: "#4f46e5" } },
+  { type: "hero", label: "Hero Section", icon: "Image", category: "Core", defaultProps: { title: "Welcome to our store", subtitle: "Discover amazing products", buttonText: "Shop Now", buttonLink: "", backgroundImage: "", align: "center", textColor: "#ffffff", backgroundColor: "#dc2626" } },
   { type: "rich_text", label: "Rich Text", icon: "FileText", category: "Core", defaultProps: { content: "<p>Edit this text block.</p>" } },
   { type: "image", label: "Image", icon: "Image", category: "Core", defaultProps: { src: "", alt: "", width: "full", rounded: true, caption: "" } },
   { type: "gallery", label: "Image Gallery", icon: "Images", category: "Core", defaultProps: { title: "", images: [], columns: 3 } },
-  { type: "cta", label: "Call to Action", icon: "MousePointerClick", category: "Core", defaultProps: { title: "Ready to shop?", buttonText: "Get Started", buttonLink: "", align: "center", backgroundColor: "#4f46e5", textColor: "#ffffff" } },
+  { type: "cta", label: "Call to Action", icon: "MousePointerClick", category: "Core", defaultProps: { title: "Ready to shop?", buttonText: "Get Started", buttonLink: "", align: "center", backgroundColor: "#dc2626", textColor: "#ffffff" } },
   { type: "spacer", label: "Spacer", icon: "Minus", category: "Core", defaultProps: { height: 48 } },
   { type: "divider", label: "Divider", icon: "Minus", category: "Core", defaultProps: { style: "solid", color: "#e5e7eb" } },
   { type: "banner", label: "Banner / Promo", icon: "Megaphone", category: "Core", defaultProps: { title: "Special Offer!", subtitle: "Limited time only", buttonText: "Shop Now", buttonLink: "", backgroundColor: "#f59e0b", textColor: "#ffffff" } },
@@ -1554,6 +1638,16 @@ export interface ExportTypeMeta {
   description: string;
 }
 
+// ServiceZone is one concentric delivery ring of a branch's service area.
+// charge_type "free" | "flat" | "per_km" — charge is the flat amount or the
+// per-km rate (per_km applies to the distance beyond the previous ring).
+export interface ServiceZone {
+  radius_km: number;
+  charge_type: "free" | "flat" | "per_km";
+  charge: number;
+  label?: string;
+}
+
 // Branch is a store outlet with its own delivery service area.
 export interface Branch {
   id: UUID;
@@ -1571,6 +1665,7 @@ export interface Branch {
   center_lat: number;
   center_lng: number;
   radius_km: number;
+  service_zones?: ServiceZone[];
   areas: string[];
   is_active: boolean;
   is_default?: boolean;

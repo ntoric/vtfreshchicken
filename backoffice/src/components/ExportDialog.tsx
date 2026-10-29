@@ -110,19 +110,19 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 w-full max-w-lg p-6">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+      <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-neutral-200/50 w-full max-w-lg p-6">
+        <button onClick={onClose} className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition">
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-start gap-4 mb-5">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center">
-            <FileSpreadsheet className="w-6 h-6 text-indigo-500" />
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center">
+            <FileSpreadsheet className="w-6 h-6 text-red-500" />
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 className="text-lg font-semibold text-slate-900">Export {title}</h3>
-            <p className="text-sm text-slate-500 mt-0.5">Generate a CSV file of the current data with applied filters.</p>
+            <h3 className="text-lg font-semibold text-neutral-900">Export {title}</h3>
+            <p className="text-sm text-neutral-500 mt-0.5">Generate a CSV file of the current data with applied filters.</p>
           </div>
         </div>
 
@@ -130,11 +130,11 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
         {!job && (
           <div className="space-y-4">
             {estimating ? (
-              <div className="text-sm text-slate-500 flex items-center gap-2">
+              <div className="text-sm text-neutral-500 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> Estimating export size...
               </div>
             ) : estimated !== null ? (
-              <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+              <div className="text-sm text-neutral-600 bg-neutral-50 rounded-lg p-3">
                 Estimated rows: <span className="font-semibold">{estimated.toLocaleString()}</span>
                 {largeExport && (
                   <span className="block mt-1 text-amber-600">
@@ -145,27 +145,27 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
             ) : null}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Format</label>
-              <select disabled className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 text-sm">
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Format</label>
+              <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-700 text-sm">
                 <option value="csv">CSV (Comma-separated values)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email address <span className="text-slate-400 font-normal">{largeExport ? "(required)" : "(optional)"}</span>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                Email address <span className="text-neutral-400 font-normal">{largeExport ? "(required)" : "(optional)"}</span>
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={largeExport ? "you@example.com" : "Enter email for async delivery (optional)"}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+                  className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 {largeExport
                   ? "Required for large exports — the file will be emailed when ready."
                   : "If provided, the exported file will be emailed to this address on completion. Otherwise, you can download it here."}
@@ -179,13 +179,13 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
             )}
 
             <div className="flex justify-end gap-3 pt-1">
-              <button onClick={onClose} className="px-3 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition">
+              <button onClick={onClose} className="px-3 py-2 border border-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-50 transition">
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-2"
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 {creating ? "Creating..." : "Create Export"}
@@ -198,18 +198,18 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
         {job && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              {job.status === "pending" && <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />}
-              {job.status === "running" && <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />}
+              {job.status === "pending" && <Loader2 className="w-5 h-5 text-neutral-400 animate-spin" />}
+              {job.status === "running" && <Loader2 className="w-5 h-5 text-red-500 animate-spin" />}
               {job.status === "completed" && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
               {job.status === "failed" && <AlertCircle className="w-5 h-5 text-rose-500" />}
               <div className="flex-1">
-                <div className="text-sm font-medium text-slate-800">
+                <div className="text-sm font-medium text-neutral-800">
                   {job.status === "pending" && "Queued — waiting for worker..."}
                   {job.status === "running" && "Processing..."}
                   {job.status === "completed" && "Export completed"}
                   {job.status === "failed" && "Export failed"}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-neutral-500">
                   {job.rows_done.toLocaleString()} / {job.rows_total.toLocaleString()} rows
                   {job.file_size > 0 && ` · ${(job.file_size / 1024).toFixed(1)} KB`}
                 </div>
@@ -218,9 +218,9 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
 
             {/* Progress bar */}
             {(job.status === "running" || job.status === "completed") && job.rows_total > 0 && (
-              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${job.status === "completed" ? "bg-emerald-500" : "bg-indigo-500"}`}
+                  className={`h-full rounded-full transition-all duration-500 ${job.status === "completed" ? "bg-emerald-500" : "bg-red-500"}`}
                   style={{ width: `${job.status === "completed" ? 100 : progress}%` }}
                 />
               </div>
@@ -239,13 +239,13 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
                   </div>
                 )}
                 <div className="flex justify-end gap-3">
-                  <button onClick={onClose} className="px-3 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition">
+                  <button onClick={onClose} className="px-3 py-2 border border-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-50 transition">
                     Close
                   </button>
                   <button
                     onClick={handleDownload}
                     disabled={downloading}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-2"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-2"
                   >
                     {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     {downloading ? "Downloading..." : "Download CSV"}
@@ -256,7 +256,7 @@ export function ExportDialog({ open, type, title, filters, onClose }: ExportDial
 
             {(job.status === "pending" || job.status === "running") && (
               <div className="flex justify-end">
-                <button onClick={onClose} className="px-3 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition">
+                <button onClick={onClose} className="px-3 py-2 border border-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-50 transition">
                   Run in background
                 </button>
               </div>

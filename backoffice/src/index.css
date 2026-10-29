@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
+  @apply bg-neutral-100 text-neutral-900 antialiased;
 }
 
 /* Shimmer effect for skeleton loaders */
@@ -14,9 +14,9 @@ body {
 .shimmer {
   background: linear-gradient(
     90deg,
-    #f1f5f9 0%,
-    #e2e8f0 40%,
-    #f1f5f9 80%
+    #f5f5f5 0%,
+    #e5e5e5 40%,
+    #f5f5f5 80%
   );
   background-size: 1000px 100%;
   animation: shimmer 1.8s infinite linear;
@@ -47,7 +47,7 @@ body {
 .ck-content ol { list-style: decimal; padding-left: 2em; margin: 0.6em 0; }
 .ck-content li { margin: 0.2em 0; }
 .ck-content blockquote { border-left: 4px solid #d1d5db; padding-left: 1em; margin: 0.6em 0; color: #6b7280; font-style: italic; }
-.ck-content a { color: #4f46e5; text-decoration: underline; }
+.ck-content a { color: #dc2626; text-decoration: underline; }
 .ck-content pre { background: #f3f4f6; padding: 0.8em; border-radius: 6px; overflow-x: auto; margin: 0.6em 0; }
 .ck-content code { background: #f3f4f6; padding: 0.15em 0.3em; border-radius: 3px; font-family: monospace; }
 .ck-content pre code { background: none; padding: 0; }
@@ -145,8 +145,8 @@ body {
 
 /* Selected block glow pulse */
 @keyframes pb-selected-glow {
-  0%, 100% { box-shadow: 0 0 0 2px var(--brand-color, #4f46e5), 0 4px 20px -4px rgba(79, 70, 229, 0.3); }
-  50% { box-shadow: 0 0 0 2px var(--brand-color, #4f46e5), 0 8px 30px -4px rgba(79, 70, 229, 0.45); }
+  0%, 100% { box-shadow: 0 0 0 2px var(--brand-color, #dc2626), 0 4px 20px -4px rgba(220, 38, 38, 0.3); }
+  50% { box-shadow: 0 0 0 2px var(--brand-color, #dc2626), 0 8px 30px -4px rgba(220, 38, 38, 0.45); }
 }
 .pb-selected-glow { animation: pb-selected-glow 2.5s ease-in-out infinite; }
 

@@ -15,6 +15,7 @@ import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
 import type { Attribute, ProductAttributeValue, Variant } from "@/types";
 import { useCurrencyLang } from "@/lib/currency-lang";
+import { useLocation } from "@/lib/location";
 
 // Map common color names to hex for swatch backgrounds
 const COLOR_MAP: Record<string, string> = {
@@ -55,6 +56,14 @@ export default function ProductDetailPage({
   params: { slug: string };
 }) {
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
+  const { area, lat, lng, coveringBranches, branchesForArea, serviceable } = useLocation();
+  const branchId = useMemo(() => {
+    if (!serviceable) return undefined;
+    let ids: string[] = [];
+    if (lat != null && lng != null) ids = coveringBranches(lat, lng).map((b) => b.id);
+    if (!ids.length && area) ids = branchesForArea(area).map((b) => b.id);
+    return ids.length ? ids.join(",") : undefined;
+  }, [serviceable, lat, lng, area, coveringBranches, branchesForArea]);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
@@ -68,8 +77,8 @@ export default function ProductDetailPage({
   });
 
   const productQ = useQuery({
-    queryKey: ["product", params.slug, currency, lang],
-    queryFn: () => fetchProduct(params.slug, currency, lang),
+    queryKey: ["product", params.slug, currency, lang, branchId],
+    queryFn: () => fetchProduct(params.slug, currency, lang, branchId),
     enabled: !!bootstrapQ.data,
   });
 
@@ -90,6 +99,30 @@ export default function ProductDetailPage({
     ? (selectedVariant?.stock ?? 0)
     : (product?.stock ?? 0);
   const maxStock = (product?.track_inventory ?? true) ? Math.max(1, availableStock) : 999;
+
+  // Store/module configuration driving the info sections below
+  const settings = bootstrap?.settings;
+  const shippingModuleOn = bootstrap?.modules?.shipping !== false;
+  const returnsModuleOn = bootstrap?.modules?.returns !== false;
+  const shippingMethods = bootstrap?.shipping_methods ?? [];
+  const requiresShipping = product?.requires_shipping !== false;
+
+  // Return/refund/replacement: product overrides → store settings → defaults.
+  // Mirrors the backend resolution in GetOrderReturnEligibility.
+  const storeReturnsOn = returnsModuleOn && settings?.returns_enabled !== false;
+  const returnDays = product?.return_period_days || settings?.return_period_days || 30;
+  const refundDays = product?.refund_period_days || settings?.refund_period_days || 30;
+  const replacementDays = product?.replacement_period_days || settings?.replacement_period_days || 15;
+  const returnAllowed = storeReturnsOn && product?.return_enabled !== false;
+  const refundAllowed = storeReturnsOn && product?.refund_enabled !== false;
+  const replacementAllowed = storeReturnsOn && product?.replacement_enabled !== false;
+
+  // Free shipping: per-product override, or every active method is free.
+  const shipsFree = product?.free_shipping === true || shippingMethods.every((m) => m.base_rate <= 0);
+  // Lowest free-shipping threshold across active methods (for the "Free over X" hint).
+  const freeThresholdMethod = shippingMethods
+    .filter((m) => m.free_shipping_threshold != null && m.free_shipping_threshold > 0)
+    .sort((a, b) => a.free_shipping_threshold! - b.free_shipping_threshold!)[0];
 
   // Build attribute groups from variants: { attrName: [{ value, label, available }] }
   const variantGroups = useMemo(() => {
@@ -457,26 +490,40 @@ export default function ProductDetailPage({
               </button>
             </div>
 
-            {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-4 border-t">
+            {/* Trust badges — driven by store/product configuration */}
+            <div className="flex flex-wrap items-start justify-center gap-x-8 gap-y-3 pt-4 border-t">
               <div className="flex flex-col items-center text-center gap-1">
                 <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
                 <span className="text-xs text-gray-500">Secure Payment</span>
               </div>
-              <div className="flex flex-col items-center text-center gap-1">
-                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
-                </svg>
-                <span className="text-xs text-gray-500">Free Shipping</span>
-              </div>
-              <div className="flex flex-col items-center text-center gap-1">
-                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 8.62 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
-                </svg>
-                <span className="text-xs text-gray-500">30-Day Returns</span>
-              </div>
+              {requiresShipping && shippingModuleOn && (shipsFree || freeThresholdMethod) && (
+                <div className="flex flex-col items-center text-center gap-1">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
+                  </svg>
+                  <span className="text-xs text-gray-500">
+                    {shipsFree
+                      ? "Free Shipping"
+                      : `Free over ${formatPrice(freeThresholdMethod!.free_shipping_threshold!, getCurrencySymbol(bootstrap.currencies || [], freeThresholdMethod!.currency_code) ?? currencyObj)}`}
+                  </span>
+                </div>
+              )}
+              {(returnAllowed || refundAllowed || replacementAllowed) && (
+                <div className="flex flex-col items-center text-center gap-1">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3-3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 8.62 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
+                  </svg>
+                  <span className="text-xs text-gray-500">
+                    {returnAllowed
+                      ? `${returnDays}-Day Returns`
+                      : refundAllowed
+                        ? `${refundDays}-Day Refunds`
+                        : `${replacementDays}-Day Replacement`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -629,65 +676,98 @@ export default function ProductDetailPage({
             {/* Additional Info tab */}
             {activeTab === "info" && (
               <div className="space-y-8">
-                {/* Shipping */}
-                <div>
-                  <h3 className="font-semibold text-gray-900 text-lg mb-3 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
-                    </svg>
-                    Shipping Information
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="font-semibold text-gray-900 text-sm">Standard Shipping</p>
-                      <p className="text-gray-500 text-sm mt-1">3-5 business days</p>
-                      <p className="text-emerald-600 font-medium text-sm mt-2">FREE</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="font-semibold text-gray-900 text-sm">Express Shipping</p>
-                      <p className="text-gray-500 text-sm mt-1">1-2 business days</p>
-                      <p className="text-gray-700 font-medium text-sm mt-2">Calculated at checkout</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="font-semibold text-gray-900 text-sm">International</p>
-                      <p className="text-gray-500 text-sm mt-1">7-14 business days</p>
-                      <p className="text-gray-700 font-medium text-sm mt-2">Varies by location</p>
-                    </div>
+                {/* Shipping — rendered from the store's configured shipping methods */}
+                {shippingModuleOn && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
+                      </svg>
+                      Shipping Information
+                    </h3>
+                    {!requiresShipping ? (
+                      <p className="text-sm text-gray-600">This product does not require shipping.</p>
+                    ) : shippingMethods.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {shippingMethods.map((m) => {
+                          const mCur = getCurrencySymbol(bootstrap.currencies || [], m.currency_code) ?? currencyObj;
+                          const eta = m.min_days && m.max_days
+                            ? m.min_days === m.max_days
+                              ? `${m.min_days} business day${m.min_days === 1 ? "" : "s"}`
+                              : `${m.min_days}-${m.max_days} business days`
+                            : m.max_days
+                              ? `Up to ${m.max_days} business days`
+                              : m.min_days
+                                ? `${m.min_days}+ business days`
+                                : null;
+                          return (
+                            <div key={m.id} className="bg-gray-50 rounded-xl p-4">
+                              <p className="font-semibold text-gray-900 text-sm">{m.name}</p>
+                              <p className="text-gray-500 text-sm mt-1">{eta ?? m.description ?? "Calculated at checkout"}</p>
+                              {product.free_shipping || m.base_rate <= 0 ? (
+                                <p className="text-emerald-600 font-medium text-sm mt-2">FREE</p>
+                              ) : (
+                                <p className="text-gray-700 font-medium text-sm mt-2">
+                                  {formatPrice(m.base_rate, mCur)}
+                                  {m.free_shipping_threshold
+                                    ? ` · Free over ${formatPrice(m.free_shipping_threshold, mCur)}`
+                                    : ""}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600">Shipping options are calculated at checkout.</p>
+                    )}
                   </div>
-                </div>
+                )}
 
-                {/* Returns */}
+                {/* Returns / refunds / replacements — resolved from product overrides + store settings */}
+                {storeReturnsOn && (
                 <div>
                   <h3 className="font-semibold text-gray-900 text-lg mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 8.62 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
                     </svg>
-                    Returns & Warranty
+                    Returns & Refunds
                   </h3>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <div className="flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">30</span>
-                      <div>
-                        <p className="font-medium text-gray-900">30-Day Return Policy</p>
-                        <p>Return any item within 30 days for a full refund. Items must be in original, unworn condition with tags attached.</p>
-                      </div>
+                  {returnAllowed || refundAllowed || replacementAllowed ? (
+                    <div className="space-y-3 text-sm text-gray-600">
+                      {returnAllowed && (
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">{returnDays}</span>
+                          <div>
+                            <p className="font-medium text-gray-900">{returnDays}-Day Return Policy</p>
+                            <p>Return this item within {returnDays} days of delivery. Items must be in original condition.</p>
+                          </div>
+                        </div>
+                      )}
+                      {refundAllowed && (
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-brand-light text-brand flex items-center justify-center flex-shrink-0 text-xs font-bold">{refundDays}</span>
+                          <div>
+                            <p className="font-medium text-gray-900">{refundDays}-Day Refund Policy</p>
+                            <p>Eligible for a refund within {refundDays} days of delivery.</p>
+                          </div>
+                        </div>
+                      )}
+                      {replacementAllowed && (
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">{replacementDays}</span>
+                          <div>
+                            <p className="font-medium text-gray-900">{replacementDays}-Day Replacement</p>
+                            <p>Request a replacement within {replacementDays} days of delivery.</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-brand-light text-brand flex items-center justify-center flex-shrink-0 text-xs font-bold">1Y</span>
-                      <div>
-                        <p className="font-medium text-gray-900">1-Year Warranty</p>
-                        <p>All products come with a standard 1-year manufacturer warranty covering defects in materials and workmanship.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">$</span>
-                      <div>
-                        <p className="font-medium text-gray-900">Price Match Guarantee</p>
-                        <p>Found it cheaper elsewhere? We will match the price. Contact our support team within 7 days of purchase.</p>
-                      </div>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">This item is not eligible for return, refund, or replacement.</p>
+                  )}
                 </div>
+                )}
 
                 {/* Care instructions */}
                 <div>

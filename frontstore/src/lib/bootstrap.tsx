@@ -19,3 +19,9 @@ export function BootstrapProvider({
 export function useBootstrap() {
   return useContext(Ctx);
 }
+
+/** Store module flag (Developer → Modules & Features). Absent codes / missing bootstrap count as enabled. */
+export function useModuleEnabled(code: string): boolean {
+  const bootstrap = useContext(Ctx);
+  return bootstrap?.modules?.[code] !== false;
+}

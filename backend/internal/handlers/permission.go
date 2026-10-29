@@ -45,7 +45,7 @@ func (h *PermissionHandler) GetRolePermissions(c *gin.Context) {
 	tid := tenantID(c)
 	role := models.UserRole(c.Param("role"))
 	switch role {
-	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager:
+	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager, models.RoleDeliveryPartner:
 		// valid
 	default:
 		errResponse(c, http.StatusBadRequest, "invalid role")
@@ -68,7 +68,7 @@ func (h *PermissionHandler) SetRolePermissions(c *gin.Context) {
 	tid := tenantID(c)
 	role := models.UserRole(c.Param("role"))
 	switch role {
-	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager:
+	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager, models.RoleDeliveryPartner:
 		// valid
 	default:
 		errResponse(c, http.StatusBadRequest, "invalid role")
@@ -96,7 +96,7 @@ func (h *PermissionHandler) TogglePermission(c *gin.Context) {
 	tid := tenantID(c)
 	role := models.UserRole(c.Param("role"))
 	switch role {
-	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager:
+	case models.RoleBusinessAdmin, models.RoleStaff, models.RoleCustomer, models.RoleBranchManager, models.RoleDeliveryPartner:
 		// valid
 	default:
 		errResponse(c, http.StatusBadRequest, "invalid role")

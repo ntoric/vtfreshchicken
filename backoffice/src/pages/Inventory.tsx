@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { api, generateIdempotencyKey } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
-import { usePagination, Pagination } from "@/components/Pagination";
+import { Pagination } from "@/components/Pagination";
 import { ActionMenu } from "@/components/ActionMenu";
 import { ReportFilters, type ReportFiltersValue } from "@/components/ReportFilters";
 import { ExportDialog } from "@/components/ExportDialog";
@@ -25,14 +25,18 @@ export function Inventory() {
   const [adjustForm, setAdjustForm] = useState({ new_stock: "", reason: "" });
 
   const statsQ = useQuery({ queryKey: ["inventory-stats", tenant], queryFn: () => api.inventoryStats(tenant) });
+  const [invPage, setInvPage] = useState(0);
+  const invLimit = 10;
   const invQ = useQuery({
-    queryKey: ["inventory", tenant, filter],
-    queryFn: () => api.listInventory(tenant, filter || undefined),
+    queryKey: ["inventory", tenant, filter, search, invPage],
+    queryFn: () => api.listInventory(tenant, { filter: filter || undefined, search: search || undefined, limit: invLimit, offset: invPage * invLimit }),
   });
+  const [movPage, setMovPage] = useState(0);
+  const movLimit = 10;
   const movQ = useQuery({
-    queryKey: ["stock-movements", tenant, movFilters.from, movFilters.to, movFilters.movement_type, movFilters.search],
+    queryKey: ["stock-movements", tenant, movFilters.from, movFilters.to, movFilters.movement_type, movFilters.search, movPage],
     queryFn: () => api.listStockMovements(tenant, {
-      limit: 50, offset: 0,
+      limit: movLimit, offset: movPage * movLimit,
       movement_type: movFilters.movement_type,
       search: movFilters.search,
       from: movFilters.from,
@@ -41,7 +45,8 @@ export function Inventory() {
     enabled: tab === "movements",
   });
 
-  const pg2 = usePagination(movQ.data?.items ?? [], 10);
+  const movTotal = movQ.data?.total ?? 0;
+  const movTotalPages = Math.max(1, Math.ceil(movTotal / movLimit));
 
   const adjustIdemKeyRef = useRef("");
   const adjust = useMutation({
@@ -65,15 +70,9 @@ export function Inventory() {
   });
 
   const stats = statsQ.data;
-  const items = invQ.data?.items ?? [];
-  const filtered = search
-    ? items.filter((i) =>
-        i.product_name.toLowerCase().includes(search.toLowerCase()) ||
-        i.sku.toLowerCase().includes(search.toLowerCase()) ||
-        (i.variant_name || "").toLowerCase().includes(search.toLowerCase()))
-    : items;
-
-  const pg1 = usePagination(filtered, 10);
+  const filtered = invQ.data?.items ?? [];
+  const invTotal = invQ.data?.total ?? 0;
+  const invTotalPages = Math.max(1, Math.ceil(invTotal / invLimit));
 
   return (
     <div>
@@ -81,7 +80,7 @@ export function Inventory() {
         <PageHeader title="Inventory" subtitle="Stock management & movement history" />
         <button
           onClick={() => setExportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
+          className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
         >
           <Download className="w-4 h-4" /> Export CSV
         </button>
@@ -89,7 +88,7 @@ export function Inventory() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total SKUs" value={stats?.total_skus ?? "—"} color="text-slate-900" />
+        <StatCard label="Total SKUs" value={stats?.total_skus ?? "—"} color="text-neutral-900" />
         <StatCard label="In Stock" value={stats?.in_stock ?? "—"} color="text-emerald-600" />
         <StatCard label="Low Stock" value={stats?.low_stock ?? "—"} color="text-amber-600" />
         <StatCard label="Out of Stock" value={stats?.out_of_stock ?? "—"} color="text-rose-600" />
@@ -99,13 +98,13 @@ export function Inventory() {
       <div className="flex gap-1 mb-4 border-b">
         <button
           onClick={() => setTab("inventory")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "inventory" ? "border-brand text-brand" : "border-transparent text-slate-500"}`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "inventory" ? "border-brand text-brand" : "border-transparent text-neutral-500"}`}
         >
           Stock Levels
         </button>
         <button
           onClick={() => setTab("movements")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "movements" ? "border-brand text-brand" : "border-transparent text-slate-500"}`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 ${tab === "movements" ? "border-brand text-brand" : "border-transparent text-neutral-500"}`}
         >
           Movement History
         </button>
@@ -118,10 +117,10 @@ export function Inventory() {
             <input
               placeholder="Search products, SKUs, variants…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setInvPage(0); }}
               className="flex-1 border rounded-lg px-3 py-2 text-sm"
             />
-            <select value={filter} onChange={(e) => setFilter(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+            <select value={filter} onChange={(e) => { setFilter(e.target.value); setInvPage(0); }} className="border rounded-lg px-3 py-2 text-sm">
               <option value="">All items</option>
               <option value="products">Products only</option>
               <option value="variants">Variants only</option>
@@ -133,7 +132,7 @@ export function Inventory() {
           ) : (
             <div className="bg-white rounded-2xl border overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-left">
+                <thead className="bg-neutral-50 text-neutral-500 text-left">
                   <tr>
                     <th className="px-4 py-3 font-medium">Product</th>
                     <th className="px-4 py-3 font-medium">SKU</th>
@@ -144,11 +143,11 @@ export function Inventory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {pg1.pageItems.map((item, idx) => (
-                    <tr key={`${item.product_id}-${item.variant_id || ""}-${idx}`} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-900">{item.product_name}</td>
-                      <td className="px-4 py-3 text-slate-500 font-mono text-xs">{item.sku || "—"}</td>
-                      <td className="px-4 py-3 text-slate-500">{item.variant_name || "—"}</td>
+                  {filtered.map((item, idx) => (
+                    <tr key={`${item.product_id}-${item.variant_id || ""}-${idx}`} className="hover:bg-neutral-50">
+                      <td className="px-4 py-3 font-medium text-neutral-900">{item.product_name}</td>
+                      <td className="px-4 py-3 text-neutral-500 font-mono text-xs">{item.sku || "—"}</td>
+                      <td className="px-4 py-3 text-neutral-500">{item.variant_name || "—"}</td>
                       <td className="px-4 py-3 font-semibold">{item.stock}</td>
                       <td className="px-4 py-3">
                         {item.is_out_of_stock ? (
@@ -175,11 +174,11 @@ export function Inventory() {
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No inventory items found.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No inventory items found.</td></tr>
                   )}
                 </tbody>
               </table>
-              <Pagination page={pg1.page} totalPages={pg1.totalPages} total={pg1.total} start={pg1.start} end={pg1.end} onPage={pg1.setPage} />
+              <Pagination page={invPage} totalPages={invTotalPages} total={invTotal} start={invPage * invLimit} end={Math.min((invPage + 1) * invLimit, invTotal)} onPage={setInvPage} />
             </div>
           )}
 
@@ -189,13 +188,13 @@ export function Inventory() {
               <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
                 <h3 className="font-semibold text-lg">Adjust Stock</h3>
                 <div>
-                  <p className="text-sm text-slate-600">{adjustItem.product_name}</p>
-                  {adjustItem.variant_name && <p className="text-sm text-slate-400">{adjustItem.variant_name}</p>}
-                  <p className="text-sm text-slate-400 mt-1">Current stock: <span className="font-semibold">{adjustItem.stock}</span></p>
+                  <p className="text-sm text-neutral-600">{adjustItem.product_name}</p>
+                  {adjustItem.variant_name && <p className="text-sm text-neutral-400">{adjustItem.variant_name}</p>}
+                  <p className="text-sm text-neutral-400 mt-1">Current stock: <span className="font-semibold">{adjustItem.stock}</span></p>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium text-slate-700">New stock level</label>
+                    <label className="text-sm font-medium text-neutral-700">New stock level</label>
                     <input
                       type="number"
                       value={adjustForm.new_stock}
@@ -204,7 +203,7 @@ export function Inventory() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700">Reason (optional)</label>
+                    <label className="text-sm font-medium text-neutral-700">Reason (optional)</label>
                     <input
                       value={adjustForm.reason}
                       onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
@@ -234,7 +233,7 @@ export function Inventory() {
         <>
           <ReportFilters
             value={movFilters}
-            onChange={setMovFilters}
+            onChange={(v) => { setMovFilters(v); setMovPage(0); }}
             dateRange
             search
             searchPlaceholder="Search product, SKU, reason…"
@@ -253,7 +252,7 @@ export function Inventory() {
           ) : (
             <div className="bg-white rounded-2xl border overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-left">
+                <thead className="bg-neutral-50 text-neutral-500 text-left">
                   <tr>
                     <th className="px-4 py-3 font-medium">Date</th>
                     <th className="px-4 py-3 font-medium">Product</th>
@@ -264,11 +263,11 @@ export function Inventory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {pg2.pageItems.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-xs text-slate-400">{new Date(m.created_at).toLocaleString()}</td>
-                      <td className="px-4 py-3 font-medium text-slate-900">{m.product_name}</td>
-                      <td className="px-4 py-3 text-slate-500">{m.variant_name || "—"}</td>
+                  {(movQ.data?.items ?? []).map((m) => (
+                    <tr key={m.id} className="hover:bg-neutral-50">
+                      <td className="px-4 py-3 text-xs text-neutral-400">{new Date(m.created_at).toLocaleString()}</td>
+                      <td className="px-4 py-3 font-medium text-neutral-900">{m.product_name}</td>
+                      <td className="px-4 py-3 text-neutral-500">{m.variant_name || "—"}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${movementBadge(m.movement_type)}`}>
                           {m.movement_type}
@@ -277,18 +276,18 @@ export function Inventory() {
                       <td className={`px-4 py-3 font-semibold ${m.quantity > 0 ? "text-emerald-600" : "text-rose-600"}`}>
                         {m.quantity > 0 ? "+" : ""}{m.quantity}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">
+                      <td className="px-4 py-3 text-xs text-neutral-400">
                         {m.reason && <p>{m.reason}</p>}
                         {m.reference && <p className="font-mono">Ref: {m.reference.slice(0, 8)}</p>}
                       </td>
                     </tr>
                   ))}
                   {movQ.data && movQ.data.items.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No stock movements match the filters.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No stock movements match the filters.</td></tr>
                   )}
                 </tbody>
               </table>
-              <Pagination page={pg2.page} totalPages={pg2.totalPages} total={pg2.total} start={pg2.start} end={pg2.end} onPage={pg2.setPage} />
+              <Pagination page={movPage} totalPages={movTotalPages} total={movTotal} start={movPage * movLimit} end={Math.min((movPage + 1) * movLimit, movTotal)} onPage={setMovPage} />
             </div>
           )}
         </>
@@ -310,7 +309,7 @@ export function Inventory() {
 function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="bg-white rounded-2xl border p-4">
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-xs text-neutral-500">{label}</p>
       <p className={`text-2xl font-semibold mt-1 ${color}`}>{value}</p>
     </div>
   );
@@ -322,6 +321,6 @@ function movementBadge(type: string): string {
     case "restock": return "bg-emerald-100 text-emerald-700";
     case "adjustment": return "bg-amber-100 text-amber-700";
     case "cancellation": return "bg-blue-100 text-blue-700";
-    default: return "bg-slate-100 text-slate-600";
+    default: return "bg-neutral-100 text-neutral-600";
   }
 }

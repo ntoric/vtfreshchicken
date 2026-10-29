@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -57,6 +58,18 @@ func branchFilter(c *gin.Context) *uuid.UUID {
 func branchRestricted(c *gin.Context) bool {
 	_, ok := c.Get(middleware.CtxBranchID)
 	return ok
+}
+
+// pagingParams parses ?limit=&offset= for server-side paginated list endpoints.
+// A missing or non-positive limit means "return everything" so existing callers
+// that don't pass paging params keep receiving full lists.
+func pagingParams(c *gin.Context) (limit, offset int) {
+	limit, _ = strconv.Atoi(c.DefaultQuery("limit", "0"))
+	offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if offset < 0 {
+		offset = 0
+	}
+	return limit, offset
 }
 
 func errResponse(c *gin.Context, code int, msg string) {

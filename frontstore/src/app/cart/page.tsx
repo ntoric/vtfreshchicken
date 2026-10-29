@@ -203,7 +203,9 @@ export default function CartPage({ params }: { params: {} }) {
                 >
                   Proceed to Checkout
                 </button>
-                <p className="text-xs text-gray-400 text-center">Secure checkout · Free returns within 30 days</p>
+                <p className="text-xs text-gray-400 text-center">
+                  Secure checkout{bootstrapQ.data?.modules?.returns !== false && bootstrapQ.data?.settings?.returns_enabled !== false ? ` · Free returns within ${bootstrapQ.data?.settings?.return_period_days || 30} days` : ""}
+                </p>
               </div>
             </div>
           </div>

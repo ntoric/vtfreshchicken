@@ -326,9 +326,11 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                         <Link href={`/orders`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <Package className="w-4 h-4 text-gray-400" /> Order History
                         </Link>
+                        {bootstrap.modules?.returns !== false && (
                         <Link href={`/orders/returns`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <RotateCcw className="w-4 h-4 text-gray-400" /> My Returns
                         </Link>
+                        )}
                         <Link href={`/wishlist`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-stone-50 transition-colors">
                           <Heart className="w-4 h-4 text-gray-400" /> Wishlist
                         </Link>
@@ -544,9 +546,11 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                       <Link href={`/orders`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <Package className="w-5 h-5 text-gray-400" /> Order History
                       </Link>
+                      {bootstrap.modules?.returns !== false && (
                       <Link href={`/orders/returns`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <RotateCcw className="w-5 h-5 text-gray-400" /> My Returns
                       </Link>
+                      )}
                       <Link href={`/wishlist`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors">
                         <Heart className="w-5 h-5 text-gray-400" /> Wishlist
                       </Link>

@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/trucommerce/backend/internal/models"
 	"github.com/trucommerce/backend/internal/services"
 )
 
@@ -25,18 +24,13 @@ func NewInventoryHandler(store *services.Store) *InventoryHandler {
 func (h *InventoryHandler) ListInventory(c *gin.Context) {
 	filter := c.Query("filter") // "all", "products", "variants"
 	tid := tenantID(c)
-	var items []models.InventoryItem
-	var err error
-	if branchID := branchFilter(c); branchID != nil {
-		items, err = h.store.ListBranchInventory(c.Request.Context(), tid, *branchID, filter)
-	} else {
-		items, err = h.store.ListInventory(c.Request.Context(), tid, filter)
-	}
+	limit, offset := pagingParams(c)
+	items, total, err := h.store.ListInventoryPaged(c.Request.Context(), tid, branchFilter(c), filter, c.Query("search"), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, gin.H{"items": items, "total": total, "limit": limit, "offset": offset})
 }
 
 // InventoryStats returns summary statistics for the inventory dashboard.

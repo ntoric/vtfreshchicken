@@ -29,7 +29,7 @@ import { TestModeBanner, TestCardsPanel } from "@/components/payment/TestCardsPa
 import { formatPrice, getCurrencySymbol } from "@/lib/format";
 import type { AddressInput, CheckoutRequest, PaymentDetails, PaymentGatewayInfo, TestCard } from "@/types";
 import { useCurrencyLang } from "@/lib/currency-lang";
-import { useLocation } from "@/lib/location";
+import { useLocation, deliveryChargeForPoint } from "@/lib/location";
 
 // Delivery address defaults — state/country are fixed by the configured
 // service area and the city comes from the selected delivery area.
@@ -63,7 +63,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
   const qc = useQueryClient();
   const { isAuthenticated, isLoading: authLoading, customer } = useAuth();
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
-  const { area: deliveryArea, serviceable: areaServiceable, openPicker, config: serviceArea, lat: deliveryLat, lng: deliveryLng } = useLocation();
+  const { area: deliveryArea, serviceable: areaServiceable, openPicker, config: serviceArea, lat: deliveryLat, lng: deliveryLng, branch: deliveryBranch, branchForPoint } = useLocation();
   // Single address: delivery address is also used as the billing address
   const [address, setAddress] = useState<AddressInput>({ ...emptyAddress });
   const [shippingMethod, setShippingMethod] = useState("standard");
@@ -241,6 +241,12 @@ export default function CheckoutPage({ params }: { params: {} }) {
   const items = cart?.items ?? [];
   const subtotal = cartQ.data?.subtotal ?? 0;
 
+  // Module feature flags (Developer → Modules & Features)
+  const shippingModuleOn = bootstrap?.modules?.shipping !== false;
+  const taxModuleOn = bootstrap?.modules?.tax !== false;
+  const discountsModuleOn = bootstrap?.modules?.discounts !== false;
+  const returnsModuleOn = bootstrap?.modules?.returns !== false;
+
   // Determine if the cart has any shippable items (physical products)
   const hasShippableItems = items.length === 0 || items.some(i => i.requires_shipping !== false);
 
@@ -260,7 +266,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
         free_shipping: i.free_shipping ?? false,
       })),
     ),
-    enabled: !!cart && items.length > 0 && hasShippableItems && !!address.country,
+    enabled: !!cart && items.length > 0 && hasShippableItems && !!address.country && shippingModuleOn,
     staleTime: 30000,
   });
 
@@ -275,7 +281,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
       setShippingMethod(shippingOptions[0].code);
     }
   }, [shippingOptions, shippingMethod]);
-  // Find the selected option's rate; fall back to legacy hardcoded rates if no options
+  // Find the selected option's rate; default to the first configured option
+  // while the selection is being pinned to a real code by the effect above.
   const selectedOption = shippingOptions.find(o => o.code === shippingMethod);
   // Per-item shipping cost (split-shipment): sum the selected method's rate for each shippable item
   const perItemShippingCost = (() => {
@@ -290,19 +297,37 @@ export default function CheckoutPage({ params }: { params: {} }) {
     });
     return total;
   })();
-  const shippingCost = !hasShippableItems
+  const shippingCost = !hasShippableItems || !shippingModuleOn
     ? 0
     : splitShipping
       ? perItemShippingCost
-      : selectedOption
-        ? selectedOption.rate
-        : freeDeliveryOnly
-          ? 0
-          : shippingMethod === "express" ? 15 : subtotal >= 50 ? 0 : 5.99;
+      : (selectedOption ?? shippingOptions[0])?.rate ?? 0;
 
-  // Calculate tax from server when the delivery country is available
+  // Distance-based delivery charge: when the shipping module is disabled,
+  // the fulfilling branch's service zones set the fee from the customer's
+  // distance (exact map location only — named-area picks have no coords and
+  // stay free). The backend recomputes the same fee at order time.
+  const zoneFeeBranch = deliveryLat != null && deliveryLng != null
+    ? (branchForPoint(deliveryLat, deliveryLng) ?? deliveryBranch)
+    : deliveryBranch;
+  const zoneDeliveryFee = !shippingModuleOn && hasShippableItems
+    ? deliveryChargeForPoint(zoneFeeBranch, deliveryLat, deliveryLng)
+    : null;
+  const deliveryFee = zoneDeliveryFee ?? 0;
+
+  // Discount validation
+  const discountQ = useQuery({
+    queryKey: ["discount-validate", discountCode, subtotal],
+    queryFn: () => validateDiscountCode(discountCode, subtotal),
+    enabled: !!cart && items.length > 0 && discountCode.length > 0 && discountsModuleOn,
+    staleTime: 30000,
+  });
+  const discountAmount = discountQ.data?.valid ? (discountQ.data.discount || 0) : 0;
+
+  // Calculate tax from server when the delivery country is available.
+  // The discount feeds the taxable base so the preview matches the order.
   const taxQ = useQuery({
-    queryKey: ["tax", address.country, address.state, shippingMethod, splitShipping, JSON.stringify(itemShippingMethods), subtotal, items.map(i => `${i.id}:${i.quantity}:${i.line_total}`).join(",")],
+    queryKey: ["tax", address.country, address.state, shippingMethod, splitShipping, JSON.stringify(itemShippingMethods), subtotal, discountAmount, deliveryFee, items.map(i => `${i.id}:${i.quantity}:${i.line_total}`).join(",")],
     queryFn: () => calculateTax(
       items.map(i => ({
         product_id: i.product_id,
@@ -313,24 +338,16 @@ export default function CheckoutPage({ params }: { params: {} }) {
         tax_class_id: i.tax_class_id,
       })),
       { line1: address.line1, city: address.city, state: address.state, postal_code: address.postal_code, country: address.country },
-      shippingCost,
+      shippingCost + deliveryFee,
+      discountAmount,
     ),
-    enabled: !!cart && items.length > 0 && !!address.country,
+    enabled: !!cart && items.length > 0 && !!address.country && taxModuleOn,
     staleTime: 30000,
   });
 
-  const tax = taxQ.data?.tax_total ?? 0;
+  const tax = taxModuleOn ? (taxQ.data?.tax_total ?? 0) : 0;
   const taxBreakdown = taxQ.data?.breakdown ?? [];
-
-  // Discount validation
-  const discountQ = useQuery({
-    queryKey: ["discount-validate", discountCode, subtotal],
-    queryFn: () => validateDiscountCode(discountCode, subtotal),
-    enabled: !!cart && items.length > 0 && discountCode.length > 0,
-    staleTime: 30000,
-  });
-  const discountAmount = discountQ.data?.valid ? (discountQ.data.discount || 0) : 0;
-  const total = subtotal - discountAmount + shippingCost + tax;
+  const total = subtotal - discountAmount + shippingCost + deliveryFee + tax;
 
   // Auto-select first available payment method
   useEffect(() => {
@@ -449,7 +466,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
     if (!idemKeyRef.current) {
       idemKeyRef.current = generateIdempotencyKey();
     }
-    const itemShippingMethodsArr = splitShipping
+    const itemShippingMethodsArr = splitShipping && shippingModuleOn
       ? Object.entries(itemShippingMethods).map(([idx, code]) => ({ cart_item_index: parseInt(idx), method_code: code }))
       : undefined;
     const req: CheckoutRequest = {
@@ -459,8 +476,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
       payment_method: selectedMethod!,
       payment_details: paymentDetails ?? undefined,
       currency_code: currency,
-      discount_code: discountCode || undefined,
-      shipping_method: hasShippableItems ? shippingMethod : "",
+      discount_code: discountsModuleOn ? discountCode || undefined : undefined,
+      shipping_method: hasShippableItems && shippingModuleOn ? shippingMethod : "",
       notes: notes || undefined,
       item_shipping_methods: itemShippingMethodsArr,
       delivery_area: deliveryArea ?? undefined,
@@ -468,7 +485,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
       delivery_lng: deliveryLng ?? undefined,
     };
     placeOrderMut.mutate(req);
-  }, [address, isAuthenticated, selectedMethod, paymentDetails, currency, discountCode, notes, shippingMethod, hasShippableItems, splitShipping, itemShippingMethods, placeOrderMut, deliveryArea, deliveryLat, deliveryLng, areaServiceable, openPicker]);
+  }, [address, isAuthenticated, selectedMethod, paymentDetails, currency, discountCode, notes, shippingMethod, hasShippableItems, shippingModuleOn, discountsModuleOn, splitShipping, itemShippingMethods, placeOrderMut, deliveryArea, deliveryLat, deliveryLng, areaServiceable, openPicker]);
 
   if (bootstrapQ.isLoading) {
     return <CartSkeleton />;
@@ -571,6 +588,14 @@ export default function CheckoutPage({ params }: { params: {} }) {
                     <span className="text-gray-800 truncate">
                       Delivering to <strong>{deliveryArea}</strong>
                       {serviceArea.label ? `, ${serviceArea.label}` : ""}
+                      {!shippingModuleOn && areaServiceable && zoneDeliveryFee != null && (
+                        <span className="text-xs text-gray-500">
+                          {" · "}
+                          {zoneDeliveryFee > 0
+                            ? `${formatPrice(zoneDeliveryFee, currencyObj)} delivery`
+                            : "free delivery"}
+                        </span>
+                      )}
                     </span>
                   ) : (
                     <span className="text-gray-500">Select your delivery area</span>
@@ -728,8 +753,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
               </FormField>
             </div>
 
-            {/* Delivery Method (only when items need shipping) */}
-            {hasShippableItems ? (
+            {/* Delivery Method (only when items need shipping and the shipping module is enabled) */}
+            {hasShippableItems && shippingModuleOn ? (
               <div className="bg-white rounded-2xl border p-4 sm:p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -823,39 +848,14 @@ export default function CheckoutPage({ params }: { params: {} }) {
                       </label>
                     ))
                   ) : (
-                    <>
-                      <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${
-                        shippingMethod === "standard" ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"
-                      }`}>
-                        <div className="flex items-center gap-3">
-                          <input type="radio" checked={shippingMethod === "standard"} onChange={() => setShippingMethod("standard")} className="text-brand" />
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">Standard Shipping</p>
-                            <p className="text-xs text-gray-500">3-5 business days</p>
-                          </div>
-                        </div>
-                        <span className="font-bold text-gray-900 text-sm">
-                          {subtotal >= 50 ? <span className="text-emerald-600">FREE</span> : formatPrice(5.99, currencyObj)}
-                        </span>
-                      </label>
-                      <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${
-                        shippingMethod === "express" ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"
-                      }`}>
-                        <div className="flex items-center gap-3">
-                          <input type="radio" checked={shippingMethod === "express"} onChange={() => setShippingMethod("express")} className="text-brand" />
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">Express Shipping</p>
-                            <p className="text-xs text-gray-500">1-2 business days</p>
-                          </div>
-                        </div>
-                        <span className="font-bold text-gray-900 text-sm">{formatPrice(15, currencyObj)}</span>
-                      </label>
-                    </>
+                    <p className="text-sm text-gray-500">
+                      No shipping options are configured. Enable a shipping method in the backoffice.
+                    </p>
                   )}
                 </div>
                 )}
               </div>
-            ) : (
+            ) : !shippingModuleOn ? null : (
               <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 sm:p-6">
                 <p className="font-medium text-emerald-700 text-sm">No shipping required</p>
                 <p className="text-xs text-emerald-600 mt-0.5">Your cart contains only digital/no-shipping items.</p>
@@ -1056,20 +1056,38 @@ export default function CheckoutPage({ params }: { params: {} }) {
                     <span className="font-medium text-emerald-600">−{formatPrice(discountAmount, currencyObj)}</span>
                   </div>
                 )}
-                {hasShippableItems && (
+                {hasShippableItems && shippingModuleOn && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
                   <span className="font-medium">
-                    {shippingCost === 0 ? <span className="text-emerald-600">FREE</span> : formatPrice(shippingCost, currencyObj)}
+                    {shippingQ.isLoading
+                      ? <span className="text-gray-400">…</span>
+                      : shippingCost === 0
+                        ? <span className="text-emerald-600">FREE</span>
+                        : formatPrice(shippingCost, currencyObj)}
                   </span>
                 </div>
                 )}
+                {hasShippableItems && !shippingModuleOn && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery charge</span>
+                  <span className="font-medium">
+                    {zoneDeliveryFee != null && zoneDeliveryFee > 0
+                      ? formatPrice(zoneDeliveryFee, currencyObj)
+                      : <span className="text-emerald-600">FREE</span>}
+                  </span>
+                </div>
+                )}
+                {taxModuleOn && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     Tax{taxBreakdown.length > 0 ? ` (${taxBreakdown.map(b => b.rate).join(" + ")}%)` : ""}
                   </span>
-                  <span className="font-medium">{formatPrice(tax, currencyObj)}</span>
+                  <span className="font-medium">
+                    {taxQ.isLoading ? <span className="text-gray-400">…</span> : formatPrice(tax, currencyObj)}
+                  </span>
                 </div>
+                )}
               </div>
 
               <div className="border-t pt-4 flex justify-between items-baseline">
@@ -1085,12 +1103,14 @@ export default function CheckoutPage({ params }: { params: {} }) {
                   </svg>
                   Secure SSL encrypted checkout
                 </div>
+                {returnsModuleOn && bootstrap.settings?.returns_enabled !== false && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
-                  30-day free returns
+                  {bootstrap.settings?.return_period_days || 30}-day free returns
                 </div>
+                )}
               </div>
             </div>
           </div>

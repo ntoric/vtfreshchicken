@@ -5,6 +5,7 @@ import { Plus, ExternalLink, Trash2, FileText, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
 import { PAGE_TYPES } from "@/types";
@@ -19,9 +20,11 @@ export function Pages() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ slug: "", title: "", page_type: "custom" });
 
+  const [page, setPage] = useState(0);
+  const limit = 10;
   const q = useQuery({
-    queryKey: ["pages", tenant],
-    queryFn: () => api.listPages(tenant!),
+    queryKey: ["pages", tenant, page],
+    queryFn: () => api.listPages(tenant!, { limit, offset: page * limit }),
     enabled: !!tenant,
   });
 
@@ -42,12 +45,14 @@ export function Pages() {
 
   if (q.isLoading) return <TableSkeleton />;
   const pages = q.data?.items ?? [];
+  const total = q.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
     <div>
       <PageHeader
         title="Store Pages"
-        subtitle={`${pages.length} pages`}
+        subtitle={`${total} pages`}
         action={
           <button onClick={() => setShowForm((s) => !s)} className="bg-brand text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-brand-dark inline-flex items-center gap-1">
             <Plus className="w-4 h-4" /> New Page
@@ -95,7 +100,7 @@ export function Pages() {
 
       <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-left border-b">
+          <thead className="bg-neutral-50 text-neutral-500 text-left border-b">
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Slug</th>
@@ -107,15 +112,15 @@ export function Pages() {
           </thead>
           <tbody>
             {pages.map((p: StorePage) => (
-              <tr key={p.id} className="border-b hover:bg-slate-50 transition">
+              <tr key={p.id} className="border-b hover:bg-neutral-50 transition">
                 <td className="px-4 py-3">
-                  <Link to={`/pages/${p.id}/edit`} className="font-medium text-slate-900 hover:text-brand inline-flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-slate-400" />
+                  <Link to={`/pages/${p.id}/edit`} className="font-medium text-neutral-900 hover:text-brand inline-flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-neutral-400" />
                     {p.title || p.slug}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.slug}</td>
-                <td className="px-4 py-3 text-slate-600">{PAGE_TYPE_LABELS[p.page_type] || p.page_type}</td>
+                <td className="px-4 py-3 text-neutral-500 font-mono text-xs">{p.slug}</td>
+                <td className="px-4 py-3 text-neutral-600">{PAGE_TYPE_LABELS[p.page_type] || p.page_type}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                     p.status === "published" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
@@ -123,14 +128,14 @@ export function Pages() {
                     {p.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">{new Date(p.updated_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-xs text-neutral-400">{new Date(p.updated_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <a
                       href={`/t/${tenant}/p/${p.slug}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-400 hover:text-brand"
+                      className="text-neutral-400 hover:text-brand"
                       title="Preview"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -143,7 +148,7 @@ export function Pages() {
                           confirmLabel: "Delete",
                           onConfirm: () => deleteMut.mutate(p.id),
                         })}
-                        className="text-slate-400 hover:text-rose-500"
+                        className="text-neutral-400 hover:text-rose-500"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -155,13 +160,14 @@ export function Pages() {
             ))}
             {pages.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
                   No pages yet. Click "New Page" to create one.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        <Pagination page={page} totalPages={totalPages} total={total} start={page * limit} end={Math.min((page + 1) * limit, total)} onPage={setPage} />
       </div>
 
       <ConfirmDialog {...confirmDlg.props} />

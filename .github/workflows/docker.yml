@@ -1,0 +1,88 @@
+name: Build & Push Docker Images
+
+# Builds the production image for each service and pushes to Docker Hub.
+#
+# Required GitHub secrets:
+#   DOCKERHUB_USERNAME - Docker Hub username (or org) used to log in
+#   DOCKERHUB_TOKEN    - Docker Hub access token (not the account password)
+#
+# Optional GitHub variables:
+#   DOCKERHUB_NAMESPACE       - image namespace (default: "ntoric")
+#   INTERNAL_API_BASE_URL     - backend URL baked into frontstore rewrites (default: "http://backend:8080")
+#   INTERNAL_BACKOFFICE_URL   - backoffice URL baked into frontstore rewrites (default: "http://backoffice:5173")
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE || 'ntoric' }}
+
+jobs:
+  build:
+    name: ${{ matrix.service.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: backend
+            context: ./backend
+            image: vtchicken_backend
+          - name: frontstore
+            context: ./frontstore
+            image: vtchicken_frontstore
+          - name: backoffice
+            context: ./backoffice
+            image: vtchicken_backoffice
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Uncomment for multi-arch builds (e.g. linux/amd64,linux/arm64).
+      # Also add docker/setup-qemu-action@v3 and set `platforms` below.
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_NAMESPACE }}/${{ matrix.service.image }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=production,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          target: production
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+          # Only used by the frontstore Dockerfile; harmless warnings elsewhere.
+          build-args: |
+            INTERNAL_API_BASE_URL=${{ vars.INTERNAL_API_BASE_URL || 'http://backend:8080' }}
+            INTERNAL_BACKOFFICE_URL=${{ vars.INTERNAL_BACKOFFICE_URL || 'http://backoffice:5173' }}

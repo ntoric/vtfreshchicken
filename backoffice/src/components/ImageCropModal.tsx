@@ -219,9 +219,9 @@ export function ImageCropModal({
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-2">
             <CropIcon className="w-5 h-5 text-brand" />
-            <h2 className="font-semibold text-slate-900">Crop & Resize Image</h2>
+            <h2 className="font-semibold text-neutral-900">Crop & Resize Image</h2>
           </div>
-          <button onClick={onCancel} className="text-slate-400 hover:text-slate-700 transition">
+          <button onClick={onCancel} className="text-neutral-400 hover:text-neutral-700 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -230,7 +230,7 @@ export function ImageCropModal({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Crop area */}
-            <div className="flex-1 bg-slate-100 rounded-xl p-4 flex items-center justify-center min-h-[300px] overflow-hidden">
+            <div className="flex-1 bg-neutral-100 rounded-xl p-4 flex items-center justify-center min-h-[300px] overflow-hidden">
               <div style={{ transform: `rotate(${rotation}deg) scale(${scale})`, transition: "transform 0.2s" }}>
                 <ReactCrop
                   crop={crop}
@@ -254,7 +254,7 @@ export function ImageCropModal({
             <div className="lg:w-64 space-y-5">
               {/* Aspect ratio */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Aspect Ratio</label>
+                <label className="block text-xs font-medium text-neutral-600 mb-2">Aspect Ratio</label>
                 <div className="flex flex-wrap gap-1.5">
                   {ASPECT_PRESETS.map((p) => (
                     <button
@@ -263,7 +263,7 @@ export function ImageCropModal({
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
                         aspect === p.value
                           ? "bg-brand text-white border-transparent"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300"
                       }`}
                     >
                       {p.label}
@@ -274,7 +274,7 @@ export function ImageCropModal({
 
               {/* Output size */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Max Output Size</label>
+                <label className="block text-xs font-medium text-neutral-600 mb-2">Max Output Size</label>
                 <div className="flex flex-wrap gap-1.5">
                   {SIZE_PRESETS.map((s) => (
                     <button
@@ -283,7 +283,7 @@ export function ImageCropModal({
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
                         maxSize === s.value
                           ? "bg-brand text-white border-transparent"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300"
                       }`}
                     >
                       {s.label}
@@ -291,7 +291,7 @@ export function ImageCropModal({
                   ))}
                 </div>
                 {maxSize > 0 && (
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-neutral-400 mt-1">
                     Image will be resized so the longest side is {maxSize}px
                   </p>
                 )}
@@ -299,15 +299,15 @@ export function ImageCropModal({
 
               {/* Rotation */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">
+                <label className="block text-xs font-medium text-neutral-600 mb-2">
                   Rotation: {rotation}°
                 </label>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setRotation((r) => (r - 90) % 360)}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition"
                   >
-                    <RotateCw className="w-4 h-4 text-slate-600 rotate-180" />
+                    <RotateCw className="w-4 h-4 text-neutral-600 rotate-180" />
                   </button>
                   <input
                     type="range"
@@ -319,24 +319,24 @@ export function ImageCropModal({
                   />
                   <button
                     onClick={() => setRotation((r) => (r + 90) % 360)}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition"
                   >
-                    <RotateCw className="w-4 h-4 text-slate-600" />
+                    <RotateCw className="w-4 h-4 text-neutral-600" />
                   </button>
                 </div>
               </div>
 
               {/* Zoom */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">
+                <label className="block text-xs font-medium text-neutral-600 mb-2">
                   Zoom: {scale.toFixed(2)}x
                 </label>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition"
                   >
-                    <ZoomOut className="w-4 h-4 text-slate-600" />
+                    <ZoomOut className="w-4 h-4 text-neutral-600" />
                   </button>
                   <input
                     type="range"
@@ -349,16 +349,16 @@ export function ImageCropModal({
                   />
                   <button
                     onClick={() => setScale((s) => Math.min(3, s + 0.1))}
-                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    className="p-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition"
                   >
-                    <ZoomIn className="w-4 h-4 text-slate-600" />
+                    <ZoomIn className="w-4 h-4 text-neutral-600" />
                   </button>
                 </div>
               </div>
 
               {/* Image info */}
               {imgNaturalSize.w > 0 && (
-                <div className="text-xs text-slate-400 bg-slate-50 rounded-lg p-2">
+                <div className="text-xs text-neutral-400 bg-neutral-50 rounded-lg p-2">
                   <p>Original: {imgNaturalSize.w} × {imgNaturalSize.h}px</p>
                   {completedCrop && (
                     <p>
@@ -372,11 +372,11 @@ export function ImageCropModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-4 border-t bg-neutral-50">
           <button
             onClick={handleSkipCrop}
             disabled={uploading}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition disabled:opacity-50"
           >
             Skip Crop
           </button>
@@ -384,7 +384,7 @@ export function ImageCropModal({
             <button
               onClick={onCancel}
               disabled={uploading}
-              className="px-4 py-2 text-sm font-medium text-slate-600 border rounded-lg hover:bg-slate-100 transition disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-neutral-600 border rounded-lg hover:bg-neutral-100 transition disabled:opacity-50"
             >
               Cancel
             </button>

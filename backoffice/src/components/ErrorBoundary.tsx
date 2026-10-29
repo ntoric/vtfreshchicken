@@ -39,8 +39,8 @@ class ErrorBoundary extends Component<Props, State> {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h2>
-          <p className="text-sm text-slate-500 max-w-md mb-1">
+          <h2 className="text-xl font-bold text-neutral-900 mb-2">Something went wrong</h2>
+          <p className="text-sm text-neutral-500 max-w-md mb-1">
             An unexpected error occurred while rendering this page.
           </p>
           {this.state.error?.message && (
@@ -57,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+              className="border border-neutral-300 text-neutral-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-50 transition"
             >
               Reload page
             </button>

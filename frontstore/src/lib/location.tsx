@@ -35,6 +35,40 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** A branch's outer delivery boundary — the outermost service ring when
+ *  zones are configured, otherwise the plain radius circle. */
+export function branchEffectiveRadiusKm(b: Branch): number {
+  if (b.service_zones && b.service_zones.length > 0) {
+    return Math.max(0, ...b.service_zones.map((z) => z.radius_km));
+  }
+  return b.radius_km;
+}
+
+/** Zone-based delivery fee for a point inside a branch's service rings.
+ *  Mirrors the backend: the first ring whose radius covers the distance
+ *  applies; per_km rates charge the distance beyond the previous ring.
+ *  Returns null when no zone charge applies (no zones, missing coords, or
+ *  the point lies outside the outermost ring). */
+export function deliveryChargeForPoint(
+  branch: Branch | null | undefined,
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): number | null {
+  if (!branch || lat == null || lng == null || !branch.service_zones?.length) return null;
+  const zones = [...branch.service_zones].sort((a, b) => a.radius_km - b.radius_km);
+  const d = haversineKm(lat, lng, branch.center_lat, branch.center_lng);
+  let inner = 0;
+  for (const z of zones) {
+    if (d <= z.radius_km) {
+      if (z.charge_type === "flat") return Math.round(z.charge * 100) / 100;
+      if (z.charge_type === "per_km") return Math.round(z.charge * Math.max(0, d - inner) * 100) / 100;
+      return 0;
+    }
+    inner = z.radius_km;
+  }
+  return null;
+}
+
 // Location preference is kept in session storage (per browsing session).
 const STORAGE_KEY = "tc_delivery_area";
 const PROMPTED_KEY = "tc_location_prompted";
@@ -102,6 +136,10 @@ export interface LocationState {
   branchForPoint: (lat: number, lng: number) => Branch | null;
   /** Branch whose named-area list contains the name. */
   branchForArea: (name: string) => Branch | null;
+  /** Every branch covering the point — for multi-branch product listing. */
+  coveringBranches: (lat: number, lng: number) => Branch[];
+  /** Every branch serving the named area. */
+  branchesForArea: (name: string) => Branch[];
 }
 
 const Ctx = createContext<LocationState | null>(null);
@@ -147,9 +185,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       let best: Branch | null = null;
       let bestDist = Infinity;
       for (const b of branches) {
-        if (b.radius_km <= 0) continue;
+        const r = branchEffectiveRadiusKm(b);
+        if (r <= 0) continue;
         const d = haversineKm(la, ln, b.center_lat, b.center_lng);
-        if (d <= b.radius_km && d < bestDist) {
+        if (d <= r && d < bestDist) {
           bestDist = d;
           best = b;
         }
@@ -163,6 +202,23 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     (name: string): Branch | null => {
       const n = name.trim().toLowerCase();
       return branches.find((b) => (b.areas ?? []).some((a) => a.toLowerCase() === n)) ?? null;
+    },
+    [branches],
+  );
+
+  const coveringBranches = useCallback(
+    (la: number, ln: number): Branch[] =>
+      branches.filter((b) => {
+        const r = branchEffectiveRadiusKm(b);
+        return r > 0 && haversineKm(la, ln, b.center_lat, b.center_lng) <= r;
+      }),
+    [branches],
+  );
+
+  const branchesForArea = useCallback(
+    (name: string): Branch[] => {
+      const n = name.trim().toLowerCase();
+      return branches.filter((b) => (b.areas ?? []).some((a) => a.toLowerCase() === n));
     },
     [branches],
   );
@@ -220,7 +276,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       area, serviceable, config, branches, areaGroups, branch, lat, lng, pickerOpen,
-      setArea, openPicker, closePicker, isPointServiceable, isAreaServiceable, branchForPoint, branchForArea,
+      setArea, openPicker, closePicker, isPointServiceable, isAreaServiceable, branchForPoint, branchForArea, coveringBranches, branchesForArea,
     }}>
       {children}
     </Ctx.Provider>
@@ -244,6 +300,8 @@ const FALLBACK: LocationState = {
   isAreaServiceable: () => true,
   branchForPoint: () => null,
   branchForArea: () => null,
+  coveringBranches: () => [],
+  branchesForArea: () => [],
 };
 
 export function useLocation(): LocationState {

@@ -10,8 +10,9 @@ import type { Permission, RolePermission, UserRole } from "@/types";
 
 const MANAGEABLE_ROLES: { role: UserRole; label: string; color: string }[] = [
   { role: "business_admin", label: "Business Admin", color: "bg-blue-100 text-blue-700" },
-  { role: "staff", label: "Staff", color: "bg-slate-100 text-slate-600" },
+  { role: "staff", label: "Staff", color: "bg-neutral-100 text-neutral-600" },
   { role: "customer", label: "Customer", color: "bg-emerald-50 text-emerald-600" },
+  { role: "delivery_partner", label: "Delivery Partner", color: "bg-emerald-100 text-emerald-700" },
 ];
 
 export function Permissions() {
@@ -119,7 +120,7 @@ export function Permissions() {
     return (
       <div>
         <PageHeader title="Permissions" />
-        <div className="bg-white rounded-2xl border p-8 text-center text-slate-500">
+        <div className="bg-white rounded-2xl border p-8 text-center text-neutral-500">
           Only business admins and superadmins can manage permissions.
         </div>
       </div>
@@ -140,7 +141,7 @@ export function Permissions() {
               onConfirm: () => seed.mutate(),
             })}
             disabled={seed.isPending}
-            className="border px-3 py-1.5 rounded-md text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+            className="border px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 disabled:opacity-50"
           >
             {seed.isPending ? "Seeding…" : "Reset to Defaults"}
           </button>
@@ -156,7 +157,7 @@ export function Permissions() {
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
               activeRole === r.role
                 ? "bg-brand text-white"
-                : "bg-white border text-slate-600 hover:bg-slate-50"
+                : "bg-white border text-neutral-600 hover:bg-neutral-50"
             }`}
           >
             {r.label}
@@ -170,7 +171,7 @@ export function Permissions() {
       {/* Bulk actions */}
       <div className="flex gap-2 mb-4">
         <button onClick={handleSelectAll} className="text-xs text-brand hover:underline">Select All</button>
-        <span className="text-slate-300">|</span>
+        <span className="text-neutral-300">|</span>
         <button onClick={handleClearAll} className="text-xs text-rose-500 hover:underline">Clear All</button>
       </div>
 
@@ -180,25 +181,25 @@ export function Permissions() {
         <div className="space-y-6">
           {moduleGroups.map(([module, perms]) => (
             <div key={module} className="bg-white rounded-2xl border overflow-x-auto">
-              <div className="bg-slate-50 px-4 py-2.5 border-b">
-                <h3 className="font-semibold text-slate-700 capitalize">{module}</h3>
+              <div className="bg-neutral-50 px-4 py-2.5 border-b">
+                <h3 className="font-semibold text-neutral-700 capitalize">{module}</h3>
               </div>
               <table className="w-full text-sm">
                 <tbody className="divide-y">
                   {perms.map((p) => {
                     const granted = grantedMap.get(p.id) ?? false;
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50">
+                      <tr key={p.id} className="hover:bg-neutral-50">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">{p.code}</div>
-                          <div className="text-xs text-slate-400">{p.description}</div>
+                          <div className="font-medium text-neutral-900">{p.code}</div>
+                          <div className="text-xs text-neutral-400">{p.description}</div>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => handleToggle(p.id, granted, p.code)}
                             disabled={toggle.isPending}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-50 ${
-                              granted ? "bg-emerald-500" : "bg-slate-300"
+                              granted ? "bg-emerald-500" : "bg-neutral-300"
                             }`}
                           >
                             <span

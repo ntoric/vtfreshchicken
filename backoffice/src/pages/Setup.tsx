@@ -19,7 +19,7 @@ export function Setup() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState("");
-  const [brandColor, setBrandColor] = useState("#4f46e5");
+  const [brandColor, setBrandColor] = useState("#dc2626");
 
   useEffect(() => {
     api
@@ -67,7 +67,7 @@ export function Setup() {
 
   if (loadingStatus) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-900 via-red-900 to-neutral-900">
         <Spinner size={32} className="text-white" />
       </div>
     );
@@ -75,22 +75,22 @@ export function Setup() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-900 via-red-900 to-neutral-900 p-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
             <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Setup Complete!</h1>
-          <p className="text-slate-500 text-sm mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Setup Complete!</h1>
+          <p className="text-neutral-500 text-sm mb-6">
             Your store is ready. You can now sign in with your admin credentials.
           </p>
-          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left text-sm space-y-2">
-            <p className="text-slate-600">
+          <div className="bg-neutral-50 rounded-xl p-4 mb-6 text-left text-sm space-y-2">
+            <p className="text-neutral-600">
               <span className="font-medium">Store:</span> {storeName}
             </p>
-            <p className="text-slate-600">
+            <p className="text-neutral-600">
               <span className="font-medium">Admin:</span> {adminEmail}
             </p>
           </div>
@@ -106,22 +106,22 @@ export function Setup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-900 via-red-900 to-neutral-900 p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand text-white font-bold text-xl mb-3">
             TC
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Welcome to TruCommerce</h1>
-          <p className="text-slate-500 text-sm mt-1">Let's set up your store</p>
+          <h1 className="text-2xl font-bold text-neutral-900">Welcome to TruCommerce</h1>
+          <p className="text-neutral-500 text-sm mt-1">Let's set up your store</p>
         </div>
 
         <form onSubmit={handleComplete} className="space-y-4">
-          <div className="bg-indigo-50 rounded-lg p-3 text-sm text-indigo-700">
+          <div className="bg-red-50 rounded-lg p-3 text-sm text-red-700">
             Create your store and its administrator account.
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Store Name</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Store Name</label>
             <input
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
@@ -130,7 +130,7 @@ export function Setup() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description <span className="text-slate-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Description <span className="text-neutral-400 font-normal">(optional)</span></label>
             <input
               value={storeDesc}
               onChange={(e) => setStoreDesc(e.target.value)}
@@ -139,7 +139,7 @@ export function Setup() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Brand Color</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Brand Color</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -156,11 +156,11 @@ export function Setup() {
           </div>
 
           <div className="border-t pt-4">
-            <p className="text-sm font-semibold text-slate-700 mb-3">Store Administrator</p>
+            <p className="text-sm font-semibold text-neutral-700 mb-3">Store Administrator</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Admin Name</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Admin Name</label>
             <input
               value={adminName}
               onChange={(e) => setAdminName(e.target.value)}
@@ -169,7 +169,7 @@ export function Setup() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Admin Email</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Admin Email</label>
             <input
               type="email"
               value={adminEmail}
@@ -180,7 +180,7 @@ export function Setup() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password <span className="text-slate-400 font-normal">(min 6)</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Password <span className="text-neutral-400 font-normal">(min 6)</span></label>
               <input
                 type="password"
                 value={adminPassword}
@@ -189,7 +189,7 @@ export function Setup() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Confirm Password</label>
               <input
                 type="password"
                 value={adminPasswordConfirm}

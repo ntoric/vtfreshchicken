@@ -10,6 +10,12 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM base AS builder
+# Rewrites in next.config.js are resolved at build time, so the internal
+# service URLs must be set before `npm run build`. Defaults match compose.
+ARG INTERNAL_API_BASE_URL=http://backend:8080
+ARG INTERNAL_BACKOFFICE_URL=http://backoffice:5173
+ENV INTERNAL_API_BASE_URL=$INTERNAL_API_BASE_URL \
+    INTERNAL_BACKOFFICE_URL=$INTERNAL_BACKOFFICE_URL
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .

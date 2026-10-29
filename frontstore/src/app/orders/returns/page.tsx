@@ -34,11 +34,12 @@ export default function MyReturnsPage({ params }: { params: {} }) {
   });
   const bootstrap = bootstrapQ.data;
   const currencyObj: Currency | undefined = getCurrencySymbol(bootstrap?.currencies || [], currency);
+  const returnsModuleOn = bootstrap?.modules?.returns !== false;
 
   const returnsQ = useQuery({
     queryKey: ["my-returns"],
     queryFn: () => listMyReturns(50),
-    enabled: isAuthenticated && !!bootstrapQ.data,
+    enabled: isAuthenticated && !!bootstrapQ.data && returnsModuleOn,
   });
 
   const returns = returnsQ.data?.items ?? [];
@@ -49,6 +50,25 @@ export default function MyReturnsPage({ params }: { params: {} }) {
   }
   if (!bootstrap) {
     return <div className="min-h-screen flex items-center justify-center text-rose-500">Failed to load store.</div>;
+  }
+
+  // Returns & Refunds module disabled — the page is unavailable.
+  if (!returnsModuleOn) {
+    return (
+      <div className="min-h-screen">
+        <Header bootstrap={bootstrap} currency={currency} setCurrency={() => {}} lang={lang} setLang={setLang} />
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">My Returns</h1>
+          <p className="text-gray-500 mb-6">Returns and refunds are not available for this store.</p>
+          <Link
+            href={`/orders`}
+            className="inline-block bg-brand text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-brand-dark transition"
+          >
+            View Orders
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

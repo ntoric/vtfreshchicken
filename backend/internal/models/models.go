@@ -186,32 +186,45 @@ type ServiceArea struct {
 	Areas     []string `json:"areas"`
 }
 
+// ServiceZone is one concentric delivery ring of a branch's service area.
+// Zones are stored sorted by RadiusKm ascending; a delivery at distance d is
+// charged by the first zone whose RadiusKm >= d. ChargeType is "free", "flat"
+// or "per_km"; Charge is the flat amount or the per-km rate (for per_km, the
+// rate applies to the distance beyond the previous zone's outer radius).
+type ServiceZone struct {
+	RadiusKm   float64 `json:"radius_km"`
+	ChargeType string  `json:"charge_type"` // free | flat | per_km
+	Charge     float64 `json:"charge"`
+	Label      string  `json:"label,omitempty"`
+}
+
 // Branch is a physical outlet of the store. Each branch defines its own
 // delivery service area (a circle plus a list of named areas). When at least
 // one active branch exists, orders are only accepted inside a branch's
 // service area and are assigned to the nearest covering branch.
 type Branch struct {
-	ID         UUID      `json:"id"`
-	TenantID   UUID      `json:"tenant_id"`
-	Name       string    `json:"name"`
-	Slug       string    `json:"slug"`
-	Phone      string    `json:"phone"`
-	Email      string    `json:"email"`
-	Line1      string    `json:"line1"`
-	Line2      string    `json:"line2"`
-	City       string    `json:"city"`
-	State      string    `json:"state"`
-	PostalCode string    `json:"postal_code"`
-	Country    string    `json:"country"`
-	CenterLat  float64   `json:"center_lat"`
-	CenterLng  float64   `json:"center_lng"`
-	RadiusKm   float64   `json:"radius_km"`
-	Areas      []string  `json:"areas"`
-	IsActive   bool      `json:"is_active"`
-	IsDefault  bool      `json:"is_default"`
-	SortOrder  int       `json:"sort_order"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID           UUID          `json:"id"`
+	TenantID     UUID          `json:"tenant_id"`
+	Name         string        `json:"name"`
+	Slug         string        `json:"slug"`
+	Phone        string        `json:"phone"`
+	Email        string        `json:"email"`
+	Line1        string        `json:"line1"`
+	Line2        string        `json:"line2"`
+	City         string        `json:"city"`
+	State        string        `json:"state"`
+	PostalCode   string        `json:"postal_code"`
+	Country      string        `json:"country"`
+	CenterLat    float64       `json:"center_lat"`
+	CenterLng    float64       `json:"center_lng"`
+	RadiusKm     float64       `json:"radius_km"`
+	ServiceZones []ServiceZone `json:"service_zones"`
+	Areas        []string      `json:"areas"`
+	IsActive     bool          `json:"is_active"`
+	IsDefault    bool          `json:"is_default"`
+	SortOrder    int           `json:"sort_order"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
 }
 
 // BranchStock is the optional per-branch stock overlay for a product or
@@ -510,11 +523,12 @@ type Language struct {
 type UserRole string
 
 const (
-	RoleSuperAdmin    UserRole = "superadmin"
-	RoleBusinessAdmin UserRole = "business_admin"
-	RoleBranchManager UserRole = "branch_manager"
-	RoleStaff         UserRole = "staff"
-	RoleCustomer      UserRole = "customer"
+	RoleSuperAdmin      UserRole = "superadmin"
+	RoleBusinessAdmin   UserRole = "business_admin"
+	RoleBranchManager   UserRole = "branch_manager"
+	RoleStaff           UserRole = "staff"
+	RoleCustomer        UserRole = "customer"
+	RoleDeliveryPartner UserRole = "delivery_partner"
 )
 
 type User struct {
@@ -533,16 +547,24 @@ type User struct {
 	LastLoginAt      *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
+	// Delivery partner branch allocations (delivery_partner_branches join
+	// table). Populated for delivery_partner users on user read/list calls.
+	BranchIDs   []UUID   `json:"branch_ids,omitempty"`
+	BranchNames []string `json:"branch_names,omitempty"`
+	// ActiveDeliveries counts the partner's in-flight orders (ready+shipped).
+	// Populated by ListDeliveryPartners only.
+	ActiveDeliveries int `json:"active_deliveries"`
 }
 
 // UserStats holds role-based user counts for a tenant.
 type UserStats struct {
-	Total     int `json:"total"`
-	Customers int `json:"customers"`
-	Staff     int `json:"staff"`
-	Admins    int `json:"admins"`
-	Active    int `json:"active"`
-	Inactive  int `json:"inactive"`
+	Total            int `json:"total"`
+	Customers        int `json:"customers"`
+	Staff            int `json:"staff"`
+	Admins           int `json:"admins"`
+	DeliveryPartners int `json:"delivery_partners"`
+	Active           int `json:"active"`
+	Inactive         int `json:"inactive"`
 }
 
 // Permission represents a granular permission in the catalog.
@@ -599,6 +621,7 @@ type Category struct {
 	ID          UUID      `json:"id"`
 	TenantID    UUID      `json:"tenant_id"`
 	ParentID    *UUID     `json:"parent_id,omitempty"`
+	ParentName  string    `json:"parent_name,omitempty"` // joined display name (paginated admin list)
 	Slug        string    `json:"slug"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
@@ -622,6 +645,7 @@ type Attribute struct {
 	IsFilterable bool               `json:"is_filterable"`
 	IsVariant    bool               `json:"is_variant"`
 	IsBatch      bool               `json:"is_batch"`
+	IsInternal   bool               `json:"is_internal"`
 	Options      []AttributeOption  `json:"options,omitempty"`
 }
 
@@ -676,6 +700,9 @@ type Product struct {
 	TenantID     UUID      `json:"tenant_id"`
 	CategoryID   *UUID     `json:"category_id,omitempty"`
 	CategorySlug string    `json:"category_slug,omitempty"`
+	// BranchID scopes the product to a single branch; NULL = all branches.
+	BranchID     *UUID     `json:"branch_id,omitempty"`
+	BranchName   string    `json:"branch_name,omitempty"` // joined for admin display
 	Slug         string    `json:"slug"`
 	Name         string    `json:"name"`
 	Description  string    `json:"description"`
@@ -946,6 +973,10 @@ type Review struct {
 	IsApproved  bool          `json:"is_approved"`
 	CreatedAt   time.Time     `json:"created_at"`
 	Images      []ReviewImage `json:"images,omitempty"`
+	// Populated by admin listings via a products join (not stored on the row).
+	ProductName  string `json:"product_name,omitempty"`
+	ProductSlug  string `json:"product_slug,omitempty"`
+	ProductImage string `json:"product_image,omitempty"`
 }
 
 type ReviewImage struct {
@@ -1025,6 +1056,10 @@ type Order struct {
 	ReturnStatus    *string `json:"return_status,omitempty"`
 	// Tax breakdown captured at purchase time (JSONB array of TaxBreakdownLine)
 	TaxBreakdown []TaxBreakdownLine `json:"tax_breakdown,omitempty"`
+	// Delivery partner assignment (local-delivery orders)
+	DeliveryPartnerID   *UUID      `json:"delivery_partner_id,omitempty"`
+	DeliveryPartnerName string     `json:"delivery_partner_name,omitempty"` // joined for display
+	DeliveryAssignedAt  *time.Time `json:"delivery_assigned_at,omitempty"`
 }
 
 // OrderStatusEvent represents a single entry in the order status history timeline.
@@ -1046,7 +1081,8 @@ type OrderWithDetails struct {
 // OrderWorkflow defines the valid status transitions for the order workflow.
 // pending → paid, cancelled
 // paid → processing, cancelled, refunded
-// processing → shipped, delivered (delivered for no-shipping products), cancelled
+// processing → ready, shipped, delivered (delivered for no-shipping products), cancelled
+// ready → shipped, processing, cancelled
 // shipped → delivered
 // delivered → fulfilled, refunded (refunded when a return is approved)
 // fulfilled → (terminal)
@@ -1056,7 +1092,8 @@ type OrderWithDetails struct {
 var ValidOrderTransitions = map[string][]string{
 	"pending":    {"paid", "cancelled"},
 	"paid":       {"processing", "cancelled", "refunded"},
-	"processing": {"shipped", "delivered", "cancelled"},
+	"processing": {"ready", "shipped", "delivered", "cancelled"},
+	"ready":      {"shipped", "processing", "cancelled"},
 	"shipped":    {"delivered"},
 	"delivered":  {"fulfilled", "refunded"},
 	"fulfilled":  {},
@@ -1093,6 +1130,8 @@ type OrderItem struct {
 	TaxAmount  float64 `json:"tax_amount"`
 	TaxRate    float64 `json:"tax_rate"`
 	TaxClassID *UUID   `json:"tax_class_id,omitempty"`
+	// BranchID overrides the fulfilling branch for this line (NULL = order's branch).
+	BranchID   *UUID    `json:"branch_id,omitempty"`
 	// Per-item shipping fields (split-shipment support)
 	ShippingMethod string  `json:"shipping_method"`
 	ShippingCost   float64 `json:"shipping_cost"`
@@ -1429,6 +1468,21 @@ type PaymentGatewayConfig struct {
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
 
+// StoreModule is a per-store feature flag managed from Backoffice → Developer →
+// Modules & Features. When a module is disabled, its related menus, pages,
+// widgets, and components are hidden on both the frontstore and the backoffice.
+type StoreModule struct {
+	ID          UUID      `json:"id"`
+	TenantID    UUID      `json:"tenant_id"`
+	ModuleCode  string    `json:"module_code"`
+	DisplayName string    `json:"display_name"`
+	Description string    `json:"description"`
+	IsEnabled   bool      `json:"is_enabled"`
+	SortOrder   int       `json:"sort_order"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // RefundRequest is used to initiate a refund for a payment transaction.
 type RefundRequest struct {
 	Amount     float64 `json:"amount"`               // refund amount (0 = full refund)
@@ -1742,4 +1796,23 @@ type ExportRequest struct {
 	Format  string            `json:"format"`
 	Filters map[string]string `json:"filters"`
 	Email   string            `json:"email"`
+}
+
+// OrderHandoff is a request to transfer an order (or specific items) to
+// another branch. Pending until the receiving branch accepts or rejects.
+type OrderHandoff struct {
+	ID           UUID       `json:"id"`
+	TenantID     UUID       `json:"tenant_id"`
+	OrderID      UUID       `json:"order_id"`
+	FromBranchID UUID       `json:"from_branch_id"`
+	FromBranch   string     `json:"from_branch_name,omitempty"`
+	ToBranchID   UUID       `json:"to_branch_id"`
+	ToBranch     string     `json:"to_branch_name,omitempty"`
+	ItemIDs      []UUID     `json:"item_ids"` // empty = whole order
+	Status       string     `json:"status"`   // pending, accepted, rejected, cancelled
+	Note         string     `json:"note"`
+	CreatedBy    *UUID      `json:"created_by,omitempty"`
+	RespondedBy  *UUID      `json:"responded_by,omitempty"`
+	RespondedAt  *time.Time `json:"responded_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 }

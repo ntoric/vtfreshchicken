@@ -28,12 +28,13 @@ func NewNotificationHandler(store *services.Store, emailH *EmailHandler) *Notifi
 
 func (h *NotificationHandler) ListEvents(c *gin.Context) {
 	tid := tenantID(c)
-	events, err := h.store.ListNotificationEvents(c.Request.Context(), tid)
+	limit, offset := pagingParams(c)
+	events, total, err := h.store.ListNotificationEventsPaged(c.Request.Context(), tid, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": events})
+	c.JSON(http.StatusOK, gin.H{"items": events, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *NotificationHandler) CreateEvent(c *gin.Context) {
@@ -115,12 +116,13 @@ func (h *NotificationHandler) ListTemplates(c *gin.Context) {
 			eventID = &eid
 		}
 	}
-	templates, err := h.store.ListNotificationTemplates(c.Request.Context(), tid, eventID)
+	limit, offset := pagingParams(c)
+	templates, total, err := h.store.ListNotificationTemplatesPaged(c.Request.Context(), tid, eventID, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": templates})
+	c.JSON(http.StatusOK, gin.H{"items": templates, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *NotificationHandler) GetTemplate(c *gin.Context) {

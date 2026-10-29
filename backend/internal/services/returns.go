@@ -16,10 +16,11 @@ import (
 
 // ReturnListFilter holds optional filters for listing returns.
 type ReturnListFilter struct {
-	Status string
-	Type   string
-	Search string // return_number, order_number, customer name/email
-	Dr     DateRangeFilter
+	Status   string
+	Type     string
+	Search   string // return_number, order_number, customer name/email
+	BranchID *uuid.UUID // restrict to returns on orders fulfilled by this branch
+	Dr       DateRangeFilter
 }
 
 // ListOrderReturns returns paginated returns for a tenant with optional filters.
@@ -41,6 +42,11 @@ func (s *Store) ListOrderReturns(ctx context.Context, tenantID uuid.UUID, f Retu
 	if f.Search != "" {
 		where += fmt.Sprintf(" AND (r.return_number ILIKE $%d OR o.id::text ILIKE $%d OR COALESCE(o.customer_name,'') ILIKE $%d OR COALESCE(o.customer_email,'') ILIKE $%d)", argIdx, argIdx, argIdx, argIdx)
 		args = append(args, "%"+f.Search+"%")
+		argIdx++
+	}
+	if f.BranchID != nil {
+		where += fmt.Sprintf(" AND o.branch_id=$%d", argIdx)
+		args = append(args, *f.BranchID)
 		argIdx++
 	}
 	drClause, args, argIdx := dateRangeClause("r.created_at", f.Dr, args, argIdx)
@@ -766,9 +772,16 @@ func (s *Store) processReturnRefundTx(ctx context.Context, tx pgx.Tx, tenantID, 
 }
 
 // ReturnCountsByStatus returns counts of returns grouped by status.
-func (s *Store) ReturnCountsByStatus(ctx context.Context, tenantID uuid.UUID) (map[string]int, error) {
+// When branchID is set, only returns on that branch's orders are counted.
+func (s *Store) ReturnCountsByStatus(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) (map[string]int, error) {
+	where := `FROM order_returns r LEFT JOIN orders o ON o.id=r.order_id WHERE r.tenant_id=$1`
+	args := []interface{}{tenantID}
+	if branchID != nil {
+		where += " AND o.branch_id=$2"
+		args = append(args, *branchID)
+	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT status, COUNT(*) FROM order_returns WHERE tenant_id=$1 GROUP BY status`, tenantID)
+		`SELECT r.status, COUNT(*) `+where+` GROUP BY r.status`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -843,6 +856,10 @@ func (s *Store) GetOrderReturnEligibility(ctx context.Context, tenantID, orderID
 		if ts.ReplacementPeriodDays > 0 {
 			tenantReplacement = ts.ReplacementPeriodDays
 		}
+	}
+	// The returns module flag (Developer → Modules & Features) overrides everything.
+	if !s.IsModuleEnabled(ctx, tenantID, ModuleReturns) {
+		returnsEnabled = false
 	}
 
 	var deliveredAt *time.Time

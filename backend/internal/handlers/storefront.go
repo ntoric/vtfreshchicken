@@ -32,40 +32,62 @@ func (h *StorefrontHandler) Bootstrap(c *gin.Context) {
 	langs, _ := h.store.ListLanguages(c.Request.Context())
 	cats, _ := h.store.ListCategories(c.Request.Context(), tid)
 	attrs, _ := h.store.ListAttributes(c.Request.Context(), tid)
-	offers, _ := h.store.ListOffers(c.Request.Context(), tid)
-	// filter to active offers only for the storefront
+	// Internal attributes are admin-only — never expose their definitions to
+	// the storefront (keeps them out of filters and spec displays).
+	publicAttrs := make([]models.Attribute, 0, len(attrs))
+	for _, a := range attrs {
+		if !a.IsInternal {
+			publicAttrs = append(publicAttrs, a)
+		}
+	}
+
+	// Module feature flags — disabled modules hide their storefront surface.
+	mods, _ := h.store.ModuleEnabledMap(c.Request.Context(), tid)
+	promotionsEnabled := moduleOn(mods, services.ModulePromotions)
+	shippingEnabled := moduleOn(mods, services.ModuleShipping)
+	discountsEnabledModule := moduleOn(mods, services.ModuleDiscounts)
+
+	// filter to active offers only for the storefront (promotions module)
 	var activeOffers []models.Offer
 	now := time.Now()
-	for _, o := range offers {
-		if !o.IsActive {
-			continue
+	if promotionsEnabled {
+		offers, _ := h.store.ListOffers(c.Request.Context(), tid)
+		for _, o := range offers {
+			if !o.IsActive {
+				continue
+			}
+			if o.StartsAt != nil && now.Before(*o.StartsAt) {
+				continue
+			}
+			if o.EndsAt != nil && now.After(*o.EndsAt) {
+				continue
+			}
+			activeOffers = append(activeOffers, o)
 		}
-		if o.StartsAt != nil && now.Before(*o.StartsAt) {
-			continue
-		}
-		if o.EndsAt != nil && now.After(*o.EndsAt) {
-			continue
-		}
-		activeOffers = append(activeOffers, o)
 	}
-	shippingMethods, _ := h.store.ListActiveShippingMethods(c.Request.Context(), tid)
+	var shippingMethods []models.ShippingMethod
+	if shippingEnabled {
+		shippingMethods, _ = h.store.ListActiveShippingMethods(c.Request.Context(), tid)
+	}
 
 	// Coupon field at checkout is shown only when at least one discount code
-	// is active and within its validity window.
-	discounts, _ := h.store.ListDiscountCodes(c.Request.Context(), tid)
+	// is active and within its validity window (discounts module).
 	discountsEnabled := false
-	for _, d := range discounts {
-		if !d.IsActive {
-			continue
+	if discountsEnabledModule {
+		discounts, _ := h.store.ListDiscountCodes(c.Request.Context(), tid)
+		for _, d := range discounts {
+			if !d.IsActive {
+				continue
+			}
+			if d.StartsAt != nil && now.Before(*d.StartsAt) {
+				continue
+			}
+			if d.EndsAt != nil && now.After(*d.EndsAt) {
+				continue
+			}
+			discountsEnabled = true
+			break
 		}
-		if d.StartsAt != nil && now.Before(*d.StartsAt) {
-			continue
-		}
-		if d.EndsAt != nil && now.After(*d.EndsAt) {
-			continue
-		}
-		discountsEnabled = true
-		break
 	}
 
 	// Include the store name so the storefront can display it instead of the slug
@@ -87,10 +109,11 @@ func (h *StorefrontHandler) Bootstrap(c *gin.Context) {
 		"currencies":        currencies,
 		"languages":         langs,
 		"categories":        cats,
-		"attributes":        attrs,
+		"attributes":        publicAttrs,
 		"offers":            activeOffers,
 		"shipping_methods":  shippingMethods,
 		"discounts_enabled": discountsEnabled,
+		"modules":           mods,
 	})
 }
 
@@ -112,6 +135,7 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 
 	f := services.ProductFilter{
 		TenantID: tid, Limit: limit, Offset: offset, Language: lang, FeaturedOnly: featured,
+		BranchIDs: queryBranchIDs(c), // products available at any serviceable branch
 	}
 	if search != "" {
 		f.Search = &search
@@ -142,11 +166,15 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 			f.MaxPrice = &v
 		}
 	}
+	// Internal attributes are admin-only — strip their values from the public
+	// payloads below and ignore filter params targeting them.
+	internalAttrs, _ := h.store.InternalAttributeSlugs(c.Request.Context(), tid)
+
 	// attribute filters: ?attr=size:s&attr=size:m&attr=color:red
 	attrFilters := map[string][]string{}
 	for _, pair := range c.QueryArray("attr") {
 		parts := strings.SplitN(pair, ":", 2)
-		if len(parts) == 2 {
+		if len(parts) == 2 && !internalAttrs[parts[0]] {
 			attrFilters[parts[0]] = append(attrFilters[parts[0]], parts[1])
 		}
 	}
@@ -164,6 +192,11 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 	// storefront listing can render product images and variant pricing
 	// without a separate fetch per product.
 	h.store.EnrichProducts(c.Request.Context(), items)
+	if len(internalAttrs) > 0 {
+		for i := range items {
+			stripInternalAttributes(&items[i], internalAttrs)
+		}
+	}
 
 	// currency conversion + offer application
 	targetCur := c.Query("currency")
@@ -181,6 +214,7 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 		targetCur = "USD"
 	}
 
+	promotionsOn := h.store.IsModuleEnabled(c.Request.Context(), tid, services.ModulePromotions)
 	for i := range items {
 		p := &items[i]
 		// effective price in target currency
@@ -190,11 +224,13 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 		} else {
 			p.EffectivePrice = p.BasePrice
 		}
-		// offers
-		offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
-		if err == nil && offer != nil && offer.OfferType == "percentage" {
-			p.DiscountPct = offer.Value
-			p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
+		// offers (promotions module)
+		if promotionsOn {
+			offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
+			if err == nil && offer != nil && offer.OfferType == "percentage" {
+				p.DiscountPct = offer.Value
+				p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
+			}
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -205,6 +241,41 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 		"currency": targetCur,
 		"language": lang,
 	})
+}
+
+// stripInternalAttributes removes values of internal attributes (e.g. expiry,
+// manufacturing dates) from a product payload so they never reach storefront
+// responses. Variant selection on the storefront only sees public attributes.
+func stripInternalAttributes(p *models.Product, internal map[string]bool) {
+	if len(p.Attributes) > 0 {
+		kept := p.Attributes[:0]
+		for _, a := range p.Attributes {
+			if !internal[a.AttributeSlug] {
+				kept = append(kept, a)
+			}
+		}
+		p.Attributes = kept
+	}
+	for i := range p.Variants {
+		if len(p.Variants[i].Attributes) == 0 {
+			continue
+		}
+		kept := p.Variants[i].Attributes[:0]
+		for _, a := range p.Variants[i].Attributes {
+			if !internal[a.AttributeSlug] {
+				kept = append(kept, a)
+			}
+		}
+		p.Variants[i].Attributes = kept
+	}
+}
+
+// moduleOn reports whether a module is enabled given the enabled-state map.
+// A nil map (lookup failure) or an absent code means enabled — feature flags
+// fail open so a storage hiccup never silently disables storefront features.
+func moduleOn(mods map[string]bool, code string) bool {
+	enabled, ok := mods[code]
+	return !ok || enabled
 }
 
 func supportedLangs(ts *models.TenantSettings) []string {
@@ -227,6 +298,22 @@ func queryBranchID(c *gin.Context) *uuid.UUID {
 	return nil
 }
 
+// queryBranchIDs parses a comma-separated ?branch_id= list — used by the
+// storefront to request products available at any serviceable branch.
+func queryBranchIDs(c *gin.Context) []uuid.UUID {
+	raw := c.Query("branch_id")
+	if raw == "" {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, part := range strings.Split(raw, ",") {
+		if id, err := uuid.Parse(strings.TrimSpace(part)); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // GetProduct: public product detail with currency + language.
 func (h *StorefrontHandler) GetProduct(c *gin.Context) {
 	tid := tenantID(c)
@@ -242,6 +329,24 @@ func (h *StorefrontHandler) GetProduct(c *gin.Context) {
 	if err != nil {
 		notFoundOrErr(c, err, "product not found")
 		return
+	}
+	// Branch-exclusive products are hidden when the request carries branch
+	// context (?branch_id= list from the location picker) that excludes it.
+	if bids := queryBranchIDs(c); len(bids) > 0 && p.BranchID != nil {
+		allowed := false
+		for _, b := range bids {
+			if *p.BranchID == b {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			errResponse(c, http.StatusNotFound, "product not found")
+			return
+		}
+	}
+	if internalAttrs, _ := h.store.InternalAttributeSlugs(c.Request.Context(), tid); len(internalAttrs) > 0 {
+		stripInternalAttributes(p, internalAttrs)
 	}
 	targetCur := c.Query("currency")
 	if targetCur == "" && ts != nil && ts.DefaultCurrencyID != nil {
@@ -271,10 +376,12 @@ func (h *StorefrontHandler) GetProduct(c *gin.Context) {
 			v.Price = vc
 		}
 	}
-	offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
-	if err == nil && offer != nil && offer.OfferType == "percentage" {
-		p.DiscountPct = offer.Value
-		p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
+	if h.store.IsModuleEnabled(c.Request.Context(), tid, services.ModulePromotions) {
+		offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))
+		if err == nil && offer != nil && offer.OfferType == "percentage" {
+			p.DiscountPct = offer.Value
+			p.DiscountedPrice = p.EffectivePrice * (1 - offer.Value/100)
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"product": p, "currency": targetCur, "language": lang})
 }
@@ -282,6 +389,10 @@ func (h *StorefrontHandler) GetProduct(c *gin.Context) {
 // ValidateDiscount: public endpoint to preview a discount code.
 func (h *StorefrontHandler) ValidateDiscount(c *gin.Context) {
 	tid := tenantID(c)
+	if !h.store.IsModuleEnabled(c.Request.Context(), tid, services.ModuleDiscounts) {
+		errResponse(c, http.StatusNotFound, "invalid or expired discount code")
+		return
+	}
 	code := c.Query("code")
 	subtotalStr := c.Query("subtotal")
 	if code == "" || subtotalStr == "" {

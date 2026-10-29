@@ -29,14 +29,14 @@ interface ReportMeta {
 const REPORTS: ReportMeta[] = [
   { key: "orders", title: "Orders Report", description: "Order counts by status, revenue, recent orders", icon: ShoppingCart, color: "bg-blue-50 text-blue-600" },
   { key: "payments", title: "Payments Report", description: "Collected, refunded, net revenue by gateway", icon: CreditCard, color: "bg-emerald-50 text-emerald-600" },
-  { key: "products", title: "Products Report", description: "Product catalog overview and inventory", icon: Package, color: "bg-indigo-50 text-indigo-600" },
+  { key: "products", title: "Products Report", description: "Product catalog overview and inventory", icon: Package, color: "bg-red-50 text-red-600" },
   { key: "sales", title: "Sales Report", description: "Revenue, order trends, top products", icon: TrendingUp, color: "bg-amber-50 text-amber-600" },
   { key: "customers", title: "Customers Report", description: "Customer stats, acquisition, spend", icon: Users, color: "bg-pink-50 text-pink-600" },
   { key: "taxes", title: "Taxes Report", description: "Tax classes, zones, and rates", icon: Receipt, color: "bg-cyan-50 text-cyan-600" },
   { key: "shipping", title: "Shipping Report", description: "Methods, zones, and rates", icon: Truck, color: "bg-orange-50 text-orange-600" },
   { key: "inventory", title: "Inventory Report", description: "Stock levels, low stock, stock value", icon: Boxes, color: "bg-teal-50 text-teal-600" },
   { key: "stock", title: "Stock Movements", description: "Stock movement history and reasons", icon: ArrowLeftRight, color: "bg-lime-50 text-lime-600" },
-  { key: "users", title: "Users & Staff Report", description: "User roles, active/inactive counts", icon: UserCog, color: "bg-slate-50 text-slate-600" },
+  { key: "users", title: "Users & Staff Report", description: "User roles, active/inactive counts", icon: UserCog, color: "bg-neutral-50 text-neutral-600" },
   { key: "wallet", title: "Wallet Report", description: "Wallet balances, topups, purchases", icon: Wallet, color: "bg-violet-50 text-violet-600" },
   { key: "transactions", title: "Transactions Report", description: "Payment transactions across gateways", icon: Transactions, color: "bg-rose-50 text-rose-600" },
   { key: "discounts", title: "Discounts Report", description: "Discount codes, redemptions, savings", icon: Percent, color: "bg-fuchsia-50 text-fuchsia-600" },
@@ -62,8 +62,8 @@ export function Reports() {
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${r.color}`}>
                 <Icon className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1 group-hover:text-brand transition">{r.title}</h3>
-              <p className="text-sm text-slate-500">{r.description}</p>
+              <h3 className="font-semibold text-neutral-900 mb-1 group-hover:text-brand transition">{r.title}</h3>
+              <p className="text-sm text-neutral-500">{r.description}</p>
             </button>
           );
         })}
@@ -99,7 +99,7 @@ export function ReportDetail() {
     return (
       <div>
         <PageHeader title="Report not found" />
-        <p className="text-sm text-slate-500">The report you requested does not exist.</p>
+        <p className="text-sm text-neutral-500">The report you requested does not exist.</p>
       </div>
     );
   }
@@ -108,7 +108,7 @@ export function ReportDetail() {
     <div>
       <button
         onClick={() => history.back()}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-4"
+        className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 mb-4"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Reports
       </button>
@@ -117,7 +117,7 @@ export function ReportDetail() {
         {exportType && (
           <button
             onClick={() => setExportOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
@@ -161,7 +161,7 @@ function ReportContent({ type }: { type: string }) {
 // ===== Shared helpers =====
 function Loading() {
   return (
-    <div className="flex items-center justify-center py-20 text-slate-400">
+    <div className="flex items-center justify-center py-20 text-neutral-400">
       <Spinner size={28} className="text-brand" />
       <span className="ml-3 text-sm">Loading report…</span>
     </div>
@@ -173,7 +173,7 @@ function ErrorBox({ message }: { message: string }) {
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <p className="text-sm text-slate-400 py-8 text-center">{label}</p>;
+  return <p className="text-sm text-neutral-400 py-8 text-center">{label}</p>;
 }
 
 function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
@@ -181,15 +181,15 @@ function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][]
   return (
     <div className="bg-white rounded-2xl border overflow-hidden overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-slate-500 text-left">
+        <thead className="bg-neutral-50 text-neutral-500 text-left">
           <tr>
             {headers.map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}
           </tr>
         </thead>
         <tbody className="divide-y">
           {rows.map((row, ri) => (
-            <tr key={ri} className="hover:bg-slate-50">
-              {row.map((cell, ci) => <td key={ci} className="px-4 py-3 text-slate-700">{cell}</td>)}
+            <tr key={ri} className="hover:bg-neutral-50">
+              {row.map((cell, ci) => <td key={ci} className="px-4 py-3 text-neutral-700">{cell}</td>)}
             </tr>
           ))}
         </tbody>
@@ -217,32 +217,32 @@ function OrdersReport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatCard label="Total Orders" value={s.orders ?? 0} icon={<ShoppingCart className="w-6 h-6" />} color="bg-blue-50 text-blue-600" />
         <StatCard label="Total Revenue" value={money(s.revenue ?? 0)} icon={<TrendingUp className="w-6 h-6" />} color="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Products Sold" value={s.products ?? 0} icon={<Package className="w-6 h-6" />} color="bg-indigo-50 text-indigo-600" />
+        <StatCard label="Products Sold" value={s.products ?? 0} icon={<Package className="w-6 h-6" />} color="bg-red-50 text-red-600" />
       </div>
       <div className="bg-white rounded-2xl border p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Orders by Status</h3>
+        <h3 className="font-semibold text-neutral-900 mb-4">Orders by Status</h3>
         {Object.keys(statusCounts).length === 0 ? (
           <EmptyState label="No orders in this period." />
         ) : (
           <div className="space-y-3">
             {Object.entries(statusCounts).map(([status, count]) => (
               <div key={status} className="flex items-center justify-between">
-                <span className="text-sm capitalize text-slate-600">{status}</span>
-                <span className="font-semibold text-slate-900">{count}</span>
+                <span className="text-sm capitalize text-neutral-600">{status}</span>
+                <span className="font-semibold text-neutral-900">{count}</span>
               </div>
             ))}
           </div>
         )}
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Recent Orders</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Recent Orders</h3>
         <Table
           headers={["Order ID", "Status", "Total", "Date"]}
           rows={(s.recent_orders || []).map((o) => [
             <span className="font-mono text-xs">{o.id.slice(0, 8)}</span>,
             <span className="capitalize">{o.status}</span>,
             <span className="font-semibold">{money(o.total, o.currency)}</span>,
-            <span className="text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>,
+            <span className="text-neutral-500">{new Date(o.created_at).toLocaleDateString()}</span>,
           ])}
         />
       </div>
@@ -274,10 +274,10 @@ function PaymentsReport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatCard label="Refunds" value={s.refund_count ?? 0} icon={<ArrowLeftRight className="w-6 h-6" />} color="bg-rose-50 text-rose-600" />
         <StatCard label="Pending" value={s.pending_count ?? 0} icon={<Receipt className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
-        <StatCard label="Failed" value={s.failed_count ?? 0} icon={<Receipt className="w-6 h-6" />} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Failed" value={s.failed_count ?? 0} icon={<Receipt className="w-6 h-6" />} color="bg-neutral-50 text-neutral-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">By Gateway</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">By Gateway</h3>
         <Table
           headers={["Gateway", "Transactions", "Total Amount", "Refunded"]}
           rows={(s.by_gateway || []).map((g) => [
@@ -300,7 +300,7 @@ function ProductsReport() {
   const [filters, setFilters] = useState<ReportFiltersValue>({});
   const q = useQuery({
     queryKey: ["r-products", tenant, filters.search, filters.status],
-    queryFn: () => api.listProductsAdmin(tenant, filters.search, filters.status),
+    queryFn: () => api.listProductsAdmin(tenant, { search: filters.search, status: filters.status }),
   });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorBox message="Failed to load products report." />;
@@ -323,12 +323,12 @@ function ProductsReport() {
         ]}
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard label="Total Products" value={items.length} icon={<Package className="w-6 h-6" />} color="bg-indigo-50 text-indigo-600" />
+        <StatCard label="Total Products" value={items.length} icon={<Package className="w-6 h-6" />} color="bg-red-50 text-red-600" />
         <StatCard label="Active" value={active} icon={<Package className="w-6 h-6" />} color="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Inactive" value={inactive} icon={<Package className="w-6 h-6" />} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Inactive" value={inactive} icon={<Package className="w-6 h-6" />} color="bg-neutral-50 text-neutral-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Product Catalog</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Product Catalog</h3>
         <Table
           headers={["Name", "Slug", "Status", "Price"]}
           rows={items.slice(0, 50).map((p) => [
@@ -338,7 +338,7 @@ function ProductsReport() {
             <span className="font-semibold">{money(p.base_price, p.currency_code)}</span>,
           ])}
         />
-        {items.length > 50 && <p className="text-xs text-slate-400 mt-2">Showing first 50 of {items.length} products.</p>}
+        {items.length > 50 && <p className="text-xs text-neutral-400 mt-2">Showing first 50 of {items.length} products.</p>}
       </div>
     </div>
   );
@@ -367,7 +367,7 @@ function SalesReport() {
         <StatCard label="Completed Orders" value={completed} icon={<Receipt className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div className="bg-white rounded-2xl border p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Sales by Order Status</h3>
+        <h3 className="font-semibold text-neutral-900 mb-4">Sales by Order Status</h3>
         <div className="space-y-3">
           {Object.keys(statusCounts).length === 0 ? (
             <EmptyState label="No sales data in this period." />
@@ -377,10 +377,10 @@ function SalesReport() {
               return (
                 <div key={status}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm capitalize text-slate-600">{status}</span>
-                    <span className="text-sm font-semibold text-slate-900">{count} ({pct}%)</span>
+                    <span className="text-sm capitalize text-neutral-600">{status}</span>
+                    <span className="text-sm font-semibold text-neutral-900">{count} ({pct}%)</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="w-full bg-neutral-100 rounded-full h-2">
                     <div className="bg-brand h-2 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -390,14 +390,14 @@ function SalesReport() {
         </div>
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Recent Sales</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Recent Sales</h3>
         <Table
           headers={["Order ID", "Status", "Total", "Date"]}
           rows={(s.recent_orders || []).map((o) => [
             <span className="font-mono text-xs">{o.id.slice(0, 8)}</span>,
             <span className="capitalize">{o.status}</span>,
             <span className="font-semibold">{money(o.total, o.currency)}</span>,
-            <span className="text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>,
+            <span className="text-neutral-500">{new Date(o.created_at).toLocaleDateString()}</span>,
           ])}
         />
       </div>
@@ -428,17 +428,17 @@ function CustomersReport() {
         <StatCard label="Total Spent" value={money(s.total_spent)} icon={<Wallet className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div className="bg-white rounded-2xl border p-6">
-        <h3 className="font-semibold text-slate-900 mb-2">Average Order Value</h3>
-        <p className="text-3xl font-bold text-slate-900">{money(s.avg_order_value)}</p>
+        <h3 className="font-semibold text-neutral-900 mb-2">Average Order Value</h3>
+        <p className="text-3xl font-bold text-neutral-900">{money(s.avg_order_value)}</p>
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Recent Customers</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Recent Customers</h3>
         <Table
           headers={["Name", "Email", "Status"]}
           rows={(listQ.data?.items || []).map((c) => [
             c.full_name || "—",
             c.email,
-            c.is_active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>,
+            c.is_active ? <span className="text-emerald-600">Active</span> : <span className="text-neutral-400">Inactive</span>,
           ])}
         />
       </div>
@@ -462,7 +462,7 @@ function TaxesReport() {
         <StatCard label="Tax Rates" value={ratesQ.data?.items?.length ?? 0} icon={<Percent className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Tax Rates</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Tax Rates</h3>
         <Table
           headers={["Name", "Rate (%)", "Class", "Zone"]}
           rows={(ratesQ.data?.items || []).map((r) => [
@@ -494,14 +494,14 @@ function ShippingReport() {
         <StatCard label="Shipping Rates" value={ratesQ.data?.items?.length ?? 0} icon={<Receipt className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Shipping Rates</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Shipping Rates</h3>
         <Table
           headers={["Method", "Zone", "Rate", "Active"]}
           rows={(ratesQ.data?.items || []).map((r) => [
             r.shipping_method_name || r.id.slice(0, 8),
             r.shipping_zone_name || "—",
             <span className="font-semibold">{money(r.rate)}</span>,
-            r.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-slate-400">No</span>,
+            r.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-neutral-400">No</span>,
           ])}
         />
       </div>
@@ -553,11 +553,11 @@ function InventoryReport() {
         <StatCard label="Out of Stock" value={s.out_of_stock} icon={<Boxes className="w-6 h-6" />} color="bg-rose-50 text-rose-600" />
       </div>
       <div className="bg-white rounded-2xl border p-6">
-        <h3 className="font-semibold text-slate-900 mb-2">Total Stock Value</h3>
-        <p className="text-3xl font-bold text-slate-900">{money(s.total_stock_value)}</p>
+        <h3 className="font-semibold text-neutral-900 mb-2">Total Stock Value</h3>
+        <p className="text-3xl font-bold text-neutral-900">{money(s.total_stock_value)}</p>
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Inventory Items</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Inventory Items</h3>
         <Table
           headers={["Product", "SKU", "Stock", "Status"]}
           rows={filtered.slice(0, 50).map((i) => [
@@ -569,7 +569,7 @@ function InventoryReport() {
               : <span className="text-emerald-600">In stock</span>,
           ])}
         />
-        {filtered.length > 50 && <p className="text-xs text-slate-400 mt-2">Showing first 50 of {filtered.length} items.</p>}
+        {filtered.length > 50 && <p className="text-xs text-neutral-400 mt-2">Showing first 50 of {filtered.length} items.</p>}
       </div>
     </div>
   );
@@ -618,7 +618,7 @@ function StockReport() {
         <StatCard label="Units Out" value={outbound} icon={<ArrowLeftRight className="w-6 h-6" />} color="bg-rose-50 text-rose-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Recent Stock Movements</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Recent Stock Movements</h3>
         <Table
           headers={["Product", "Type", "Quantity", "Reason", "Date"]}
           rows={items.map((m) => [
@@ -628,7 +628,7 @@ function StockReport() {
               {m.quantity > 0 ? "+" : ""}{m.quantity}
             </span>,
             m.reason || "—",
-            <span className="text-slate-500">{new Date(m.created_at).toLocaleString()}</span>,
+            <span className="text-neutral-500">{new Date(m.created_at).toLocaleString()}</span>,
           ])}
         />
       </div>
@@ -677,7 +677,7 @@ function UsersReport() {
         ]}
       />
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
-        <StatCard label="Total" value={s.total} icon={<UserCog className="w-6 h-6" />} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Total" value={s.total} icon={<UserCog className="w-6 h-6" />} color="bg-neutral-50 text-neutral-600" />
         <StatCard label="Customers" value={s.customers} icon={<Users className="w-6 h-6" />} color="bg-pink-50 text-pink-600" />
         <StatCard label="Staff" value={s.staff} icon={<UserCog className="w-6 h-6" />} color="bg-blue-50 text-blue-600" />
         <StatCard label="Admins" value={s.admins} icon={<UserCog className="w-6 h-6" />} color="bg-purple-50 text-purple-600" />
@@ -685,14 +685,14 @@ function UsersReport() {
         <StatCard label="Inactive" value={s.inactive} icon={<Users className="w-6 h-6" />} color="bg-rose-50 text-rose-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Users & Staff</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Users & Staff</h3>
         <Table
           headers={["Name", "Email", "Role", "Status"]}
           rows={filtered.map((u) => [
             u.full_name || "—",
             u.email,
             <span className="capitalize">{u.role.replace("_", " ")}</span>,
-            u.is_active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>,
+            u.is_active ? <span className="text-emerald-600">Active</span> : <span className="text-neutral-400">Inactive</span>,
           ])}
         />
       </div>
@@ -749,7 +749,7 @@ function WalletReport() {
         <StatCard label="Total Purchases" value={money(s.total_purchases)} icon={<CreditCard className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Recent Wallet Transactions</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Recent Wallet Transactions</h3>
         <Table
           headers={["User", "Type", "Source", "Amount", "Date"]}
           rows={(txnsQ.data?.items || []).map((t) => [
@@ -759,7 +759,7 @@ function WalletReport() {
             <span className={`font-semibold ${t.type === "credit" ? "text-emerald-600" : "text-rose-600"}`}>
               {t.type === "credit" ? "+" : "-"}{money(t.amount, t.currency_code)}
             </span>,
-            <span className="text-slate-500">{new Date(t.created_at).toLocaleString()}</span>,
+            <span className="text-neutral-500">{new Date(t.created_at).toLocaleString()}</span>,
           ])}
         />
       </div>
@@ -822,7 +822,7 @@ function TransactionsReport() {
         <StatCard label="Avg Transaction" value={items.length ? money(total / items.length) : money(0)} icon={<Receipt className="w-6 h-6" />} color="bg-amber-50 text-amber-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Payment Transactions</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Payment Transactions</h3>
         <Table
           headers={["ID", "Gateway", "Amount", "Status", "Date"]}
           rows={items.map((t) => [
@@ -830,7 +830,7 @@ function TransactionsReport() {
             <span className="capitalize">{t.gateway}</span>,
             <span className="font-semibold">{money(t.amount, t.currency_code)}</span>,
             <span className={`capitalize ${t.status === "succeeded" || t.status === "captured" || t.status === "success" ? "text-emerald-600" : t.status === "failed" ? "text-rose-600" : "text-amber-600"}`}>{t.status}</span>,
-            <span className="text-slate-500">{new Date(t.created_at).toLocaleString()}</span>,
+            <span className="text-neutral-500">{new Date(t.created_at).toLocaleString()}</span>,
           ])}
         />
       </div>
@@ -884,14 +884,14 @@ function DiscountsReport() {
         <StatCard label="Total Discount" value={money(s.total_discount)} icon={<TrendingUp className="w-6 h-6" />} color="bg-rose-50 text-rose-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Discount Codes</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Discount Codes</h3>
         <Table
           headers={["Code", "Type", "Value", "Active", "Uses"]}
           rows={filtered.map((d) => [
             <span className="font-mono font-semibold">{d.code}</span>,
             <span className="capitalize">{d.discount_type}</span>,
             d.discount_type === "percentage" ? `${d.value}%` : money(d.value),
-            d.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-slate-400">No</span>,
+            d.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-neutral-400">No</span>,
             <span className="font-semibold">{d.used_count} / {d.max_uses || "∞"}</span>,
           ])}
         />
@@ -941,10 +941,10 @@ function OffersReport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatCard label="Total Offers" value={filtered.length} icon={<Tag className="w-6 h-6" />} color="bg-sky-50 text-sky-600" />
         <StatCard label="Active" value={active} icon={<Tag className="w-6 h-6" />} color="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Inactive" value={filtered.length - active} icon={<Tag className="w-6 h-6" />} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Inactive" value={filtered.length - active} icon={<Tag className="w-6 h-6" />} color="bg-neutral-50 text-neutral-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Offers</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Offers</h3>
         <Table
           headers={["Name", "Type", "Value", "Target", "Active", "Window"]}
           rows={filtered.map((o) => [
@@ -952,8 +952,8 @@ function OffersReport() {
             <span className="capitalize">{o.offer_type}</span>,
             o.offer_type === "percentage" ? `${o.value}%` : money(o.value),
             <span className="capitalize">{o.targets?.[0]?.target_type || "all"}</span>,
-            o.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-slate-400">No</span>,
-            <span className="text-xs text-slate-500">
+            o.is_active ? <span className="text-emerald-600">Yes</span> : <span className="text-neutral-400">No</span>,
+            <span className="text-xs text-neutral-500">
               {o.starts_at ? new Date(o.starts_at).toLocaleDateString() : "—"} → {o.ends_at ? new Date(o.ends_at).toLocaleDateString() : "—"}
             </span>,
           ])}
@@ -967,8 +967,6 @@ function OffersReport() {
 function AddressesReport() {
   const { tenant } = useAuth();
   const q = useQuery({ queryKey: ["r-addr", tenant], queryFn: () => api.listCustomers(tenant, undefined, undefined, 100, 0) });
-  if (q.isLoading) return <Loading />;
-  if (q.error) return <ErrorBox message="Failed to load addresses report." />;
   const customers = q.data?.items || [];
   // Fetch addresses per customer (limited to first 50 to avoid too many requests)
   const addressQs = useQueries({
@@ -979,7 +977,8 @@ function AddressesReport() {
     })),
   });
   const allLoaded = addressQs.every((aq) => !aq.isLoading);
-  if (!allLoaded) return <Loading />;
+  if (q.isLoading || !allLoaded) return <Loading />;
+  if (q.error) return <ErrorBox message="Failed to load addresses report." />;
 
   const rows: React.ReactNode[][] = [];
   customers.slice(0, 50).forEach((c, i) => {
@@ -990,7 +989,7 @@ function AddressesReport() {
         c.email,
         a.label,
         <span>{[a.line1, a.city, a.country].filter(Boolean).join(", ")}</span>,
-        a.is_default ? <span className="text-emerald-600">Default</span> : <span className="text-slate-400">—</span>,
+        a.is_default ? <span className="text-emerald-600">Default</span> : <span className="text-neutral-400">—</span>,
       ]);
     });
   });
@@ -1003,12 +1002,12 @@ function AddressesReport() {
         <StatCard label="Default Addresses" value={rows.filter((_, idx) => addressQs[idx]?.data?.addresses?.some((a) => a.is_default)).length} icon={<MapPin className="w-6 h-6" />} color="bg-emerald-50 text-emerald-600" />
       </div>
       <div>
-        <h3 className="font-semibold text-slate-900 mb-3">Customer Addresses</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Customer Addresses</h3>
         <Table
           headers={["Customer", "Email", "Label", "Address", "Default"]}
           rows={rows}
         />
-        {customers.length > 50 && <p className="text-xs text-slate-400 mt-2">Showing addresses for first 50 of {customers.length} customers.</p>}
+        {customers.length > 50 && <p className="text-xs text-neutral-400 mt-2">Showing addresses for first 50 of {customers.length} customers.</p>}
       </div>
     </div>
   );

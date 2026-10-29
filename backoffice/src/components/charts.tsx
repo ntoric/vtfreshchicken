@@ -60,7 +60,7 @@ export function Sparkline({
   data,
   width = 120,
   height = 40,
-  color = "#4f46e5",
+  color = "#dc2626",
   className = "",
 }: {
   data: number[];
@@ -115,7 +115,7 @@ interface AreaChartProps {
 
 export function AreaChart({
   data,
-  color = "#4f46e5",
+  color = "#dc2626",
   height = 260,
   formatValue = (v) => String(v),
   formatAxis,
@@ -183,7 +183,7 @@ export function AreaChart({
           const y = padT + innerH - (t / maxV) * innerH;
           return (
             <g key={i}>
-              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#e2e8f0" strokeWidth={1} strokeDasharray={i === 0 ? "" : "4 4"} />
+              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#e5e5e5" strokeWidth={1} strokeDasharray={i === 0 ? "" : "4 4"} />
               <text x={padL - 8} y={y + 4} textAnchor="end" fontSize={11} fill="#94a3b8">
                 {fmtAxis(t)}
               </text>
@@ -216,17 +216,17 @@ export function AreaChart({
       {/* tooltip */}
       {hover != null && data[hover] && (
         <div
-          className="absolute z-10 pointer-events-none bg-slate-900 text-white rounded-lg px-3 py-2 shadow-lg text-xs"
+          className="absolute z-10 pointer-events-none bg-neutral-900 text-white rounded-lg px-3 py-2 shadow-lg text-xs"
           style={{
             left: Math.min(Math.max(mouse.x, 70), w - 70),
             top: Math.max(pts[hover].y - 14, 8),
             transform: "translate(-50%, -100%)",
           }}
         >
-          <p className="font-medium text-slate-300 mb-0.5 whitespace-nowrap">{data[hover].label}</p>
+          <p className="font-medium text-neutral-300 mb-0.5 whitespace-nowrap">{data[hover].label}</p>
           <p className="font-semibold whitespace-nowrap">{formatValue(data[hover].value)}</p>
           {extraLabel && data[hover].extra != null && (
-            <p className="text-slate-300 whitespace-nowrap">
+            <p className="text-neutral-300 whitespace-nowrap">
               {formatExtra ? formatExtra(data[hover].extra!) : data[hover].extra} {extraLabel}
             </p>
           )}
@@ -235,7 +235,7 @@ export function AreaChart({
 
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-sm text-slate-400 bg-white/80 px-3 py-1.5 rounded-lg">{emptyMessage}</p>
+          <p className="text-sm text-neutral-400 bg-white/80 px-3 py-1.5 rounded-lg">{emptyMessage}</p>
         </div>
       )}
     </div>
@@ -273,7 +273,7 @@ export function DonutChart({
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={thickness} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f5f5f5" strokeWidth={thickness} />
         {total > 0 && (
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
             {data.map((d, i) => {
@@ -320,8 +320,8 @@ export function DonutChart({
 export function MeterBar({
   value,
   max,
-  color = "#4f46e5",
-  trackClass = "bg-slate-100",
+  color = "#dc2626",
+  trackClass = "bg-neutral-100",
   height = 6,
 }: {
   value: number;

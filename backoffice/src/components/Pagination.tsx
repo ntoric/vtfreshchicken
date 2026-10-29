@@ -48,7 +48,7 @@ export function Pagination({
   if (totalPages <= 1) {
     return (
       <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-        <span className="text-slate-500">{total} item{total !== 1 ? "s" : ""}</span>
+        <span className="text-neutral-500">{total} item{total !== 1 ? "s" : ""}</span>
       </div>
     );
   }
@@ -68,28 +68,28 @@ export function Pagination({
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-      <span className="text-slate-500">
+      <span className="text-neutral-500">
         Showing {start + 1}–{end} of {total}
       </span>
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPage(Math.max(0, page - 1))}
           disabled={page === 0}
-          className="px-3 py-1 border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition"
+          className="px-3 py-1 border border-neutral-200 rounded-lg disabled:opacity-40 hover:bg-neutral-50 transition"
         >
           Prev
         </button>
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`e${i}`} className="px-2 text-slate-400">…</span>
+            <span key={`e${i}`} className="px-2 text-neutral-400">…</span>
           ) : (
             <button
               key={p}
               onClick={() => onPage(p)}
               className={`min-w-[32px] px-2 py-1 border rounded-lg transition ${
                 p === page
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "border-slate-200 hover:bg-slate-50"
+                  ? "bg-red-600 text-white border-red-600"
+                  : "border-neutral-200 hover:bg-neutral-50"
               }`}
             >
               {p + 1}
@@ -99,7 +99,7 @@ export function Pagination({
         <button
           onClick={() => onPage(Math.min(totalPages - 1, page + 1))}
           disabled={page >= totalPages - 1}
-          className="px-3 py-1 border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition"
+          className="px-3 py-1 border border-neutral-200 rounded-lg disabled:opacity-40 hover:bg-neutral-50 transition"
         >
           Next
         </button>

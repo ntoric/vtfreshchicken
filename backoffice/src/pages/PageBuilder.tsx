@@ -165,21 +165,21 @@ export function PageBuilder() {
   };
 
   if (q.isLoading) return <FullPageLoader />;
-  if (!page) return <div className="p-8 text-center text-slate-400">Page not found</div>;
+  if (!page) return <div className="p-8 text-center text-neutral-400">Page not found</div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/pages")} className="text-slate-500 hover:text-slate-900">
+          <button onClick={() => navigate("/pages")} className="text-neutral-500 hover:text-neutral-900">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <input
             type="text"
             value={page.title}
             onChange={(e) => { setPage({ ...page, title: e.target.value }); setDirty(true); }}
-            className="text-lg font-semibold text-slate-900 bg-transparent border-none outline-none focus:bg-slate-50 rounded px-2 py-1"
+            className="text-lg font-semibold text-neutral-900 bg-transparent border-none outline-none focus:bg-neutral-50 rounded px-2 py-1"
           />
           {dirty && <span className="text-xs text-amber-500 font-medium">Unsaved changes</span>}
         </div>
@@ -193,7 +193,7 @@ export function PageBuilder() {
           </select>
           <button
             onClick={() => setShowSettings(true)}
-            className="border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-slate-50 inline-flex items-center gap-1"
+            className="border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 inline-flex items-center gap-1"
           >
             <Settings className="w-4 h-4" /> SEO
           </button>
@@ -201,7 +201,7 @@ export function PageBuilder() {
             href={`/${tenant}/p/${page.slug}`}
             target="_blank"
             rel="noreferrer"
-            className="border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-slate-50 inline-flex items-center gap-1"
+            className="border rounded-md px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 inline-flex items-center gap-1"
           >
             <Eye className="w-4 h-4" /> Preview
           </a>
@@ -220,11 +220,11 @@ export function PageBuilder() {
         {/* Block palette */}
         <div className="w-56 bg-white border-r overflow-y-auto flex-shrink-0">
           <div className="p-3 border-b">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Blocks</h3>
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Blocks</h3>
           </div>
           {["Core", "Commerce", "Info", "Layout"].map((cat) => (
             <div key={cat} className="p-3 border-b">
-              <p className="text-xs font-medium text-slate-500 mb-2">{cat}</p>
+              <p className="text-xs font-medium text-neutral-500 mb-2">{cat}</p>
               <div className="space-y-1">
                 {BLOCK_TYPES.filter((b) => b.category === cat).map((b) => {
                   const Icon = ICON_MAP[b.icon] || FileText;
@@ -232,9 +232,9 @@ export function PageBuilder() {
                     <button
                       key={b.type}
                       onClick={() => addBlock(b.type)}
-                      className="pb-palette-icon w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-700 rounded-md hover:bg-slate-100 hover:scale-[1.02] hover:shadow-sm active:scale-95 transition-all duration-200 text-left"
+                      className="pb-palette-icon w-full flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-700 rounded-md hover:bg-neutral-100 hover:scale-[1.02] hover:shadow-sm active:scale-95 transition-all duration-200 text-left"
                     >
-                      <Icon className="w-4 h-4 text-slate-400" />
+                      <Icon className="w-4 h-4 text-neutral-400" />
                       {b.label}
                     </button>
                   );
@@ -245,10 +245,10 @@ export function PageBuilder() {
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 overflow-y-auto bg-slate-100 pb-canvas-bg">
+        <div className="flex-1 overflow-y-auto bg-neutral-100 pb-canvas-bg">
           <div className="max-w-4xl mx-auto py-6 px-4">
             {blocks.length === 0 ? (
-              <div className="bg-white rounded-2xl border-2 border-dashed border-slate-300 p-20 text-center relative overflow-hidden">
+              <div className="bg-white rounded-2xl border-2 border-dashed border-neutral-300 p-20 text-center relative overflow-hidden">
                 {/* Decorative pulse rings */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border-2 border-brand/20 pb-pulse-ring" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border-2 border-brand/20 pb-pulse-ring" style={{ animationDelay: "1s" }} />
@@ -258,8 +258,8 @@ export function PageBuilder() {
                     <Plus className="w-8 h-8 text-brand" />
                   </div>
                 </div>
-                <p className="text-slate-500 font-medium mb-1 text-lg">No blocks yet</p>
-                <p className="text-sm text-slate-400">Add blocks from the left panel to build your page</p>
+                <p className="text-neutral-500 font-medium mb-1 text-lg">No blocks yet</p>
+                <p className="text-sm text-neutral-400">Add blocks from the left panel to build your page</p>
               </div>
             ) : (
               <DndContext
@@ -308,11 +308,11 @@ export function PageBuilder() {
                   const Icon = ICON_MAP[BLOCK_TYPES.find((b) => b.type === selectedBlock.type)?.icon || ""] || FileText;
                   return <Icon className="w-4 h-4 text-brand" />;
                 })()}
-                <h3 className="text-sm font-semibold text-slate-700">
+                <h3 className="text-sm font-semibold text-neutral-700">
                   {BLOCK_TYPES.find((b) => b.type === selectedBlock.type)?.label || selectedBlock.type}
                 </h3>
               </div>
-              <button onClick={() => setSelectedBlockId(null)} className="pb-tool-btn text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-100">
+              <button onClick={() => setSelectedBlockId(null)} className="pb-tool-btn text-neutral-400 hover:text-neutral-700 p-1 rounded-md hover:bg-neutral-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -329,22 +329,22 @@ export function PageBuilder() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 pb-modal-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Page Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => setShowSettings(false)} className="text-neutral-400 hover:text-neutral-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">Slug (URL)</label>
+              <label className="text-sm font-medium text-neutral-600 block mb-1">Slug (URL)</label>
               <input
                 type="text"
                 value={page.slug}
                 onChange={(e) => { setPage({ ...page, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") }); setDirty(true); }}
                 className="w-full border rounded-md px-3 py-2 text-sm"
               />
-              <p className="text-xs text-slate-400 mt-1">URL: /t/{tenant}/p/{page.slug}</p>
+              <p className="text-xs text-neutral-400 mt-1">URL: /t/{tenant}/p/{page.slug}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">Page Type</label>
+              <label className="text-sm font-medium text-neutral-600 block mb-1">Page Type</label>
               <select
                 value={page.page_type}
                 onChange={(e) => { setPage({ ...page, page_type: e.target.value }); setDirty(true); }}
@@ -354,7 +354,7 @@ export function PageBuilder() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">Meta Title (SEO)</label>
+              <label className="text-sm font-medium text-neutral-600 block mb-1">Meta Title (SEO)</label>
               <input
                 type="text"
                 value={page.meta_title}
@@ -364,7 +364,7 @@ export function PageBuilder() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">Meta Description (SEO)</label>
+              <label className="text-sm font-medium text-neutral-600 block mb-1">Meta Description (SEO)</label>
               <textarea
                 value={page.meta_description}
                 onChange={(e) => { setPage({ ...page, meta_description: e.target.value }); setDirty(true); }}
@@ -438,16 +438,16 @@ function SortableBlock({
           transform: `perspective(800px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
         }}
         className={`pb-block-card relative bg-white rounded-xl border-2 overflow-hidden ${
-          selected ? "pb-selected-glow" : "border-slate-200 hover:border-slate-300 hover:shadow-lg"
+          selected ? "pb-selected-glow" : "border-neutral-200 hover:border-neutral-300 hover:shadow-lg"
         }`}
       >
         {/* Glare sweep overlay */}
         <div className="pb-glare" />
 
         {/* Block type badge */}
-        <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50/80 backdrop-blur-sm border border-slate-200/60">
-          <Icon className="w-3 h-3 text-slate-400" />
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">{blockDef?.label || block.type}</span>
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-neutral-50/80 backdrop-blur-sm border border-neutral-200/60">
+          <Icon className="w-3 h-3 text-neutral-400" />
+          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide">{blockDef?.label || block.type}</span>
         </div>
 
         {/* Block toolbar */}
@@ -457,21 +457,21 @@ function SortableBlock({
           <button
             {...attributes}
             {...listeners}
-            className="pb-tool-btn p-1.5 text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing"
+            className="pb-tool-btn p-1.5 text-neutral-400 hover:text-neutral-700 cursor-grab active:cursor-grabbing"
             title="Drag to reorder"
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} className="pb-tool-btn p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30" title="Move up">
+          <button onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} className="pb-tool-btn p-1.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-30" title="Move up">
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} className="pb-tool-btn p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30" title="Move down">
+          <button onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} className="pb-tool-btn p-1.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-30" title="Move down">
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="pb-tool-btn p-1.5 text-slate-400 hover:text-slate-700" title="Duplicate">
+          <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="pb-tool-btn p-1.5 text-neutral-400 hover:text-neutral-700" title="Duplicate">
             <Copy className="w-3.5 h-3.5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="pb-tool-btn p-1.5 text-slate-400 hover:text-rose-500" title="Delete">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="pb-tool-btn p-1.5 text-neutral-400 hover:text-rose-500" title="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -491,7 +491,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
   switch (block.type) {
     case "hero":
       return (
-        <div className="rounded-lg p-12 text-center" style={{ backgroundColor: p.backgroundColor || "#4f46e5", color: p.textColor || "#fff", backgroundImage: p.backgroundImage ? `url(${p.backgroundImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
+        <div className="rounded-lg p-12 text-center" style={{ backgroundColor: p.backgroundColor || "#dc2626", color: p.textColor || "#fff", backgroundImage: p.backgroundImage ? `url(${p.backgroundImage})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}>
           <h2 className="text-2xl font-bold mb-2">{p.title || "Hero Title"}</h2>
           <p className="text-sm opacity-90 mb-4">{p.subtitle}</p>
           {p.buttonText && <span className="inline-block bg-white/20 px-4 py-2 rounded-md text-sm font-medium">{p.buttonText}</span>}
@@ -503,31 +503,31 @@ function BlockPreview({ block }: { block: PageBlock }) {
       return p.src ? (
         <div>
           <img src={p.src} alt={p.alt || ""} className={`w-full ${p.width !== "full" ? "max-w-2xl mx-auto" : ""} ${p.rounded ? "rounded-lg" : ""}`} />
-          {p.caption && <p className="text-xs text-slate-400 text-center mt-1">{p.caption}</p>}
+          {p.caption && <p className="text-xs text-neutral-400 text-center mt-1">{p.caption}</p>}
         </div>
-      ) : <div className="bg-slate-100 rounded-lg h-48 flex items-center justify-center text-slate-400 text-sm">Image placeholder</div>;
+      ) : <div className="bg-neutral-100 rounded-lg h-48 flex items-center justify-center text-neutral-400 text-sm">Image placeholder</div>;
     case "gallery":
       return (
         <div>
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3 px-3">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3 px-3">{p.title}</h3>}
           <div className={`grid grid-cols-${p.columns || 3} gap-2 p-2`}>
             {(p.images || []).length > 0 ? (p.images || []).map((img: string, i: number) => (
-              <div key={i} className="aspect-square bg-slate-100 rounded-lg overflow-hidden">
+              <div key={i} className="aspect-square bg-neutral-100 rounded-lg overflow-hidden">
                 <img src={img} alt="" className="w-full h-full object-cover" />
               </div>
-            )) : <div className="col-span-full text-center text-slate-400 text-sm py-8">No images yet</div>}
+            )) : <div className="col-span-full text-center text-neutral-400 text-sm py-8">No images yet</div>}
           </div>
         </div>
       );
     case "cta":
       return (
-        <div className="rounded-lg p-8 text-center" style={{ backgroundColor: p.backgroundColor || "#4f46e5", color: p.textColor || "#fff" }}>
+        <div className="rounded-lg p-8 text-center" style={{ backgroundColor: p.backgroundColor || "#dc2626", color: p.textColor || "#fff" }}>
           <h3 className="text-xl font-bold mb-3">{p.title}</h3>
           {p.buttonText && <span className="inline-block bg-white/20 px-4 py-2 rounded-md text-sm font-medium">{p.buttonText}</span>}
         </div>
       );
     case "spacer":
-      return <div style={{ height: p.height || 48 }} className="flex items-center justify-center"><span className="text-xs text-slate-300">Spacer ({p.height || 48}px)</span></div>;
+      return <div style={{ height: p.height || 48 }} className="flex items-center justify-center"><span className="text-xs text-neutral-300">Spacer ({p.height || 48}px)</span></div>;
     case "divider":
       return <div className="p-2"><hr style={{ borderStyle: p.style || "solid", borderColor: p.color || "#e5e7eb" }} /></div>;
     case "banner":
@@ -539,42 +539,42 @@ function BlockPreview({ block }: { block: PageBlock }) {
       );
     case "featured_products": {
       const sourceLabel = p.source === "selected" ? `${(p.product_ids || []).length} selected` : p.source === "category" ? `Category: ${p.category || "all"}` : p.source === "all" ? "All products" : "Featured";
-      return <div className="p-3"><h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3><div className="text-xs text-slate-400 mb-2">{sourceLabel}</div><div className="grid grid-cols-4 gap-2">{Array.from({ length: p.source === "selected" ? Math.min((p.product_ids || []).length, 4) : Math.min(p.limit || 4, 4) }).map((_, i) => <div key={i} className="aspect-square bg-slate-100 rounded-lg" />)}</div></div>;
+      return <div className="p-3"><h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3><div className="text-xs text-neutral-400 mb-2">{sourceLabel}</div><div className="grid grid-cols-4 gap-2">{Array.from({ length: p.source === "selected" ? Math.min((p.product_ids || []).length, 4) : Math.min(p.limit || 4, 4) }).map((_, i) => <div key={i} className="aspect-square bg-neutral-100 rounded-lg" />)}</div></div>;
     }
     case "category_showcase": {
       const catSourceLabel = p.source === "selected" ? `${(p.category_ids || []).length} selected` : "All categories";
-      return <div className="p-3"><h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3><div className="text-xs text-slate-400 mb-2">{catSourceLabel}</div><div className="grid grid-cols-3 gap-2">{Array.from({ length: p.source === "selected" ? Math.min((p.category_ids || []).length, 3) : Math.min(p.columns || 3, 3) }).map((_, i) => <div key={i} className="h-24 bg-slate-100 rounded-lg" />)}</div></div>;
+      return <div className="p-3"><h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3><div className="text-xs text-neutral-400 mb-2">{catSourceLabel}</div><div className="grid grid-cols-3 gap-2">{Array.from({ length: p.source === "selected" ? Math.min((p.category_ids || []).length, 3) : Math.min(p.columns || 3, 3) }).map((_, i) => <div key={i} className="h-24 bg-neutral-100 rounded-lg" />)}</div></div>;
     }
     case "product_carousel": {
       const sourceLabel = p.source === "selected" ? `${(p.product_ids || []).length} selected` : p.source === "category" ? `Category: ${p.category || "all"}` : p.source === "featured" ? "Featured" : "All products";
-      return <div className="p-3"><h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3><div className="text-xs text-slate-400 mb-2">{sourceLabel}</div><div className="flex gap-3 overflow-hidden">{Array.from({ length: p.source === "selected" ? Math.min((p.product_ids || []).length, 5) : 5 }).map((_, i) => <div key={i} className="w-32 h-40 bg-slate-100 rounded-lg flex-shrink-0" />)}</div></div>;
+      return <div className="p-3"><h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3><div className="text-xs text-neutral-400 mb-2">{sourceLabel}</div><div className="flex gap-3 overflow-hidden">{Array.from({ length: p.source === "selected" ? Math.min((p.product_ids || []).length, 5) : 5 }).map((_, i) => <div key={i} className="w-32 h-40 bg-neutral-100 rounded-lg flex-shrink-0" />)}</div></div>;
     }
     case "testimonials":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3">{p.title}</h3>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(p.items || []).map((item: any, i: number) => (
-              <div key={i} className="bg-slate-50 rounded-lg p-4">
+              <div key={i} className="bg-neutral-50 rounded-lg p-4">
                 <div className="flex gap-0.5 mb-1">{Array.from({ length: item.rating || 5 }).map((_, j) => <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />)}</div>
-                <p className="text-sm text-slate-600">"{item.text}"</p>
-                <p className="text-xs text-slate-400 mt-1">— {item.name}</p>
+                <p className="text-sm text-neutral-600">"{item.text}"</p>
+                <p className="text-xs text-neutral-400 mt-1">— {item.name}</p>
               </div>
             ))}
           </div>
         </div>
       );
     case "reviews":
-      return <div className="p-3"><h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3><div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="bg-slate-50 rounded-lg p-3 flex gap-2"><div className="w-8 h-8 bg-slate-200 rounded-full" /><div className="flex-1"><div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, j) => <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />)}</div><div className="h-2 bg-slate-200 rounded mt-1 w-3/4" /></div></div>)}</div></div>;
+      return <div className="p-3"><h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3><div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="bg-neutral-50 rounded-lg p-3 flex gap-2"><div className="w-8 h-8 bg-neutral-200 rounded-full" /><div className="flex-1"><div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, j) => <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-400" />)}</div><div className="h-2 bg-neutral-200 rounded mt-1 w-3/4" /></div></div>)}</div></div>;
     case "faq":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3>}
           <div className="space-y-1">
             {(p.items || []).map((item: any, i: number) => (
               <div key={i} className="border rounded-md p-3">
-                <p className="font-medium text-sm text-slate-700">{item.question}</p>
-                <p className="text-sm text-slate-500 mt-1">{item.answer}</p>
+                <p className="font-medium text-sm text-neutral-700">{item.question}</p>
+                <p className="text-sm text-neutral-500 mt-1">{item.answer}</p>
               </div>
             ))}
           </div>
@@ -585,28 +585,28 @@ function BlockPreview({ block }: { block: PageBlock }) {
       const enabledFields = Object.entries(fields).filter(([, v]) => v).map(([k]) => k);
       return (
         <div className="p-3">
-          <h3 className="font-semibold text-slate-800">{p.title}</h3>
-          <p className="text-sm text-slate-500 mb-3">{p.subtitle}</p>
-          <div className="text-xs text-slate-400 mb-2">Fields: {enabledFields.join(", ")}</div>
+          <h3 className="font-semibold text-neutral-800">{p.title}</h3>
+          <p className="text-sm text-neutral-500 mb-3">{p.subtitle}</p>
+          <div className="text-xs text-neutral-400 mb-2">Fields: {enabledFields.join(", ")}</div>
           <div className="space-y-2 max-w-md">
-            <div className="h-10 bg-slate-100 rounded-md" /><div className="h-10 bg-slate-100 rounded-md" /><div className="h-20 bg-slate-100 rounded-md" />
+            <div className="h-10 bg-neutral-100 rounded-md" /><div className="h-10 bg-neutral-100 rounded-md" /><div className="h-20 bg-neutral-100 rounded-md" />
             <div className="h-10 bg-brand rounded-md w-32" />
           </div>
         </div>
       );
     }
     case "map":
-      return <div className="p-3"><h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3><div className="h-48 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 text-sm"><MapPin className="w-8 h-8 mb-1" /> Map: {p.address || "No address set"}</div></div>;
+      return <div className="p-3"><h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3><div className="h-48 bg-neutral-100 rounded-lg flex items-center justify-center text-neutral-400 text-sm"><MapPin className="w-8 h-8 mb-1" /> Map: {p.address || "No address set"}</div></div>;
     case "team":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3">{p.title}</h3>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(p.members || []).map((m: any, i: number) => (
               <div key={i} className="text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full mx-auto mb-2" />
-                <p className="font-medium text-sm text-slate-700">{m.name}</p>
-                <p className="text-xs text-slate-400">{m.role}</p>
+                <div className="w-16 h-16 bg-neutral-100 rounded-full mx-auto mb-2" />
+                <p className="font-medium text-sm text-neutral-700">{m.name}</p>
+                <p className="text-xs text-neutral-400">{m.role}</p>
               </div>
             ))}
           </div>
@@ -615,12 +615,12 @@ function BlockPreview({ block }: { block: PageBlock }) {
     case "stats":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3 text-center">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3 text-center">{p.title}</h3>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             {(p.items || []).map((item: any, i: number) => (
               <div key={i}>
                 <p className="text-2xl font-bold text-brand">{item.value}</p>
-                <p className="text-sm text-slate-500">{item.label}</p>
+                <p className="text-sm text-neutral-500">{item.label}</p>
               </div>
             ))}
           </div>
@@ -629,12 +629,12 @@ function BlockPreview({ block }: { block: PageBlock }) {
     case "timeline":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3">{p.title}</h3>}
           <div className="space-y-3">
             {(p.items || []).map((item: any, i: number) => (
               <div key={i} className="flex gap-3">
                 <div className="flex-shrink-0 w-12 text-right"><span className="text-sm font-bold text-brand">{item.year}</span></div>
-                <div className="border-l-2 border-slate-200 pl-3"><p className="font-medium text-sm text-slate-700">{item.title}</p><p className="text-sm text-slate-500">{item.description}</p></div>
+                <div className="border-l-2 border-neutral-200 pl-3"><p className="font-medium text-sm text-neutral-700">{item.title}</p><p className="text-sm text-neutral-500">{item.description}</p></div>
               </div>
             ))}
           </div>
@@ -645,7 +645,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
         <div className="p-3">
           <div className={`grid grid-cols-${p.columns || 2} gap-${p.gap || 4}`}>
             {(p.items || []).map((item: any, i: number) => (
-              <div key={i} className="bg-slate-50 rounded-md p-3 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: item.content || "" }} />
+              <div key={i} className="bg-neutral-50 rounded-md p-3 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: item.content || "" }} />
             ))}
           </div>
         </div>
@@ -653,7 +653,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
     case "feature_grid":
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-3 text-center">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-3 text-center">{p.title}</h3>}
           <div className={`grid grid-cols-${p.columns || 3} gap-4`}>
             {(p.features || []).map((f: any, i: number) => {
               const Icon = ICON_MAP[f.icon] || Package;
@@ -662,8 +662,8 @@ function BlockPreview({ block }: { block: PageBlock }) {
                   <div className="w-12 h-12 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-2">
                     <Icon className="w-6 h-6 text-brand" />
                   </div>
-                  <p className="font-medium text-sm text-slate-700">{f.title}</p>
-                  <p className="text-sm text-slate-500">{f.text}</p>
+                  <p className="font-medium text-sm text-neutral-700">{f.title}</p>
+                  <p className="text-sm text-neutral-500">{f.text}</p>
                 </div>
               );
             })}
@@ -675,7 +675,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
       const hasContent = (p.html || "") + (p.css || "") + (p.js || "");
       return (
         <div className="p-3">
-          {p.title && <h3 className="font-semibold text-slate-800 mb-2">{p.title}</h3>}
+          {p.title && <h3 className="font-semibold text-neutral-800 mb-2">{p.title}</h3>}
           {hasContent ? (
             <iframe
               srcDoc={srcdoc}
@@ -685,7 +685,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
               title="Custom HTML Preview"
             />
           ) : (
-            <div className="text-sm text-slate-400 text-center py-8 border rounded-md bg-slate-50">
+            <div className="text-sm text-neutral-400 text-center py-8 border rounded-md bg-neutral-50">
               No custom HTML content yet. Open the settings panel to add HTML, CSS, or JS.
             </div>
           )}
@@ -713,7 +713,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
       );
     }
     default:
-      return <div className="p-4 text-sm text-slate-400">Unknown block: {block.type}</div>;
+      return <div className="p-4 text-sm text-neutral-400">Unknown block: {block.type}</div>;
   }
 }
 
@@ -729,7 +729,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
 
   const productsQ = useQuery({
     queryKey: ["products-admin", tenant, search],
-    queryFn: () => api.listProductsAdmin(tenant, search || undefined),
+    queryFn: () => api.listProductsAdmin(tenant, { search: search || undefined }),
     enabled: !!tenant && showSearch,
   });
 
@@ -751,7 +751,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
     }
   };
 
-  const labelCls = "text-xs font-medium text-slate-500 block mb-1";
+  const labelCls = "text-xs font-medium text-neutral-500 block mb-1";
 
   return (
     <div>
@@ -761,7 +761,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
       {selectedIds.length > 0 && (
         <div className="space-y-1 mb-2 max-h-40 overflow-y-auto border rounded-md p-2">
           {(selectedProductsQ.data?.items || []).map((prod) => (
-            <div key={prod.id} className="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1">
+            <div key={prod.id} className="flex items-center justify-between text-xs bg-neutral-50 rounded px-2 py-1">
               <div className="flex items-center gap-2 min-w-0">
                 {prod.image_url && (
                   <img src={prod.image_url} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
@@ -774,7 +774,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
               </button>
             </div>
           ))}
-          {selectedProductsQ.isLoading && <div className="text-xs text-slate-400">Loading...</div>}
+          {selectedProductsQ.isLoading && <div className="text-xs text-neutral-400">Loading...</div>}
         </div>
       )}
 
@@ -782,7 +782,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
       <div className="relative">
         <button
           onClick={() => setShowSearch(!showSearch)}
-          className="w-full border rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2"
+          className="w-full border rounded-md px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50 flex items-center justify-center gap-2"
         >
           <Plus size={14} /> {showSearch ? "Close search" : "Add products"}
         </button>
@@ -790,7 +790,7 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
         {showSearch && (
           <div className="mt-2 border rounded-md p-2 space-y-2">
             <div className="relative">
-              <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
+              <Search size={14} className="absolute left-2 top-2.5 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Search products..."
@@ -801,14 +801,14 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
               />
             </div>
             <div className="max-h-48 overflow-y-auto space-y-1">
-              {productsQ.isLoading && <div className="text-xs text-slate-400 p-2">Loading products...</div>}
+              {productsQ.isLoading && <div className="text-xs text-neutral-400 p-2">Loading products...</div>}
               {(productsQ.data?.items || []).map((prod) => {
                 const isSelected = selectedIds.includes(prod.id);
                 return (
                   <div
                     key={prod.id}
                     className={`flex items-center justify-between text-xs rounded px-2 py-1.5 cursor-pointer ${
-                      isSelected ? "bg-indigo-50" : "hover:bg-slate-50"
+                      isSelected ? "bg-red-50" : "hover:bg-neutral-50"
                     }`}
                     onClick={() => toggleProduct(prod.id)}
                   >
@@ -817,14 +817,14 @@ function ProductPicker({ tenant, selectedIds, onChange }: {
                         <img src={prod.image_url} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
                       )}
                       <span className="truncate">{prod.name}</span>
-                      <span className="text-slate-400 flex-shrink-0">{formatMoney(prod.base_price, prod.currency_code)}</span>
+                      <span className="text-neutral-400 flex-shrink-0">{formatMoney(prod.base_price, prod.currency_code)}</span>
                     </div>
-                    {isSelected && <span className="text-indigo-600 flex-shrink-0 ml-2">✓</span>}
+                    {isSelected && <span className="text-red-600 flex-shrink-0 ml-2">✓</span>}
                   </div>
                 );
               })}
               {!productsQ.isLoading && (productsQ.data?.items || []).length === 0 && (
-                <div className="text-xs text-slate-400 p-2 text-center">No products found</div>
+                <div className="text-xs text-neutral-400 p-2 text-center">No products found</div>
               )}
             </div>
           </div>
@@ -846,7 +846,7 @@ function CategorySelect({ tenant, value, onChange }: {
     enabled: !!tenant,
   });
 
-  const labelCls = "text-xs font-medium text-slate-500 block mb-1";
+  const labelCls = "text-xs font-medium text-neutral-500 block mb-1";
   const inputCls = "w-full border rounded-md px-3 py-2 text-sm";
 
   return (
@@ -885,7 +885,7 @@ function CategoryPicker({ tenant, selectedIds, onChange }: {
     }
   };
 
-  const labelCls = "text-xs font-medium text-slate-500 block mb-1";
+  const labelCls = "text-xs font-medium text-neutral-500 block mb-1";
 
   return (
     <div>
@@ -895,7 +895,7 @@ function CategoryPicker({ tenant, selectedIds, onChange }: {
       {selectedIds.length > 0 && (
         <div className="space-y-1 mb-2 max-h-40 overflow-y-auto border rounded-md p-2">
           {selectedCats.map((cat) => (
-            <div key={cat.id} className="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1">
+            <div key={cat.id} className="flex items-center justify-between text-xs bg-neutral-50 rounded px-2 py-1">
               <span className="truncate">{cat.name}</span>
               <button onClick={() => toggleCategory(cat.id)} className="text-red-400 hover:text-red-600 flex-shrink-0 ml-2">
                 <X size={14} />
@@ -907,24 +907,24 @@ function CategoryPicker({ tenant, selectedIds, onChange }: {
 
       {/* Available categories */}
       <div className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1">
-        {catsQ.isLoading && <div className="text-xs text-slate-400 p-2">Loading categories...</div>}
+        {catsQ.isLoading && <div className="text-xs text-neutral-400 p-2">Loading categories...</div>}
         {allCats.map((cat) => {
           const isSelected = selectedIds.includes(cat.id);
           return (
             <div
               key={cat.id}
               className={`flex items-center justify-between text-xs rounded px-2 py-1.5 cursor-pointer ${
-                isSelected ? "bg-indigo-50" : "hover:bg-slate-50"
+                isSelected ? "bg-red-50" : "hover:bg-neutral-50"
               }`}
               onClick={() => toggleCategory(cat.id)}
             >
               <span className="truncate">{cat.name}</span>
-              {isSelected && <span className="text-indigo-600 flex-shrink-0 ml-2">✓</span>}
+              {isSelected && <span className="text-red-600 flex-shrink-0 ml-2">✓</span>}
             </div>
           );
         })}
         {!catsQ.isLoading && allCats.length === 0 && (
-          <div className="text-xs text-slate-400 p-2 text-center">No categories found</div>
+          <div className="text-xs text-neutral-400 p-2 text-center">No categories found</div>
         )}
       </div>
     </div>
@@ -937,7 +937,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
   const set = (key: string, value: any) => onChange({ [key]: value });
 
   const inputCls = "w-full border rounded-md px-3 py-2 text-sm";
-  const labelCls = "text-xs font-medium text-slate-500 block mb-1";
+  const labelCls = "text-xs font-medium text-neutral-500 block mb-1";
 
   const renderListEditor = (key: string, label: string, fields: { key: string; label: string; type?: string }[]) => {
     const items = p[key] || [];
@@ -984,7 +984,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
           <div><label className={labelCls}>Button Link</label><input type="text" value={p.buttonLink ?? ""} onChange={(e) => set("buttonLink", e.target.value)} className={inputCls} placeholder="/demo?view=shop" /></div>
           <div><label className={labelCls}>Background Image URL</label><input type="text" value={p.backgroundImage ?? ""} onChange={(e) => set("backgroundImage", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Alignment</label><select value={p.align ?? "center"} onChange={(e) => set("align", e.target.value)} className={inputCls}><option value="left">Left</option><option value="center">Center</option></select></div>
-          <div><label className={labelCls}>Background Color</label><input type="color" value={p.backgroundColor ?? "#4f46e5"} onChange={(e) => set("backgroundColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
+          <div><label className={labelCls}>Background Color</label><input type="color" value={p.backgroundColor ?? "#dc2626"} onChange={(e) => set("backgroundColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
           <div><label className={labelCls}>Text Color</label><input type="color" value={p.textColor ?? "#ffffff"} onChange={(e) => set("textColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
         </>
       );
@@ -993,7 +993,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
         <div>
           <label className={labelCls}>Content (HTML)</label>
           <textarea value={p.content ?? ""} onChange={(e) => set("content", e.target.value)} rows={10} className={inputCls + " font-mono"} />
-          <p className="text-xs text-slate-400 mt-1">{"Supports HTML: <h2>, <p>, <ul>, <strong>, etc."}</p>
+          <p className="text-xs text-neutral-400 mt-1">{"Supports HTML: <h2>, <p>, <ul>, <strong>, etc."}</p>
         </div>
       );
     case "image":
@@ -1023,7 +1023,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
           <div><label className={labelCls}>Title</label><input type="text" value={p.title ?? ""} onChange={(e) => set("title", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Button Text</label><input type="text" value={p.buttonText ?? ""} onChange={(e) => set("buttonText", e.target.value)} className={inputCls} /></div>
           <div><label className={labelCls}>Button Link</label><input type="text" value={p.buttonLink ?? ""} onChange={(e) => set("buttonLink", e.target.value)} className={inputCls} /></div>
-          <div><label className={labelCls}>Background Color</label><input type="color" value={p.backgroundColor ?? "#4f46e5"} onChange={(e) => set("backgroundColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
+          <div><label className={labelCls}>Background Color</label><input type="color" value={p.backgroundColor ?? "#dc2626"} onChange={(e) => set("backgroundColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
           <div><label className={labelCls}>Text Color</label><input type="color" value={p.textColor ?? "#ffffff"} onChange={(e) => set("textColor", e.target.value)} className="w-full h-10 border rounded-md" /></div>
         </>
       );
@@ -1253,7 +1253,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
             />
           </div>
           <div><label className={labelCls}>Iframe Height (px)</label><input type="number" min={50} max={2000} value={p.height ?? 300} onChange={(e) => set("height", Number(e.target.value))} className={inputCls} /></div>
-          <div className="text-xs text-slate-400 bg-slate-50 rounded-md p-2 border">
+          <div className="text-xs text-neutral-400 bg-neutral-50 rounded-md p-2 border">
             <strong>Encapsulation:</strong> Custom code runs inside a sandboxed iframe with <code>allow-scripts</code>. It cannot access the parent page's DOM, styles, or cookies. CSS and JS are scoped to the iframe only.
           </div>
         </>
@@ -1296,16 +1296,16 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className={labelCls}>Link Columns</label>
-              <button onClick={addColumn} className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"><Plus size={12} /> Add column</button>
+              <button onClick={addColumn} className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1"><Plus size={12} /> Add column</button>
             </div>
             <div className="space-y-3">
               {cols.map((col: any, ci: number) => (
-                <div key={ci} className="border rounded-md p-3 space-y-2 bg-slate-50">
+                <div key={ci} className="border rounded-md p-3 space-y-2 bg-neutral-50">
                   <div className="flex items-center gap-2">
                     <input type="text" value={col.title ?? ""} onChange={(e) => updateColumn(ci, "title", e.target.value)} className={inputCls} placeholder="Column title" />
                     <button onClick={() => removeColumn(ci)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={16} /></button>
                   </div>
-                  <div className="space-y-1.5 pl-2 border-l-2 border-slate-200">
+                  <div className="space-y-1.5 pl-2 border-l-2 border-neutral-200">
                     {(col.links || []).map((link: any, li: number) => (
                       <div key={li} className="flex items-center gap-2">
                         <input type="text" value={link.label ?? ""} onChange={(e) => updateLink(ci, li, "label", e.target.value)} className={inputCls + " flex-1"} placeholder="Label" />
@@ -1313,7 +1313,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
                         <button onClick={() => removeLink(ci, li)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={14} /></button>
                       </div>
                     ))}
-                    <button onClick={() => addLink(ci)} className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"><Plus size={10} /> Add link</button>
+                    <button onClick={() => addLink(ci)} className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1"><Plus size={10} /> Add link</button>
                   </div>
                 </div>
               ))}
@@ -1326,7 +1326,7 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
               <Toggle label="Show Social Media Icons" checked={p.showSocial ?? true} onChange={(v) => set("showSocial", v)} />
             </div>
             {p.showSocial !== false && (
-              <div className="space-y-2 border rounded-md p-3 bg-slate-50">
+              <div className="space-y-2 border rounded-md p-3 bg-neutral-50">
                 {socialFields.map((s) => (
                   <div key={s}>
                     <label className={labelCls}>{s.charAt(0).toUpperCase() + s.slice(1)} URL</label>
@@ -1345,6 +1345,6 @@ function PropertyEditor({ block, onChange, tenant }: { block: PageBlock; onChang
       );
     }
     default:
-      return <p className="text-sm text-slate-400">No properties for this block type.</p>;
+      return <p className="text-sm text-neutral-400">No properties for this block type.</p>;
   }
 }

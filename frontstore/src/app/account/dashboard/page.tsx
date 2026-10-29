@@ -36,6 +36,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   paid: { label: "Paid", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
   pending: { label: "Pending", color: "#d97706", bg: "bg-amber-50", border: "border-amber-200", icon: Clock },
   processing: { label: "Processing", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Settings },
+  ready: { label: "Ready for Delivery", color: "#4f46e5", bg: "bg-indigo-50", border: "border-indigo-200", icon: Package },
   failed: { label: "Failed", color: "#dc2626", bg: "bg-rose-50", border: "border-rose-200", icon: XCircle },
   shipped: { label: "Shipped", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
   delivered: { label: "Delivered", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
@@ -62,6 +63,7 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
   });
   const bootstrap = bootstrapQ.data;
   const currencyObj: Currency | undefined = getCurrencySymbol(bootstrap?.currencies || [], currency);
+  const returnsModuleOn = bootstrap?.modules?.returns !== false;
 
   const ordersQ = useQuery({
     queryKey: ["my-orders", "dashboard"],
@@ -134,7 +136,10 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
   const defaultAddress = addresses.find((a) => a.is_default) ?? addresses[0];
 
   const purchasedProducts: PurchasedProduct[] = purchasedQ.data?.items ?? [];
-  const reviewableProducts = purchasedProducts.filter((p) => !p.has_reviewed);
+  // Reviews open once the order is delivered (fulfilled orders stay reviewable).
+  const reviewableProducts = purchasedProducts.filter(
+    (p) => !p.has_reviewed && (p.order_status === "delivered" || p.order_status === "fulfilled")
+  );
   const reviewedCount = purchasedProducts.length - reviewableProducts.length;
   const returnableProducts = purchasedProducts.filter(
     (p) =>
@@ -410,7 +415,8 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
               )}
             </section>
 
-            {/* Returns & Refunds */}
+            {/* Returns & Refunds — hidden when the returns module is disabled */}
+            {returnsModuleOn && (
             <section className="bg-white rounded-2xl border p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-slate-900 flex items-center gap-2">
@@ -500,6 +506,7 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
                 </div>
               )}
             </section>
+            )}
           </div>
 
           {/* Right column (1/3): Wallet + quick links */}

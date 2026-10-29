@@ -149,6 +149,7 @@ func main() {
 	emailH := handlers.NewEmailHandler(store, cfg)
 	checkoutH := handlers.NewCheckoutHandler(store, payment.Default, emailH)
 	addressH := handlers.NewAddressHandler(store)
+	handH := handlers.NewHandoffHandler(store)
 	paymentH := handlers.NewPaymentHandler(payment.Default, store)
 	orderH := handlers.NewOrderHandler(store)
 	taxH := handlers.NewTaxHandler(store)
@@ -165,6 +166,8 @@ func main() {
 	exportH := handlers.NewExportHandler(store, cfg, emailH)
 	contactH := handlers.NewContactHandler(store, emailH)
 	branchH := handlers.NewBranchHandler(store)
+	modulesH := handlers.NewModulesHandler(store)
+	deliveryH := handlers.NewDeliveryHandler(store)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -247,9 +250,8 @@ func main() {
 	storeAPI.DELETE("/wishlist", wishlistH.ClearWishlist)
 	storeAPI.GET("/wishlist/check/:productId", wishlistH.CheckProduct)
 
-	// Reviews (public read, public write for now)
+	// Reviews (public read; write requires a customer account — see authed group)
 	storeAPI.GET("/reviews/:productId", reviewH.ListReviews)
-	storeAPI.POST("/reviews/:productId", reviewH.CreateReview)
 	storeAPI.GET("/reviews/:productId/summary", reviewH.GetSummary)
 
 	// Checkout (public — uses session cookie or user ID if authenticated)
@@ -275,6 +277,9 @@ func main() {
 
 	// Delivery availability check (public — which branch serves a location)
 	storeAPI.GET("/delivery/check", branchH.DeliveryCheck)
+
+	// Store modules / feature flags (public — clients hide disabled features)
+	storeAPI.GET("/modules", modulesH.PublicList)
 
 	// Payment methods (public — lists available gateways from the registry)
 	storeAPI.GET("/payment/methods", paymentH.ListMethods)
@@ -319,12 +324,31 @@ func main() {
 		// Returns (authenticated customers — list all their returns across orders)
 		authed.GET("/my-returns", returnsH.CustomerListReturns)
 
-		// Reviews (authenticated customers)
+		// Reviews (authenticated customers only — review submission is
+		// restricted to items from the customer's delivered orders)
+		authed.POST("/reviews/:productId", middleware.RequireRole(models.RoleCustomer), reviewH.CreateReview)
 		authed.GET("/me/purchased-products", reviewH.ListPurchasedProducts)
 		authed.GET("/me/reviews", reviewH.ListMyReviews)
 		authed.GET("/reviews/:productId/my", reviewH.GetMyReview)
 		// Customer image upload (for review photos)
 		authed.POST("/upload/images", uploadH.UploadImages)
+
+		// Delivery portal — partner-scoped endpoints plus the staff-side
+		// assignment APIs. Partner-only mutations are additionally role-gated.
+		dlv := authed.Group("/delivery")
+		dlv.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin, models.RoleBranchManager, models.RoleStaff, models.RoleDeliveryPartner))
+		{
+			dlv.GET("/branches", deliveryH.Branches)
+			dlv.GET("/orders", deliveryH.ListOrders)
+			dlv.GET("/partners", middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin, models.RoleBranchManager, models.RoleStaff), deliveryH.ListPartners)
+			dlv.PUT("/orders/:orderId/assign", middleware.RequireRole(models.RoleSuperAdmin, models.RoleBusinessAdmin, models.RoleBranchManager, models.RoleStaff), middleware.RequirePermission(store, "orders.update"), middleware.Idempotency(idemStore, "delivery_assign"), deliveryH.Assign)
+
+			partner := dlv.Group("")
+			partner.Use(middleware.RequireRole(models.RoleDeliveryPartner))
+			partner.POST("/orders/:orderId/claim", middleware.Idempotency(idemStore, "delivery_claim"), deliveryH.Claim)
+			partner.POST("/orders/:orderId/start", middleware.Idempotency(idemStore, "delivery_start"), deliveryH.Start)
+			partner.POST("/orders/:orderId/deliver", middleware.Idempotency(idemStore, "delivery_deliver"), deliveryH.Deliver)
+		}
 
 		// Admin (business_admin + branch_manager + staff) + superadmin
 		admin := authed.Group("")
@@ -359,6 +383,10 @@ func main() {
 			admin.GET("/orders/admin", middleware.RequirePermission(store, "orders.view"), orderH.ListOrders)
 			admin.GET("/orders/counts", middleware.RequirePermission(store, "orders.view"), orderH.OrderCounts)
 			admin.GET("/orders/admin/:orderId", middleware.RequirePermission(store, "orders.view"), orderH.GetOrder)
+			admin.POST("/orders/admin/:orderId/handoffs", middleware.RequirePermission(store, "orders.update"), handH.Create)
+			admin.GET("/orders/admin/:orderId/handoffs", middleware.RequirePermission(store, "orders.view"), handH.ListForOrder)
+			admin.GET("/handoffs", middleware.RequirePermission(store, "orders.view"), handH.ListIncoming)
+			admin.POST("/handoffs/:id/respond", middleware.RequirePermission(store, "orders.update"), handH.Respond)
 			admin.PUT("/orders/admin/:orderId/status", middleware.RequirePermission(store, "orders.update"), middleware.Idempotency(idemStore, "order_status"), orderH.UpdateStatus)
 			admin.PUT("/orders/admin/:orderId/notes", middleware.RequirePermission(store, "orders.update"), orderH.UpdateNotes)
 
@@ -400,6 +428,11 @@ func main() {
 			admin.GET("/products/slug/:slug", middleware.RequirePermission(store, "products.view"), catalogH.GetProduct)
 			admin.PUT("/products/:id", middleware.RequirePermission(store, "products.update"), catalogH.UpdateProduct)
 			admin.DELETE("/products/:id", middleware.RequirePermission(store, "products.delete"), catalogH.DeleteProduct)
+
+			// Reviews moderation (delete is superadmin-only)
+			admin.GET("/reviews", middleware.RequirePermission(store, "products.view"), reviewH.AdminListReviews)
+			admin.PUT("/reviews/:id", middleware.RequirePermission(store, "products.update"), reviewH.AdminUpdateReview)
+			admin.DELETE("/reviews/:id", middleware.RequireRole(models.RoleSuperAdmin), reviewH.AdminDeleteReview)
 
 			// Categories
 			admin.POST("/categories", middleware.RequirePermission(store, "categories.manage"), catalogH.CreateCategory)
@@ -507,6 +540,13 @@ func main() {
 			// admin group is a subset of authed. Only the singular /upload/image is
 			// admin-only here.
 			admin.POST("/upload/image", uploadH.UploadImage)
+
+			// Developer settings (superadmin only) — Modules & Features
+			devOnly := admin.Group("/developer")
+			devOnly.Use(middleware.RequireRole(models.RoleSuperAdmin))
+			{
+				devOnly.PUT("/modules/:code", modulesH.Update)
+			}
 
 			// Permission management (business_admin + superadmin only)
 			adminPerm := admin.Group("")

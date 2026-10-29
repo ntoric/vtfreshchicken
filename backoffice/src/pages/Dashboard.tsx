@@ -78,7 +78,7 @@ const STATUS_HEX: Record<string, string> = {
   pending: "#f59e0b",
   paid: "#10b981",
   processing: "#3b82f6",
-  shipped: "#6366f1",
+  shipped: "#ef4444",
   delivered: "#22c55e",
   fulfilled: "#06b6d4",
   cancelled: "#f43f5e",
@@ -106,7 +106,7 @@ const METHOD_ICONS: Record<string, LucideIcon> = {
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
+    <div className={`bg-white rounded-2xl border border-neutral-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
       {children}
     </div>
   );
@@ -116,8 +116,8 @@ function CardHeader({ title, subtitle, action }: { title: string; subtitle?: str
   return (
     <div className="flex items-start justify-between gap-3 mb-4">
       <div className="min-w-0">
-        <h3 className="font-semibold text-slate-900">{title}</h3>
-        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+        <h3 className="font-semibold text-neutral-900">{title}</h3>
+        {subtitle && <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -163,21 +163,21 @@ function KpiCard({
   footnote?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+    <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-start justify-between gap-3">
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-sm ${gradient}`}>
           {icon}
         </div>
         {spark && spark.length > 1 && (
-          <Sparkline data={spark} width={96} height={36} color={sparkColor ?? "#4f46e5"} className="opacity-90" />
+          <Sparkline data={spark} width={96} height={36} color={sparkColor ?? "#dc2626"} className="opacity-90" />
         )}
       </div>
-      <p className="text-sm text-slate-500 mt-4">{label}</p>
+      <p className="text-sm text-neutral-500 mt-4">{label}</p>
       <div className="flex items-end justify-between gap-2 mt-0.5">
-        <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">{value}</p>
+        <p className="text-2xl font-bold text-neutral-900 tabular-nums tracking-tight">{value}</p>
         {delta != null && <DeltaChip pct={delta} label={deltaLabel ?? ""} />}
       </div>
-      {footnote && <p className="text-xs text-slate-400 mt-1">{footnote}</p>}
+      {footnote && <p className="text-xs text-neutral-400 mt-1">{footnote}</p>}
     </div>
   );
 }
@@ -293,7 +293,7 @@ export function Dashboard() {
   const attentionTotal = attention.reduce((s, a) => s + a.count, 0);
 
   const pulseTiles = [
-    { icon: Package, label: "Products", value: fmtInt.format(stats?.products ?? 0), color: "bg-indigo-50 text-indigo-600", to: `${prefix}/products` },
+    { icon: Package, label: "Products", value: fmtInt.format(stats?.products ?? 0), color: "bg-red-50 text-red-600", to: `${prefix}/products` },
     { icon: Boxes, label: "Stock value", value: fmtMoney(stats?.inventory?.total_stock_value ?? 0), color: "bg-teal-50 text-teal-600", to: `${prefix}/inventory` },
     { icon: Tag, label: "Active offers", value: fmtInt.format(stats?.active_offers ?? 0), color: "bg-sky-50 text-sky-600", to: `${prefix}/offers` },
     { icon: Percent, label: "Active discounts", value: fmtInt.format(stats?.active_discounts ?? 0), color: "bg-fuchsia-50 text-fuchsia-600", to: `${prefix}/discounts` },
@@ -308,13 +308,13 @@ export function Dashboard() {
         subtitle={`Here's how ${tenantName || "your store"} is doing — ${todayLong}`}
         action={
           <div className="flex items-center gap-2">
-            <div className="flex bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+            <div className="flex bg-white border border-neutral-200 rounded-lg p-0.5 shadow-sm">
               {(Object.keys(RANGES) as RangeKey[]).map((k) => (
                 <button
                   key={k}
                   onClick={() => setRange(k)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                    range === k ? "bg-brand text-white shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    range === k ? "bg-brand text-white shadow-sm" : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
                   {RANGES[k].label}
@@ -324,7 +324,7 @@ export function Dashboard() {
             <button
               onClick={() => statsQ.refetch()}
               title="Refresh"
-              className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-800 hover:border-slate-300 shadow-sm transition"
+              className="p-2 bg-white border border-neutral-200 rounded-lg text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm transition"
             >
               <RefreshCw className={`w-4 h-4 ${statsQ.isFetching ? "animate-spin" : ""}`} />
             </button>
@@ -338,7 +338,7 @@ export function Dashboard() {
           <Link
             key={a.label}
             to={`${prefix}${a.to}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 hover:text-brand hover:border-brand/40 hover:shadow-sm transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-200 rounded-full text-xs font-medium text-neutral-600 hover:text-brand hover:border-brand/40 hover:shadow-sm transition"
           >
             <a.icon className="w-3.5 h-3.5" />
             {a.label}
@@ -360,11 +360,11 @@ export function Dashboard() {
               label={range === "all" ? "Total revenue" : "Revenue"}
               value={fmtMoney(stats?.revenue ?? 0)}
               icon={<Banknote className="w-5 h-5" />}
-              gradient="bg-gradient-to-br from-indigo-500 to-violet-600"
+              gradient="bg-gradient-to-br from-red-500 to-violet-600"
               delta={delta(stats?.revenue ?? 0, "revenue").pct}
               deltaLabel={delta(stats?.revenue ?? 0, "revenue").label}
               spark={(stats?.revenue_series ?? []).map((d) => d.revenue)}
-              sparkColor="#6366f1"
+              sparkColor="#ef4444"
               footnote={`${fmtMoney(stats?.today?.revenue ?? 0)} today`}
             />
             <KpiCard
@@ -403,11 +403,11 @@ export function Dashboard() {
                 title="Revenue"
                 subtitle={range === "all" ? "Last 30 days" : `Selected period · ${RANGES[range].label}`}
                 action={
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                  <div className="flex items-center gap-4 text-xs text-neutral-500">
                     <span className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-brand inline-block" /> Revenue
                     </span>
-                    <span className="tabular-nums font-semibold text-slate-900">{fmtMoney(stats?.revenue ?? 0)}</span>
+                    <span className="tabular-nums font-semibold text-neutral-900">{fmtMoney(stats?.revenue ?? 0)}</span>
                   </div>
                 }
               />
@@ -432,23 +432,23 @@ export function Dashboard() {
                   <Link
                     key={a.label}
                     to={a.to}
-                    className="flex items-center gap-3 px-2.5 py-2.5 -mx-2.5 rounded-xl hover:bg-slate-50 transition group"
+                    className="flex items-center gap-3 px-2.5 py-2.5 -mx-2.5 rounded-xl hover:bg-neutral-50 transition group"
                   >
                     <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${a.color}`}>
                       <a.icon className="w-4 h-4" />
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-medium text-slate-800">{a.label}</span>
-                      <span className="block text-xs text-slate-400 truncate">{a.hint}</span>
+                      <span className="block text-sm font-medium text-neutral-800">{a.label}</span>
+                      <span className="block text-xs text-neutral-400 truncate">{a.hint}</span>
                     </span>
                     <span
                       className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded-md ${
-                        a.count > 0 ? "bg-slate-900 text-white" : "text-slate-300"
+                        a.count > 0 ? "bg-neutral-900 text-white" : "text-neutral-300"
                       }`}
                     >
                       {a.count}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition" />
+                    <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-0.5 transition" />
                   </Link>
                 ))}
               </div>
@@ -460,7 +460,7 @@ export function Dashboard() {
             <Card className="p-6">
               <CardHeader title="Orders by status" subtitle={`${totalOrders} in period`} />
               {totalOrders === 0 ? (
-                <p className="text-sm text-slate-400 py-8 text-center">No orders in this period.</p>
+                <p className="text-sm text-neutral-400 py-8 text-center">No orders in this period.</p>
               ) : (
                 <div className="flex items-center gap-5">
                   <DonutChart
@@ -471,10 +471,10 @@ export function Dashboard() {
                     onHover={setHoveredSlice}
                     center={
                       <>
-                        <span className="text-2xl font-bold text-slate-900 tabular-nums">
+                        <span className="text-2xl font-bold text-neutral-900 tabular-nums">
                           {hovered ? hovered.value : totalOrders}
                         </span>
-                        <span className="text-xs text-slate-400">{hovered ? hovered.label : "orders"}</span>
+                        <span className="text-xs text-neutral-400">{hovered ? hovered.label : "orders"}</span>
                       </>
                     }
                   />
@@ -486,13 +486,13 @@ export function Dashboard() {
                         onMouseEnter={() => setHoveredSlice(i)}
                         onMouseLeave={() => setHoveredSlice(null)}
                         className={`flex items-center gap-2 text-sm rounded-lg px-1.5 py-1 -mx-1.5 transition ${
-                          hoveredSlice === i ? "bg-slate-50" : ""
+                          hoveredSlice === i ? "bg-neutral-50" : ""
                         }`}
                       >
                         <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                        <span className="flex-1 truncate text-slate-600">{s.label}</span>
-                        <span className="font-semibold text-slate-900 tabular-nums">{s.value}</span>
-                        <span className="text-xs text-slate-400 w-9 text-right tabular-nums">
+                        <span className="flex-1 truncate text-neutral-600">{s.label}</span>
+                        <span className="font-semibold text-neutral-900 tabular-nums">{s.value}</span>
+                        <span className="text-xs text-neutral-400 w-9 text-right tabular-nums">
                           {Math.round((s.value / totalOrders) * 100)}%
                         </span>
                       </Link>
@@ -505,16 +505,16 @@ export function Dashboard() {
             <Card className="p-6">
               <CardHeader title="Top categories" subtitle="By revenue" />
               {(stats?.top_categories ?? []).length === 0 ? (
-                <p className="text-sm text-slate-400 py-8 text-center">No sales yet.</p>
+                <p className="text-sm text-neutral-400 py-8 text-center">No sales yet.</p>
               ) : (
                 <div className="space-y-3.5">
                   {stats!.top_categories!.map((c) => (
                     <div key={c.name}>
                       <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-slate-700 font-medium truncate">{c.name}</span>
-                        <span className="text-slate-900 font-semibold tabular-nums">{fmtMoney(c.revenue)}</span>
+                        <span className="text-neutral-700 font-medium truncate">{c.name}</span>
+                        <span className="text-neutral-900 font-semibold tabular-nums">{fmtMoney(c.revenue)}</span>
                       </div>
-                      <MeterBar value={c.revenue} max={maxCatRev} color="linear-gradient(90deg,#4f46e5,#818cf8)" />
+                      <MeterBar value={c.revenue} max={maxCatRev} color="linear-gradient(90deg,#dc2626,#f87171)" />
                     </div>
                   ))}
                 </div>
@@ -524,7 +524,7 @@ export function Dashboard() {
             <Card className="p-6">
               <CardHeader title="Payment methods" subtitle="Revenue share" />
               {(stats?.payment_methods ?? []).length === 0 ? (
-                <p className="text-sm text-slate-400 py-8 text-center">No payments yet.</p>
+                <p className="text-sm text-neutral-400 py-8 text-center">No payments yet.</p>
               ) : (
                 <div className="space-y-3.5">
                   {stats!.payment_methods!.map((p) => {
@@ -532,13 +532,13 @@ export function Dashboard() {
                     const share = stats!.payment_methods!.reduce((s, x) => s + x.revenue, 0);
                     return (
                       <div key={p.method} className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+                        <span className="w-9 h-9 rounded-lg bg-neutral-100 text-neutral-500 flex items-center justify-center flex-shrink-0">
                           <Icon className="w-4 h-4" />
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="text-slate-700 font-medium capitalize truncate">{p.method.replace(/_/g, " ")}</span>
-                            <span className="text-slate-900 font-semibold tabular-nums">
+                            <span className="text-neutral-700 font-medium capitalize truncate">{p.method.replace(/_/g, " ")}</span>
+                            <span className="text-neutral-900 font-semibold tabular-nums">
                               {share > 0 ? `${Math.round((p.revenue / share) * 100)}%` : "—"}
                             </span>
                           </div>
@@ -565,33 +565,33 @@ export function Dashboard() {
                 }
               />
               {(stats?.top_products ?? []).length === 0 ? (
-                <p className="text-sm text-slate-400 py-8 text-center">No sales yet.</p>
+                <p className="text-sm text-neutral-400 py-8 text-center">No sales yet.</p>
               ) : (
                 <div className="space-y-1">
                   {stats!.top_products!.map((p, i) => (
                     <button
                       key={`${p.product_id}-${i}`}
                       onClick={() => p.product_id && navigate(`${prefix}/products/${p.product_id}/edit`)}
-                      className="w-full flex items-center gap-3 px-2 py-2 -mx-2 rounded-xl hover:bg-slate-50 transition text-left"
+                      className="w-full flex items-center gap-3 px-2 py-2 -mx-2 rounded-xl hover:bg-neutral-50 transition text-left"
                     >
-                      <span className="w-5 text-xs font-bold text-slate-300 tabular-nums">{i + 1}</span>
+                      <span className="w-5 text-xs font-bold text-neutral-300 tabular-nums">{i + 1}</span>
                       {p.image ? (
-                        <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-100 flex-shrink-0" />
+                        <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-neutral-100 flex-shrink-0" />
                       ) : (
-                        <span className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <Package className="w-4 h-4 text-slate-400" />
+                        <span className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <Package className="w-4 h-4 text-neutral-400" />
                         </span>
                       )}
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-medium text-slate-800 truncate">{p.name}</span>
-                        <span className="block text-xs text-slate-400">{p.qty} sold</span>
+                        <span className="block text-sm font-medium text-neutral-800 truncate">{p.name}</span>
+                        <span className="block text-xs text-neutral-400">{p.qty} sold</span>
                       </span>
-                      <span className="text-sm font-semibold text-slate-900 tabular-nums">{fmtMoney(p.revenue)}</span>
+                      <span className="text-sm font-semibold text-neutral-900 tabular-nums">{fmtMoney(p.revenue)}</span>
                     </button>
                   ))}
                   <div className="pt-3">
                     <MeterBar value={stats!.top_products![0]?.revenue ?? 0} max={maxProdRev} color="linear-gradient(90deg,#10b981,#34d399)" height={4} />
-                    <p className="text-xs text-slate-400 mt-1.5">
+                    <p className="text-xs text-neutral-400 mt-1.5">
                       Top seller drives {fmtMoney(stats!.top_products![0]?.revenue ?? 0)}
                     </p>
                   </div>
@@ -611,14 +611,14 @@ export function Dashboard() {
               />
               {(!stats?.recent_orders || stats.recent_orders.length === 0) ? (
                 <div className="py-10 text-center">
-                  <Inbox className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400">No orders yet. They'll appear here.</p>
+                  <Inbox className="w-8 h-8 text-neutral-200 mx-auto mb-2" />
+                  <p className="text-sm text-neutral-400">No orders yet. They'll appear here.</p>
                 </div>
               ) : (
                 <div className="-mx-6 -mb-6 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <tr className="text-left text-xs text-neutral-400 border-b border-neutral-100">
                         <th className="font-medium pl-6 pr-3 py-2.5">Order</th>
                         <th className="font-medium px-3 py-2.5">Customer</th>
                         <th className="font-medium px-3 py-2.5">Status</th>
@@ -626,17 +626,17 @@ export function Dashboard() {
                         <th className="font-medium pr-6 pl-3 py-2.5 text-right">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-neutral-50">
                       {stats.recent_orders.map((o) => {
-                        const cfg = ORDER_STATUS_LABELS[o.status] ?? { label: o.status, color: "text-slate-600", bg: "bg-slate-100" };
+                        const cfg = ORDER_STATUS_LABELS[o.status] ?? { label: o.status, color: "text-neutral-600", bg: "bg-neutral-100" };
                         return (
                           <tr
                             key={o.id}
                             onClick={() => navigate(`${prefix}/orders/${o.id}`)}
-                            className="hover:bg-slate-50/80 cursor-pointer transition"
+                            className="hover:bg-neutral-50/80 cursor-pointer transition"
                           >
-                            <td className="pl-6 pr-3 py-3 font-mono text-xs text-slate-500">#{o.id.slice(0, 8)}</td>
-                            <td className="px-3 py-3 text-slate-700 max-w-[160px] truncate">
+                            <td className="pl-6 pr-3 py-3 font-mono text-xs text-neutral-500">#{o.id.slice(0, 8)}</td>
+                            <td className="px-3 py-3 text-neutral-700 max-w-[160px] truncate">
                               {o.customer_name || "Guest"}
                             </td>
                             <td className="px-3 py-3">
@@ -644,8 +644,8 @@ export function Dashboard() {
                                 {cfg.label}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-slate-400 text-xs whitespace-nowrap">{timeAgo(o.created_at)}</td>
-                            <td className="pr-6 pl-3 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                            <td className="px-3 py-3 text-neutral-400 text-xs whitespace-nowrap">{timeAgo(o.created_at)}</td>
+                            <td className="pr-6 pl-3 py-3 text-right font-semibold text-neutral-900 tabular-nums">
                               {fmtMoney(o.total, o.currency)}
                             </td>
                           </tr>
@@ -671,7 +671,7 @@ export function Dashboard() {
                 }
               />
               {(stats?.low_stock_items ?? []).length === 0 ? (
-                <p className="text-sm text-slate-400 py-8 text-center">Stock levels look healthy.</p>
+                <p className="text-sm text-neutral-400 py-8 text-center">Stock levels look healthy.</p>
               ) : (
                 <div className="space-y-3">
                   {stats!.low_stock_items!.map((it, i) => {
@@ -680,15 +680,15 @@ export function Dashboard() {
                       <button
                         key={i}
                         onClick={() => navigate(`${prefix}/products/${it.product_id}/edit`)}
-                        className="w-full flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-xl hover:bg-slate-50 transition text-left"
+                        className="w-full flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-xl hover:bg-neutral-50 transition text-left"
                       >
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${out ? "bg-rose-500" : "bg-amber-400"}`}
                         />
                         <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-medium text-slate-800 truncate">
+                          <span className="block text-sm font-medium text-neutral-800 truncate">
                             {it.name}
-                            {it.variant && <span className="text-slate-400 font-normal"> · {it.variant}</span>}
+                            {it.variant && <span className="text-neutral-400 font-normal"> · {it.variant}</span>}
                           </span>
                         </span>
                         <span
@@ -715,10 +715,10 @@ export function Dashboard() {
                         <t.icon className="w-4 h-4" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-lg font-bold text-slate-900 tabular-nums leading-tight truncate">
+                        <span className="block text-lg font-bold text-neutral-900 tabular-nums leading-tight truncate">
                           {t.value}
                         </span>
-                        <span className="block text-xs text-slate-400 truncate">{t.label}</span>
+                        <span className="block text-xs text-neutral-400 truncate">{t.label}</span>
                       </span>
                     </>
                   );
@@ -726,12 +726,12 @@ export function Dashboard() {
                     <Link
                       key={t.label}
                       to={t.to}
-                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 hover:bg-slate-50 hover:border-slate-200 transition"
+                      className="flex items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50/50 p-3.5 hover:bg-neutral-50 hover:border-neutral-200 transition"
                     >
                       {inner}
                     </Link>
                   ) : (
-                    <div key={t.label} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3.5">
+                    <div key={t.label} className="flex items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50/50 p-3.5">
                       {inner}
                     </div>
                   );

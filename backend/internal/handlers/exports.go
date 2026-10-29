@@ -43,6 +43,15 @@ func (h *ExportHandler) CreateExport(c *gin.Context) {
 	if req.Format == "" {
 		req.Format = "csv"
 	}
+	// Inside a branch scope the export only covers that branch's data. For
+	// branch-bound staff this is a hard restriction; for admins browsing a
+	// branch it's just the active view.
+	if scope := branchFilter(c); scope != nil {
+		if req.Filters == nil {
+			req.Filters = map[string]string{}
+		}
+		req.Filters["branch_id"] = scope.String()
+	}
 	job, err := h.store.CreateExportJob(c.Request.Context(), tid, uid, req.Type, req.Format, req.Filters, req.Email)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
@@ -51,12 +60,35 @@ func (h *ExportHandler) CreateExport(c *gin.Context) {
 	c.JSON(http.StatusCreated, job)
 }
 
+// exportJobInScope reports whether a branch-bound caller may see the job —
+// only jobs whose stored filters carry their branch_id.
+func exportJobInScope(c *gin.Context, job *models.ExportJob) bool {
+	if !branchRestricted(c) {
+		return true
+	}
+	scope := branchFilter(c)
+	if scope == nil {
+		return true
+	}
+	return job.Filters["branch_id"] == scope.String()
+}
+
 // ListExports lists export jobs for the tenant.
 func (h *ExportHandler) ListExports(c *gin.Context) {
 	tid := tenantID(c)
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	jobs, total, err := h.store.ListExportJobs(c.Request.Context(), tid, limit, offset)
+	if err == nil && branchRestricted(c) {
+		scoped := jobs[:0]
+		for i := range jobs {
+			if exportJobInScope(c, &jobs[i]) {
+				scoped = append(scoped, jobs[i])
+			}
+		}
+		jobs = scoped
+		total = len(jobs)
+	}
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -76,6 +108,10 @@ func (h *ExportHandler) GetExport(c *gin.Context) {
 		notFoundOrErr(c, err, "export job not found")
 		return
 	}
+	if !exportJobInScope(c, job) {
+		errResponse(c, http.StatusNotFound, "export job not found")
+		return
+	}
 	c.JSON(http.StatusOK, job)
 }
 
@@ -89,6 +125,10 @@ func (h *ExportHandler) DownloadExport(c *gin.Context) {
 	job, err := h.store.GetExportJob(c.Request.Context(), tid, jobID)
 	if err != nil {
 		notFoundOrErr(c, err, "export job not found")
+		return
+	}
+	if !exportJobInScope(c, job) {
+		errResponse(c, http.StatusNotFound, "export job not found")
 		return
 	}
 	if job.Status != "completed" || job.FilePath == "" {
@@ -130,10 +170,13 @@ func (h *ExportHandler) EstimateExportSize(c *gin.Context) {
 		return
 	}
 	filters := make(map[string]string)
-	for _, k := range []string{"status", "search", "gateway", "type", "movement_type", "source", "from", "to"} {
+	for _, k := range []string{"status", "search", "gateway", "type", "movement_type", "source", "from", "to", "branch_id"} {
 		if v := c.Query(k); v != "" {
 			filters[k] = v
 		}
+	}
+	if scope := branchFilter(c); scope != nil {
+		filters["branch_id"] = scope.String()
 	}
 	total, err := et.CountFn(c.Request.Context(), h.store, tid, filters)
 	if err != nil {

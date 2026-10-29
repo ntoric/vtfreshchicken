@@ -13,7 +13,18 @@ import (
 
 // ListStorePages returns all pages for a tenant.
 func (s *Store) ListStorePages(ctx context.Context, tenantID uuid.UUID) ([]models.StorePage, error) {
-	rows, err := s.Pool.Query(ctx, `
+	items, _, err := s.ListStorePagesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListStorePagesPaged returns a page of store pages plus the total count.
+// limit <= 0 returns all rows.
+func (s *Store) ListStorePagesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.StorePage, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM store_pages WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(`
 		SELECT id, tenant_id, slug, title, page_type, status, blocks,
 		       meta_title, meta_description, is_system, is_customized,
 		       to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF'),
@@ -29,12 +40,17 @@ func (s *Store) ListStorePages(ctx context.Context, tenantID uuid.UUID) ([]model
 				WHEN 'terms' THEN 4
 				ELSE 5
 			END,
-			title`, tenantID)
+			title`, []interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	return scanStorePages(rows)
+	items, err := scanStorePages(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 // GetStorePage returns a single page by ID.

@@ -14,24 +14,37 @@ import (
 // ---------------- Notification Events ----------------
 
 func (s *Store) ListNotificationEvents(ctx context.Context, tenantID uuid.UUID) ([]models.NotificationEvent, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListNotificationEventsPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListNotificationEventsPaged returns a page of notification events plus the
+// total count. limit <= 0 returns all rows.
+func (s *Store) ListNotificationEventsPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.NotificationEvent, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM notification_events WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT id, tenant_id, code, name, COALESCE(description,''), is_active, is_instant,
 		        to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF'),
 		        to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
-		 FROM notification_events WHERE tenant_id=$1 ORDER BY name ASC`, tenantID)
+		 FROM notification_events WHERE tenant_id=$1 ORDER BY name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.NotificationEvent
 	for rows.Next() {
 		var e models.NotificationEvent
 		if err := rows.Scan(&e.ID, &e.TenantID, &e.Code, &e.Name, &e.Description, &e.IsActive, &e.IsInstant, &e.CreatedAt, &e.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, e)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) GetNotificationEvent(ctx context.Context, tenantID, eventID uuid.UUID) (*models.NotificationEvent, error) {
@@ -73,23 +86,36 @@ func (s *Store) DeleteNotificationEvent(ctx context.Context, tenantID, eventID u
 // ---------------- Notification Templates ----------------
 
 func (s *Store) ListNotificationTemplates(ctx context.Context, tenantID uuid.UUID, eventID *uuid.UUID) ([]models.NotificationTemplate, error) {
-	q := `SELECT t.id, t.tenant_id, t.event_id, e.code, e.name, t.name, t.medium,
+	items, _, err := s.ListNotificationTemplatesPaged(ctx, tenantID, eventID, 0, 0)
+	return items, err
+}
+
+// ListNotificationTemplatesPaged returns a page of notification templates
+// plus the total count. limit <= 0 returns all rows.
+func (s *Store) ListNotificationTemplatesPaged(ctx context.Context, tenantID uuid.UUID, eventID *uuid.UUID, limit, offset int) ([]models.NotificationTemplate, int, error) {
+	where := `t.tenant_id = $1`
+	args := []interface{}{tenantID}
+	if eventID != nil {
+		args = append(args, *eventID)
+		where += fmt.Sprintf(` AND t.event_id = $%d`, len(args))
+	}
+
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM notification_templates t WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
+		`SELECT t.id, t.tenant_id, t.event_id, e.code, e.name, t.name, t.medium,
 	             COALESCE(t.subject,''), COALESCE(t.body_html,''), COALESCE(t.body_text,''),
 	             t.parameters, t.recipient_type, t.is_active,
 	             to_char(t.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF'),
 	             to_char(t.updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF')
 	      FROM notification_templates t
 	      JOIN notification_events e ON e.id = t.event_id
-	      WHERE t.tenant_id = $1`
-	args := []interface{}{tenantID}
-	if eventID != nil {
-		q += ` AND t.event_id = $2`
-		args = append(args, *eventID)
-	}
-	q += ` ORDER BY t.name ASC`
+	      WHERE `+where+` ORDER BY t.name ASC`, args, limit, offset)
 	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.NotificationTemplate
@@ -98,14 +124,14 @@ func (s *Store) ListNotificationTemplates(ctx context.Context, tenantID uuid.UUI
 		var paramsJSON []byte
 		if err := rows.Scan(&t.ID, &t.TenantID, &t.EventID, &t.EventCode, &t.EventName, &t.Name, &t.Medium,
 			&t.Subject, &t.BodyHTML, &t.BodyText, &paramsJSON, &t.RecipientType, &t.IsActive, &t.CreatedAt, &t.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		if len(paramsJSON) > 0 {
 			_ = json.Unmarshal(paramsJSON, &t.Parameters)
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) GetNotificationTemplate(ctx context.Context, tenantID, templateID uuid.UUID) (*models.NotificationTemplate, error) {

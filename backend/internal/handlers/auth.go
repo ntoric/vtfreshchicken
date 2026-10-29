@@ -240,11 +240,12 @@ func (h *AuthHandler) Me(c *gin.Context) {
 
 // CreateBusinessAdmin (superadmin or business_admin creates a tenant admin/staff).
 type createStaffReq struct {
-	Email    string          `json:"email" binding:"required,email"`
-	Password string          `json:"password" binding:"required,min=6"`
-	FullName string          `json:"full_name" binding:"required"`
-	Role     models.UserRole `json:"role" binding:"required"`
-	BranchID string          `json:"branch_id"` // optional — binds staff/branch_manager to a branch
+	Email     string          `json:"email" binding:"required,email"`
+	Password  string          `json:"password" binding:"required,min=6"`
+	FullName  string          `json:"full_name" binding:"required"`
+	Role      models.UserRole `json:"role" binding:"required"`
+	BranchID  string          `json:"branch_id"`  // optional — binds staff/branch_manager to a branch
+	BranchIDs []string        `json:"branch_ids"` // delivery_partner: allocated branches (>=1 required)
 }
 
 func (h *AuthHandler) CreateStaff(c *gin.Context) {
@@ -253,24 +254,70 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 		errResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	if req.Role != models.RoleBusinessAdmin && req.Role != models.RoleStaff && req.Role != models.RoleBranchManager {
-		errResponse(c, http.StatusBadRequest, "role must be business_admin, branch_manager or staff")
+	if req.Role != models.RoleBusinessAdmin && req.Role != models.RoleStaff && req.Role != models.RoleBranchManager && req.Role != models.RoleDeliveryPartner {
+		errResponse(c, http.StatusBadRequest, "role must be business_admin, branch_manager, staff or delivery_partner")
 		return
 	}
 	tid := tenantID(c)
-	var branchID *uuid.UUID
-	if req.BranchID != "" {
-		bid, err := uuid.Parse(req.BranchID)
+
+	// Merge branch_id + branch_ids into a validated allocation list.
+	var branchAlloc []uuid.UUID
+	seenBranch := map[uuid.UUID]bool{}
+	for _, raw := range append(req.BranchIDs, req.BranchID) {
+		if raw == "" {
+			continue
+		}
+		bid, err := uuid.Parse(raw)
 		if err != nil {
 			errResponse(c, http.StatusBadRequest, "invalid branch_id")
 			return
+		}
+		if seenBranch[bid] {
+			continue
 		}
 		if _, bErr := h.store.GetBranch(c.Request.Context(), tid, bid); bErr != nil {
 			errResponse(c, http.StatusBadRequest, "branch not found")
 			return
 		}
-		branchID = &bid
+		seenBranch[bid] = true
+		branchAlloc = append(branchAlloc, bid)
 	}
+	if req.Role == models.RoleDeliveryPartner && len(branchAlloc) == 0 {
+		errResponse(c, http.StatusBadRequest, "delivery partners need at least one allocated branch")
+		return
+	}
+	// Branch-bound staff can only create users inside their own branch, and
+	// cannot create store-wide roles.
+	if branchRestricted(c) {
+		if req.Role == models.RoleBusinessAdmin {
+			errResponse(c, http.StatusForbidden, "branch-scoped users cannot create business admins")
+			return
+		}
+		if scope := branchFilter(c); scope != nil {
+			if len(branchAlloc) == 0 {
+				branchAlloc = []uuid.UUID{*scope}
+			} else {
+				inScope := false
+				for _, b := range branchAlloc {
+					if b == *scope {
+						inScope = true
+						break
+					}
+				}
+				if !inScope {
+					errResponse(c, http.StatusForbidden, "cannot assign users to other branches")
+					return
+				}
+			}
+		}
+	}
+	// users.branch_id keeps the primary branch (first allocation) — staff and
+	// branch_manager use it directly; for partners it mirrors the allocation.
+	var branchID *uuid.UUID
+	if len(branchAlloc) > 0 {
+		branchID = &branchAlloc[0]
+	}
+
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
@@ -281,7 +328,7 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 		u, err = h.store.CreateBusinessAdmin(c.Request.Context(), tid, req.Email, req.FullName, hash)
 	} else {
 		u, err = h.store.CreateCustomer(c.Request.Context(), tid, req.Email, req.FullName, hash)
-		// staff/branch_manager uses customer row but with their role; update role + branch
+		// staff/branch_manager/delivery_partner uses customer row but with their role; update role + branch
 		if err == nil {
 			_, _ = h.store.Pool.Exec(c.Request.Context(), `UPDATE users SET role=$2, branch_id=$3 WHERE id=$1`, u.ID, req.Role, branchID)
 			u.Role = req.Role
@@ -292,24 +339,53 @@ func (h *AuthHandler) CreateStaff(c *gin.Context) {
 		errResponse(c, http.StatusConflict, err.Error())
 		return
 	}
+	if req.Role == models.RoleDeliveryPartner {
+		if err := h.store.SetDeliveryPartnerBranches(c.Request.Context(), tid, u.ID, branchAlloc); err != nil {
+			errResponse(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		u.BranchIDs = branchAlloc
+	}
 	c.JSON(http.StatusCreated, u)
 }
 
 func (h *AuthHandler) ListUsers(c *gin.Context) {
 	tid := tenantID(c)
-	users, err := h.store.ListTenantUsers(c.Request.Context(), tid, branchFilter(c))
+	limit, offset := pagingParams(c)
+	users, total, err := h.store.ListTenantUsersPaged(c.Request.Context(), tid, branchFilter(c), c.Query("role"), c.Query("search"), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": users})
+	c.JSON(http.StatusOK, gin.H{"items": users, "total": total, "limit": limit, "offset": offset})
 }
 
 // ---------------- User management (admin) ----------------
 
+// userBranchAllowed reports whether a branch-bound caller may access the
+// target user — they can only reach users assigned to their own branch.
+func (h *AuthHandler) userBranchAllowed(c *gin.Context, uid uuid.UUID) bool {
+	if !branchRestricted(c) {
+		return true
+	}
+	scope := branchFilter(c)
+	if scope == nil {
+		return true
+	}
+	u, err := h.store.GetTenantUser(c.Request.Context(), tenantID(c), uid)
+	if err != nil || u == nil {
+		return false
+	}
+	return u.BranchID != nil && *u.BranchID == *scope
+}
+
 func (h *AuthHandler) GetUser(c *gin.Context) {
 	uid, ok := pathUUID(c, "id")
 	if !ok {
+		return
+	}
+	if !h.userBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "user not found")
 		return
 	}
 	u, err := h.store.GetTenantUser(c.Request.Context(), tenantID(c), uid)
@@ -321,12 +397,13 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 }
 
 type updateUserReq struct {
-	FullName   string  `json:"full_name" binding:"required"`
-	Phone      string  `json:"phone"`
-	Role       string  `json:"role"`
-	AdminNotes string  `json:"admin_notes"`
-	IsActive   bool    `json:"is_active"`
-	BranchID   *string `json:"branch_id"` // nil = keep; "" = clear; uuid = assign
+	FullName   string    `json:"full_name" binding:"required"`
+	Phone      string    `json:"phone"`
+	Role       string    `json:"role"`
+	AdminNotes string    `json:"admin_notes"`
+	IsActive   bool      `json:"is_active"`
+	BranchID   *string   `json:"branch_id"`  // nil = keep; "" = clear; uuid = assign
+	BranchIDs  *[]string `json:"branch_ids"` // delivery_partner: replaces branch allocation when present
 }
 
 func (h *AuthHandler) UpdateUser(c *gin.Context) {
@@ -335,6 +412,10 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 	tid := tenantID(c)
+	if !h.userBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "user not found")
+		return
+	}
 	var req updateUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errResponse(c, http.StatusBadRequest, err.Error())
@@ -343,7 +424,7 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	// Validate role if provided
 	if req.Role != "" {
 		switch models.UserRole(req.Role) {
-		case models.RoleCustomer, models.RoleStaff, models.RoleBusinessAdmin, models.RoleBranchManager:
+		case models.RoleCustomer, models.RoleStaff, models.RoleBusinessAdmin, models.RoleBranchManager, models.RoleDeliveryPartner:
 			// allowed
 		default:
 			errResponse(c, http.StatusBadRequest, "invalid role")
@@ -373,10 +454,59 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 			branchID = existing.BranchID
 		}
 	}
+
+	// Delivery partners allocate branches via branch_ids (or branch_id as a
+	// single allocation). They must end up with at least one allocated branch.
+	var partnerAlloc []uuid.UUID
+	if req.Role == string(models.RoleDeliveryPartner) {
+		switch {
+		case req.BranchIDs != nil:
+			for _, raw := range *req.BranchIDs {
+				if raw == "" {
+					continue
+				}
+				bid, perr := uuid.Parse(raw)
+				if perr != nil {
+					errResponse(c, http.StatusBadRequest, "invalid branch_id")
+					return
+				}
+				if _, bErr := h.store.GetBranch(c.Request.Context(), tid, bid); bErr != nil {
+					errResponse(c, http.StatusBadRequest, "branch not found")
+					return
+				}
+				partnerAlloc = append(partnerAlloc, bid)
+			}
+		case req.BranchID != nil && *req.BranchID != "":
+			partnerAlloc = []uuid.UUID{*branchID}
+		default:
+			var gErr error
+			partnerAlloc, gErr = h.store.GetDeliveryPartnerBranchIDs(c.Request.Context(), tid, uid)
+			if gErr != nil {
+				errResponse(c, http.StatusInternalServerError, gErr.Error())
+				return
+			}
+		}
+		if len(partnerAlloc) == 0 {
+			errResponse(c, http.StatusBadRequest, "delivery partners need at least one allocated branch")
+			return
+		}
+		branchID = &partnerAlloc[0]
+	}
+
 	u, err := h.store.UpdateUser(c.Request.Context(), tid, uid, req.FullName, req.Phone, req.Role, req.AdminNotes, req.IsActive, branchID)
 	if err != nil {
 		notFoundOrErr(c, err, "user not found")
 		return
+	}
+	if req.Role == string(models.RoleDeliveryPartner) {
+		if err := h.store.SetDeliveryPartnerBranches(c.Request.Context(), tid, uid, partnerAlloc); err != nil {
+			errResponse(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		u.BranchIDs = partnerAlloc
+	} else {
+		// Role is not (or no longer) delivery_partner — drop any allocations.
+		_ = h.store.SetDeliveryPartnerBranches(c.Request.Context(), tid, uid, nil)
 	}
 	c.JSON(http.StatusOK, u)
 }
@@ -384,6 +514,10 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 func (h *AuthHandler) SetUserActive(c *gin.Context) {
 	uid, ok := pathUUID(c, "id")
 	if !ok {
+		return
+	}
+	if !h.userBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "user not found")
 		return
 	}
 	var req struct {
@@ -403,6 +537,10 @@ func (h *AuthHandler) SetUserActive(c *gin.Context) {
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	uid, ok := pathUUID(c, "id")
 	if !ok {
+		return
+	}
+	if !h.userBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "user not found")
 		return
 	}
 	var req struct {
@@ -429,6 +567,10 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.userBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "user not found")
+		return
+	}
 	// Prevent self-deletion
 	if uid == userID(c) {
 		errResponse(c, http.StatusBadRequest, "cannot delete your own account")
@@ -442,7 +584,7 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *AuthHandler) UserStats(c *gin.Context) {
-	stats, err := h.store.UserStats(c.Request.Context(), tenantID(c))
+	stats, err := h.store.UserStats(c.Request.Context(), tenantID(c), branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -490,9 +632,27 @@ func (h *AuthHandler) ListCustomers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": items, "total": total, "limit": limit, "offset": offset})
 }
 
+// customerBranchAllowed reports whether a branch-bound caller may access the
+// customer — they can only reach customers who have ordered from their branch.
+func (h *AuthHandler) customerBranchAllowed(c *gin.Context, uid uuid.UUID) bool {
+	if !branchRestricted(c) {
+		return true
+	}
+	scope := branchFilter(c)
+	if scope == nil {
+		return true
+	}
+	ok, err := h.store.CustomerInBranch(c.Request.Context(), tenantID(c), uid, *scope)
+	return err == nil && ok
+}
+
 func (h *AuthHandler) GetCustomer(c *gin.Context) {
 	uid, ok := pathUUID(c, "id")
 	if !ok {
+		return
+	}
+	if !h.customerBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "customer not found")
 		return
 	}
 	cd, err := h.store.GetCustomerDetail(c.Request.Context(), tenantID(c), uid)
@@ -516,6 +676,10 @@ func (h *AuthHandler) UpdateCustomer(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.customerBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "customer not found")
+		return
+	}
 	var req updateCustomerReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errResponse(c, http.StatusBadRequest, err.Error())
@@ -534,6 +698,10 @@ func (h *AuthHandler) DeleteCustomer(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.customerBranchAllowed(c, uid) {
+		errResponse(c, http.StatusNotFound, "customer not found")
+		return
+	}
 	if err := h.store.DeleteCustomerAdmin(c.Request.Context(), tenantID(c), uid); err != nil {
 		notFoundOrErr(c, err, "customer not found")
 		return
@@ -543,7 +711,7 @@ func (h *AuthHandler) DeleteCustomer(c *gin.Context) {
 
 func (h *AuthHandler) CustomerStats(c *gin.Context) {
 	dr := services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")}
-	stats, err := h.store.CustomerStats(c.Request.Context(), tenantID(c), dr)
+	stats, err := h.store.CustomerStats(c.Request.Context(), tenantID(c), dr, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

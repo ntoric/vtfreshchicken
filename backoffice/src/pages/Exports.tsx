@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
-import { Pagination, usePagination } from "@/components/Pagination";
+import { Pagination } from "@/components/Pagination";
 import { ExportDialog } from "@/components/ExportDialog";
 import type { ExportTypeMeta } from "@/types";
 
@@ -17,8 +17,8 @@ const STATUS_ICONS: Record<string, typeof Clock> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "text-slate-500 bg-slate-50",
-  running: "text-indigo-600 bg-indigo-50",
+  pending: "text-neutral-500 bg-neutral-50",
+  running: "text-red-600 bg-red-50",
   completed: "text-emerald-600 bg-emerald-50",
   failed: "text-rose-600 bg-rose-50",
 };
@@ -59,7 +59,7 @@ export function Exports() {
 
   const items = q.data?.items ?? [];
   const total = q.data?.total ?? 0;
-  const pg = usePagination(items, limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const handleExportCreated = () => {
     qc.invalidateQueries({ queryKey: ["exports", tenant] });
@@ -86,13 +86,13 @@ export function Exports() {
         <TableSkeleton cols={6} rows={5} />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border p-12 text-center">
-          <Download className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-400 text-sm">No exports yet. Click "Create Export" above to generate one.</p>
+          <Download className="w-12 h-12 mx-auto text-neutral-300 mb-3" />
+          <p className="text-neutral-400 text-sm">No exports yet. Click "Create Export" above to generate one.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -103,42 +103,42 @@ export function Exports() {
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pg.pageItems.map((job) => {
+            <tbody className="divide-y divide-neutral-100">
+              {items.map((job) => {
                 const Icon = STATUS_ICONS[job.status] || Clock;
                 const color = STATUS_COLORS[job.status] || "";
                 const progress = job.rows_total > 0 ? Math.round((job.rows_done / job.rows_total) * 100) : 0;
                 return (
-                  <tr key={job.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800 capitalize">{job.type.replace(/_/g, " ")}</td>
+                  <tr key={job.id} className="hover:bg-neutral-50">
+                    <td className="px-4 py-3 font-medium text-neutral-800 capitalize">{job.type.replace(/_/g, " ")}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
                         <Icon className={`w-3.5 h-3.5 ${job.status === "running" ? "animate-spin" : ""}`} />
                         {job.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-neutral-600">
                       {job.rows_total > 0 ? `${job.rows_done.toLocaleString()} / ${job.rows_total.toLocaleString()} (${progress}%)` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{job.file_size > 0 ? fmtSize(job.file_size) : "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-neutral-600">{job.file_size > 0 ? fmtSize(job.file_size) : "—"}</td>
+                    <td className="px-4 py-3 text-neutral-600">
                       {job.email ? (
                         <span className="inline-flex items-center gap-1 text-xs"><Mail className="w-3.5 h-3.5" /> {job.email}</span>
                       ) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(job.created_at)}</td>
+                    <td className="px-4 py-3 text-xs text-neutral-400">{fmtDate(job.created_at)}</td>
                     <td className="px-4 py-3 text-right">
                       {job.status === "completed" && job.file_name ? (
                         <button
                           onClick={() => api.downloadExport(tenant, job.id, job.file_name)}
-                          className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 text-xs font-medium"
+                          className="inline-flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-medium"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
                         </button>
                       ) : job.error ? (
                         <span className="text-xs text-rose-500" title={job.error}>Failed</span>
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-neutral-400">—</span>
                       )}
                     </td>
                   </tr>
@@ -146,26 +146,26 @@ export function Exports() {
               })}
             </tbody>
           </table>
-          <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} start={pg.start} end={pg.end} onPage={pg.setPage} />
+          <Pagination page={page} totalPages={totalPages} total={total} start={page * limit} end={Math.min((page + 1) * limit, total)} onPage={setPage} />
         </div>
       )}
 
       {/* Type picker modal — step 1: choose what to export */}
       {pickerOpen && !selectedType && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={() => setPickerOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200/50 w-full max-w-md p-6">
+          <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm" onClick={() => setPickerOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-neutral-200/50 w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Create Export</h3>
-              <button onClick={() => setPickerOpen(false)} className="text-slate-400 hover:text-slate-600 transition">
+              <h3 className="text-lg font-semibold text-neutral-900">Create Export</h3>
+              <button onClick={() => setPickerOpen(false)} className="text-neutral-400 hover:text-neutral-600 transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-slate-500 mb-4">Select the data type to export as CSV.</p>
+            <p className="text-sm text-neutral-500 mb-4">Select the data type to export as CSV.</p>
 
             {typesQ.isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+                <Loader2 className="w-6 h-6 text-neutral-400 animate-spin" />
               </div>
             ) : typesQ.data && typesQ.data.length > 0 ? (
               <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -173,15 +173,15 @@ export function Exports() {
                   <button
                     key={t.key}
                     onClick={() => setSelectedType(t.key)}
-                    className="w-full text-left p-3 border border-slate-200 rounded-lg hover:border-brand hover:bg-brand/5 transition"
+                    className="w-full text-left p-3 border border-neutral-200 rounded-lg hover:border-brand hover:bg-brand/5 transition"
                   >
-                    <div className="font-medium text-sm text-slate-800">{t.name}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{t.description}</div>
+                    <div className="font-medium text-sm text-neutral-800">{t.name}</div>
+                    <div className="text-xs text-neutral-500 mt-0.5">{t.description}</div>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 text-center py-8">No export types available.</p>
+              <p className="text-sm text-neutral-400 text-center py-8">No export types available.</p>
             )}
           </div>
         </div>

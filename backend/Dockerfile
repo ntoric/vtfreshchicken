@@ -16,7 +16,13 @@ EXPOSE 8080
 CMD ["sh", "-c", "which air >/dev/null 2>&1 && air || go run ./cmd/api"]
 
 # --- builder ---
-FROM base AS builder
+# Run the toolchain on the build platform (native) and cross-compile for the
+# target platform — avoids running amd64 Go under QEMU/Rosetta emulation.
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+ARG TARGETOS TARGETARCH
+WORKDIR /app
+RUN apk add --no-cache git
+ENV CGO_ENABLED=0
 COPY go.mod go.sum* ./
 RUN go mod download || true
 COPY . .
@@ -24,7 +30,7 @@ COPY . .
 RUN VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev") && \
     COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
     BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
-    go build -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" -o /out/api ./cmd/api
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" -o /out/api ./cmd/api
 
 # --- production ---
 FROM alpine:3.20 AS production

@@ -14,12 +14,25 @@ import (
 // ---------------- Shipping Methods ----------------
 
 func (s *Store) ListShippingMethods(ctx context.Context, tenantID uuid.UUID) ([]models.ShippingMethod, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListShippingMethodsPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListShippingMethodsPaged returns a page of shipping methods plus the total
+// count. limit <= 0 returns all rows.
+func (s *Store) ListShippingMethodsPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.ShippingMethod, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM shipping_methods WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT id, tenant_id, name, code, COALESCE(description,''), base_rate, weight_rate, currency_code,
 		        min_days, max_days, free_shipping_threshold, is_active, sort_order, created_at, updated_at
-		 FROM shipping_methods WHERE tenant_id=$1 ORDER BY sort_order ASC, name ASC`, tenantID)
+		 FROM shipping_methods WHERE tenant_id=$1 ORDER BY sort_order ASC, name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.ShippingMethod
@@ -28,11 +41,11 @@ func (s *Store) ListShippingMethods(ctx context.Context, tenantID uuid.UUID) ([]
 		if err := rows.Scan(&sm.ID, &sm.TenantID, &sm.Name, &sm.Code, &sm.Description, &sm.BaseRate, &sm.WeightRate,
 			&sm.CurrencyCode, &sm.MinDays, &sm.MaxDays, &sm.FreeShippingThreshold, &sm.IsActive, &sm.SortOrder,
 			&sm.CreatedAt, &sm.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, sm)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) ListActiveShippingMethods(ctx context.Context, tenantID uuid.UUID) ([]models.ShippingMethod, error) {
@@ -117,12 +130,25 @@ func (s *Store) DeleteShippingMethod(ctx context.Context, tenantID, methodID uui
 // ---------------- Shipping Zones ----------------
 
 func (s *Store) ListShippingZones(ctx context.Context, tenantID uuid.UUID) ([]models.ShippingZone, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListShippingZonesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListShippingZonesPaged returns a page of shipping zones plus the total
+// count. limit <= 0 returns all rows.
+func (s *Store) ListShippingZonesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.ShippingZone, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM shipping_zones WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT id, tenant_id, name, COALESCE(country_code,''), COALESCE(state_code,''),
 		        COALESCE(city,''), COALESCE(postal_code_pattern,''), is_active, created_at, updated_at
-		 FROM shipping_zones WHERE tenant_id=$1 ORDER BY name ASC`, tenantID)
+		 FROM shipping_zones WHERE tenant_id=$1 ORDER BY name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.ShippingZone
@@ -130,11 +156,11 @@ func (s *Store) ListShippingZones(ctx context.Context, tenantID uuid.UUID) ([]mo
 		var sz models.ShippingZone
 		if err := rows.Scan(&sz.ID, &sz.TenantID, &sz.Name, &sz.CountryCode, &sz.StateCode,
 			&sz.City, &sz.PostalCodePattern, &sz.IsActive, &sz.CreatedAt, &sz.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, sz)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) CreateShippingZone(ctx context.Context, sz *models.ShippingZone) error {
@@ -165,16 +191,29 @@ func (s *Store) DeleteShippingZone(ctx context.Context, tenantID, zoneID uuid.UU
 // ---------------- Shipping Rates ----------------
 
 func (s *Store) ListShippingRates(ctx context.Context, tenantID uuid.UUID) ([]models.ShippingRate, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListShippingRatesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListShippingRatesPaged returns a page of shipping rates plus the total
+// count. limit <= 0 returns all rows.
+func (s *Store) ListShippingRatesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.ShippingRate, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM shipping_rates WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT sr.id, sr.tenant_id, sr.shipping_method_id, sr.shipping_zone_id, sr.rate, sr.is_active,
 		        sr.created_at, sr.updated_at,
 		        COALESCE(sm.name,''), COALESCE(sz.name,'')
 		 FROM shipping_rates sr
 		 LEFT JOIN shipping_methods sm ON sm.id = sr.shipping_method_id
 		 LEFT JOIN shipping_zones sz ON sz.id = sr.shipping_zone_id
-		 WHERE sr.tenant_id=$1 ORDER BY sm.name ASC, sz.name ASC`, tenantID)
+		 WHERE sr.tenant_id=$1 ORDER BY sm.name ASC, sz.name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.ShippingRate
@@ -182,11 +221,11 @@ func (s *Store) ListShippingRates(ctx context.Context, tenantID uuid.UUID) ([]mo
 		var sr models.ShippingRate
 		if err := rows.Scan(&sr.ID, &sr.TenantID, &sr.ShippingMethodID, &sr.ShippingZoneID, &sr.Rate,
 			&sr.IsActive, &sr.CreatedAt, &sr.UpdatedAt, &sr.ShippingMethodName, &sr.ShippingZoneName); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, sr)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) CreateShippingRate(ctx context.Context, sr *models.ShippingRate) error {

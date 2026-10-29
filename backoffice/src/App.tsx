@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Layout } from "@/components/Layout";
+import { ModuleGate } from "@/components/ModuleGate";
 import { RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { BranchGuard } from "@/lib/branch";
 import { Login } from "@/pages/Login";
@@ -18,6 +19,7 @@ import { Discounts } from "@/pages/Discounts";
 import { Orders } from "@/pages/Orders";
 import { OrderDetail } from "@/pages/OrderDetail";
 import { Returns } from "@/pages/Returns";
+import { Reviews } from "@/pages/Reviews";
 import { Users } from "@/pages/Users";
 import { Permissions } from "@/pages/Permissions";
 import { Customers } from "@/pages/Customers";
@@ -31,7 +33,11 @@ import { PageBuilder } from "@/pages/PageBuilder";
 import { Reports, ReportDetail } from "@/pages/Reports";
 import { Exports } from "@/pages/Exports";
 import { Branches } from "@/pages/Branches";
+import { BranchEdit } from "@/pages/BranchEdit";
 import { Developer } from "@/pages/Developer";
+import { DeliveryLogin } from "@/pages/DeliveryLogin";
+import { Delivery } from "@/pages/Delivery";
+import { DeliveryLayout } from "@/components/DeliveryLayout";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -62,20 +68,21 @@ const pageRoutes = (
     <Route path="products/:id/edit" element={<Page><ProductEdit /></Page>} />
     <Route path="categories" element={<Page><Categories /></Page>} />
     <Route path="attributes" element={<Page><Attributes /></Page>} />
-    <Route path="offers" element={<Page><Offers /></Page>} />
-    <Route path="discounts" element={<Page><Discounts /></Page>} />
+    <Route path="offers" element={<Page><ModuleGate module="promotions"><Offers /></ModuleGate></Page>} />
+    <Route path="discounts" element={<Page><ModuleGate module="discounts"><Discounts /></ModuleGate></Page>} />
     <Route path="orders" element={<Page><Orders /></Page>} />
     <Route path="orders/:orderId" element={<Page><OrderDetail /></Page>} />
-    <Route path="returns" element={<Page><Returns /></Page>} />
-    <Route path="tax" element={<Page><Tax /></Page>} />
-    <Route path="shipping" element={<Page><Shipping /></Page>} />
+    <Route path="returns" element={<Page><ModuleGate module="returns"><Returns /></ModuleGate></Page>} />
+    <Route path="tax" element={<Page><ModuleGate module="tax"><Tax /></ModuleGate></Page>} />
+    <Route path="shipping" element={<Page><ModuleGate module="shipping"><Shipping /></ModuleGate></Page>} />
     <Route path="payments" element={<Page><Payments /></Page>} />
     <Route path="notifications" element={<Page><Notifications /></Page>} />
-    <Route path="pages" element={<Page><Pages /></Page>} />
-    <Route path="pages/:id/edit" element={<Page><PageBuilder /></Page>} />
+    <Route path="pages" element={<Page><ModuleGate module="page_builder"><Pages /></ModuleGate></Page>} />
+    <Route path="pages/:id/edit" element={<Page><ModuleGate module="page_builder"><PageBuilder /></ModuleGate></Page>} />
     <Route path="users" element={<Page><Users /></Page>} />
     <Route path="permissions" element={<Page><Permissions /></Page>} />
     <Route path="customers" element={<Page><Customers /></Page>} />
+    <Route path="reviews" element={<Page><Reviews /></Page>} />
     <Route path="reports" element={<Page><Reports /></Page>} />
     <Route path="reports/:type" element={<Page><ReportDetail /></Page>} />
     <Route path="exports" element={<Page><Exports /></Page>} />
@@ -90,6 +97,11 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       {/* Hidden platform login — intentionally unlinked from the UI */}
       <Route path="/root-access" element={<PlatformLogin />} />
+      {/* Delivery partner portal */}
+      <Route path="/delivery/login" element={<DeliveryLogin />} />
+      <Route path="/delivery" element={<DeliveryLayout />}>
+        <Route index element={<Page><Delivery /></Page>} />
+      </Route>
       <Route
         path="/"
         element={
@@ -102,6 +114,8 @@ export default function App() {
         {pageRoutes}
         {/* Branch administration lives at the root level */}
         <Route path="branches" element={<Page><Branches /></Page>} />
+        <Route path="branches/new" element={<Page><BranchEdit /></Page>} />
+        <Route path="branches/:id/edit" element={<Page><BranchEdit /></Page>} />
         {/* Developer settings — superadmin only (the page itself also guards) */}
         <Route path="developer" element={<Page><Developer /></Page>} />
         {/* Branch-scoped backoffice: /b/:slug/... */}

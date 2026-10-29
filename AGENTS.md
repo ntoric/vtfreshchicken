@@ -44,11 +44,11 @@ For a fresh database with no store, the Backoffice provides a single-step setup 
 
 - **Single store**: the platform is single-store focused. The `tenants` table still exists internally (every domain row keeps `tenant_id`), but exactly one store is used. `middleware.ResolveStore` loads it on every `/api` request — pinned by `STORE_SLUG` if set, otherwise the first tenant by `created_at`.
 - **URL scheme**: there is no tenant segment. API is `/api/...`, storefront is `/` (branded landing), `/shop` (catalog browsing), `/products/:slug`, `/cart`, `/checkout`, `/orders`, `/account`, `/wishlist`, `/p/:slug` (builder pages).
-- **Roles**: `superadmin` (internal platform role — bypasses tenant match/permissions, used for API/MCP access), `business_admin`, `staff`, `customer`.
+- **Roles**: `superadmin` (internal platform role — bypasses tenant match/permissions, used for API/MCP access), `business_admin`, `branch_manager`, `staff`, `customer`, `delivery_partner`.
 - **Auth**: JWT access tokens (15m) + refresh tokens stored in Redis (30d). `POST /api/auth/login` for store users; `POST /api/platform/auth/login` for superadmin.
 - **Multi-currency**: exchange rates in `exchange_rates` table, cached in-memory (5m TTL), conversion applied to storefront prices.
 - **Multi-lingual**: `Accept-Language` header resolved against store supported languages; product/category translations in DB.
-- **Catalog**: categories (hierarchical), attributes (filterable + variant-defining), attribute options, products, variants (with variant attribute values), product attribute values.
+- **Catalog**: categories (hierarchical), attributes (filterable + variant-defining + batch + internal — internal attribute defs/values are stripped from public bootstrap and product endpoints), attribute options, products, variants (with variant attribute values), product attribute values.
 - **Offers**: percentage/fixed, targeted to all/category/product; applied automatically to storefront prices.
 - **Discount codes**: percentage/fixed, min subtotal, max uses, validity window; validated via `/discount/validate`.
 
@@ -88,7 +88,7 @@ Tests: `cd frontstore && npm test`
 ## Backoffice (Vite + React + TS)
 
 - React Router, TanStack Query, TailwindCSS
-- Pages: Dashboard, Products (CRUD + variants + attributes + multi-image gallery), Categories, Attributes, Offers, Discounts, Orders, Order Detail, Returns, Tax, Shipping, Payments, Customers, Users & Staff, Permissions, Notifications, Pages (builder), Reports, Exports, Settings, Developer (`/developer` — superadmin only; payment-method enable/disable + per-gateway credentials in `payment_gateway_configs.config`, which drive `GET /api/payment/methods` and are passed to gateways at payment time, taking precedence over env vars like `RAZORPAY_KEY_ID`).
+- Pages: Dashboard, Products (CRUD + variants + attributes + multi-image gallery), Categories, Attributes, Offers, Discounts, Orders, Order Detail, Returns, Tax, Shipping, Payments, Customers, Users & Staff, Permissions, Notifications, Pages (builder), Reports, Exports, Settings, Developer (`/developer` — superadmin only; payment-method enable/disable + per-gateway credentials in `payment_gateway_configs.config`, which drive `GET /api/payment/methods` and are passed to gateways at payment time, taking precedence over env vars like `RAZORPAY_KEY_ID`); also hosts **Modules & Features** — per-store feature flags in `store_modules` (`returns`, `tax`, `shipping`, `promotions`, `discounts`, `page_builder`). Disabled modules hide related menus/pages/widgets in both backoffice and frontstore (frontstore reads `modules` map from `/api/bootstrap`; backoffice via `useModules()` in `src/lib/modules.ts`).
 - Single store login form (`/login`) — email + password, no tenant/superadmin tabs.
 - Setup wizard (`/setup`) — single step: store details + admin account.
 - API client (`src/lib/api.ts`): all calls hit `/api/...` directly; legacy `tenant` first-args remain in signatures but are ignored.
@@ -97,6 +97,8 @@ Typecheck: `cd backoffice && npx tsc -b`
 Tests: `cd backoffice && npm test`
 
 ## Key API endpoints
+
+> **Pagination**: all list endpoints accept `?limit=&offset=` and return `{items, total, limit, offset}`. Omitting `limit` returns the full list (backward compatible). Backoffice tables are server-side paginated via `api.*(tenant, {limit, offset, ...filters})` (`PageParams` in `src/lib/api.ts`); several lists also take `search`/`status`/`type`/`validity`/`role`/`filter` query params.
 
 ### Setup / platform (public or superadmin)
 - `GET /api/setup/status`
@@ -109,10 +111,11 @@ Tests: `cd backoffice && npm test`
 - `GET /api/products/:slug` — detail with variants + attributes
 - `GET /api/discount/validate?code=&subtotal=`
 - `GET /api/categories`, `GET /api/attributes`, `GET /api/currencies`, `GET /api/languages`, `GET /api/info`
+- `GET /api/modules` — module feature flags (`{items, modules: {code: enabled}}`)
 - `GET /api/page/:slug` — published builder page
 - `POST /api/contact`, `POST /api/tax/calculate`, `POST /api/shipping/calculate`
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/register-from-order`, `POST /api/auth/refresh`
-- Cart (`/api/cart*`), wishlist (`/api/wishlist*`), reviews (`/api/reviews/:productId`), checkout (`/api/checkout`), payment methods (`/api/payment/methods`)
+- Cart (`/api/cart*`), wishlist (`/api/wishlist*`), reviews read (`GET /api/reviews/:productId[/summary]`), checkout (`/api/checkout`), payment methods (`/api/payment/methods`)
 
 ### Authenticated store users
 - `GET /api/me`, `GET /api/me/permissions`, `GET /api/me/export`, `DELETE /api/me/delete`
@@ -120,6 +123,7 @@ Tests: `cd backoffice && npm test`
 - `GET/POST/DELETE /api/addresses*`
 - `GET /api/wallet`, `POST /api/wallet/topup`, `GET /api/wallet/transactions`
 - `GET /api/my-returns`, `GET /api/me/reviews`, `GET /api/me/purchased-products`
+- `POST /api/reviews/:productId` — submit a review (customer role only; must have a delivered/fulfilled order containing the product → 403 otherwise, 409 on duplicate)
 
 ### Admin (business_admin + staff; permission-gated)
 - `GET /api/dashboard/stats`
@@ -128,6 +132,7 @@ Tests: `cd backoffice && npm test`
 - Offers: `GET/POST/PUT/DELETE /api/offers[/:id]` · Discounts: `GET/POST/PUT/DELETE /api/discounts[/:id]` + `GET /api/discounts/stats`
 - Orders: `GET /api/orders/admin`, `GET /api/orders/counts`, `GET/PUT /api/orders/admin/:orderId[/status|/notes]`
 - Returns: `GET /api/returns`, `GET /api/returns/counts`, `GET /api/returns/:id`, `PUT /api/returns/:id/status`
+- Reviews: `GET /api/reviews` (filters: `product_id`, `rating`, `status=approved|pending`, `search`), `PUT /api/reviews/:id` (`{is_approved}`), `DELETE /api/reviews/:id` (superadmin only)
 - Inventory: `GET /api/inventory`, `GET /api/inventory/stats`, `POST /api/inventory/adjust`, `GET /api/inventory/movements`
 - Vendors: `GET/POST/PUT/DELETE /api/vendors[/:id]`
 - Customers: `GET /api/customers`, `GET /api/customers/stats`, `GET/PUT/DELETE /api/customers/:id`
@@ -136,6 +141,7 @@ Tests: `cd backoffice && npm test`
 - Tax: `GET/POST/PUT/DELETE /api/tax/(classes|zones|rates)/[:id]`
 - Shipping: `GET/POST/PUT/DELETE /api/shipping/(methods|zones|rates|providers)/[:id]`, shipments under `/api/shipping/orders/:orderId/shipments`
 - Payments: `GET /api/payments/transactions`, `GET /api/payments/transactions/:txnId`, `POST /api/payments/transactions/:txnId/refund`, `GET/PUT /api/payments/gateways[/:configId]`, `GET /api/payments/stats`
+- Developer (superadmin only): `PUT /api/developer/modules/:code` — toggle a store module (`{is_enabled}`)
 - Wallet admin: `GET /api/wallet/stats`, `GET /api/wallet/all`, `GET /api/wallet/:userId[/transactions]`, `POST /api/wallet/:userId/adjust`
 - Pages: `GET/POST/PUT/DELETE /api/pages[/:id]` · Contact: `GET/PUT/DELETE /api/contact/submissions[/:id]`
 - Notifications: events, templates, preview, send, logs under `/api/notifications/*`
@@ -260,3 +266,27 @@ The store supports multiple branches, each with its own delivery service area (c
 - **API**: admin `GET/POST/PUT/DELETE /api/branches[/:id]` + `PUT /api/branches/:id/default` (perms `branches.view`/`branches.manage`); public `GET /api/delivery/check?lat=&lng=&area=`; `GET /api/bootstrap` includes `branches`.
 - **Backoffice**: `/backoffice/branches` manages outlets; `/backoffice/b/:slug/...` is the branch-scoped backoffice (same pages, scoped data). Admin scoping also works via `X-Branch-Id` header or `?branch_id=`.
 - Branch-scoped users are redirected to `/b/<slug>` after login.
+
+## Delivery partners
+
+`delivery_partner` users get a dedicated portal at `/backoffice/delivery` (sign-in at `/backoffice/delivery/login`; the main login also redirects them). Each partner is allocated to ≥1 branch via the `delivery_partner_branches` join table (managed in Users & Staff — `branch_ids` on create/update; `users.branch_id` mirrors the first allocation). Delivery partners cannot access the admin backoffice.
+
+Order workflow adds a `ready` status: `processing → ready → shipped → delivered` (`processing → shipped` still allowed for carrier flows). Staff marks an order `ready`; partners see it in their queue for their allocated branches and either **claim** it (assign + out-for-delivery in one step) or staff/managers/admins **assign** it to them (`PUT /api/delivery/orders/:id/assign`, `orders.update` perm — assignment stays `ready` until the partner taps Start). `orders.delivery_partner_id`/`delivery_assigned_at` track assignment.
+
+Endpoints (`/api/delivery`, authed):
+- `GET /branches` — partner's allocated branches (admins: scoped/all)
+- `GET /orders?view=queue|active|history[&partner_id=&unassigned=]` — queue = `ready` orders in scope; partners auto-scoped to their branches
+- `GET /partners?branch_id=` — active partners for the assignment picker (admin roles)
+- `PUT /orders/:id/assign {partner_id|""}` — assign/reassign/unassign (admin roles, `orders.update`)
+- `POST /orders/:id/claim` · `POST /orders/:id/start` · `POST /orders/:id/deliver` — partner actions
+
+## CI — Docker image publishing
+
+`.github/workflows/docker.yml` builds the `production` target of `backend/`, `frontstore/`, and `backoffice/` on every push to `main` (and via manual dispatch) and pushes to Docker Hub in parallel:
+
+- Images: `ntoric/vtchicken_backend`, `ntoric/vtchicken_frontstore`, `ntoric/vtchicken_backoffice` (namespace overridable via the `DOCKERHUB_NAMESPACE` repo variable)
+- Tags per push: `latest`, `production`, `main`, `sha-<short>`
+- Required secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (Docker Hub access token)
+- Optional vars: `INTERNAL_API_BASE_URL`, `INTERNAL_BACKOFFICE_URL` — baked into the frontstore image at build time (next.config.js rewrites); defaults are the compose service names
+- Platform: `linux/amd64` (uncomment QEMU + `platforms` in the workflow for multi-arch)
+- Each service dir has a `.dockerignore`; `backend/` intentionally keeps `.git/` in context for version stamping (`git describe` in the Dockerfile)

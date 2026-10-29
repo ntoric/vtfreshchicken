@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/trucommerce/backend/internal/models"
 	"github.com/trucommerce/backend/internal/services"
@@ -26,10 +27,11 @@ func (h *ReturnsHandler) ListReturns(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
 	f := services.ReturnListFilter{
-		Status: c.Query("status"),
-		Type:   c.Query("type"),
-		Search: c.Query("search"),
-		Dr:     services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
+		Status:   c.Query("status"),
+		Type:     c.Query("type"),
+		Search:   c.Query("search"),
+		BranchID: branchFilter(c),
+		Dr:       services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
 	}
 
 	returns, total, err := h.store.ListOrderReturns(c.Request.Context(), tid, f, limit, offset)
@@ -40,11 +42,37 @@ func (h *ReturnsHandler) ListReturns(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": returns, "total": total, "limit": limit, "offset": offset})
 }
 
+// returnBranchAllowed reports whether the caller may access the return: a
+// branch-bound user can only reach returns on orders fulfilled by their branch.
+func (h *ReturnsHandler) returnBranchAllowed(c *gin.Context, tid, returnID uuid.UUID) bool {
+	scope := branchFilter(c)
+	if scope == nil || !branchRestricted(c) {
+		return true
+	}
+	ok, err := h.store.ReturnInBranch(c.Request.Context(), tid, returnID, *scope)
+	return err == nil && ok
+}
+
+// orderBranchAllowed reports whether the caller may access returns attached to
+// the given order.
+func (h *ReturnsHandler) orderBranchAllowed(c *gin.Context, tid, orderID uuid.UUID) bool {
+	scope := branchFilter(c)
+	if scope == nil || !branchRestricted(c) {
+		return true
+	}
+	ok, err := h.store.OrderInBranch(c.Request.Context(), tid, orderID, *scope)
+	return err == nil && ok
+}
+
 // GetReturn returns a single return with its items.
 func (h *ReturnsHandler) GetReturn(c *gin.Context) {
 	tid := tenantID(c)
 	rid, ok := pathUUID(c, "id")
 	if !ok {
+		return
+	}
+	if !h.returnBranchAllowed(c, tid, rid) {
+		errResponse(c, http.StatusNotFound, "return not found")
 		return
 	}
 	ret, err := h.store.GetOrderReturn(c.Request.Context(), tid, rid)
@@ -62,6 +90,10 @@ func (h *ReturnsHandler) ListOrderReturns(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.orderBranchAllowed(c, tid, oid) {
+		errResponse(c, http.StatusNotFound, "order not found")
+		return
+	}
 	returns, err := h.store.ListReturnsByOrder(c.Request.Context(), tid, oid)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
@@ -75,6 +107,10 @@ func (h *ReturnsHandler) CreateReturn(c *gin.Context) {
 	tid := tenantID(c)
 	oid, ok := pathUUID(c, "orderId")
 	if !ok {
+		return
+	}
+	if !h.orderBranchAllowed(c, tid, oid) {
+		errResponse(c, http.StatusNotFound, "order not found")
 		return
 	}
 
@@ -131,6 +167,10 @@ func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.returnBranchAllowed(c, tid, rid) {
+		errResponse(c, http.StatusNotFound, "return not found")
+		return
+	}
 
 	var req models.ReturnStatusUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -159,7 +199,7 @@ func (h *ReturnsHandler) UpdateReturnStatus(c *gin.Context) {
 // ReturnCounts returns counts of returns grouped by status.
 func (h *ReturnsHandler) ReturnCounts(c *gin.Context) {
 	tid := tenantID(c)
-	counts, err := h.store.ReturnCountsByStatus(c.Request.Context(), tid)
+	counts, err := h.store.ReturnCountsByStatus(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

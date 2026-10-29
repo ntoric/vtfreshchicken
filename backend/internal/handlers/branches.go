@@ -87,7 +87,8 @@ func (h *BranchHandler) DeliveryCheck(c *gin.Context) {
 // ---------------- Admin CRUD ----------------
 
 func (h *BranchHandler) List(c *gin.Context) {
-	branches, err := h.store.ListBranches(c.Request.Context(), tenantID(c))
+	limit, offset := pagingParams(c)
+	branches, total, err := h.store.ListBranchesPaged(c.Request.Context(), tenantID(c), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -95,7 +96,7 @@ func (h *BranchHandler) List(c *gin.Context) {
 	if branches == nil {
 		branches = []models.Branch{}
 	}
-	c.JSON(http.StatusOK, gin.H{"items": branches})
+	c.JSON(http.StatusOK, gin.H{"items": branches, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *BranchHandler) Get(c *gin.Context) {
@@ -112,23 +113,24 @@ func (h *BranchHandler) Get(c *gin.Context) {
 }
 
 type branchReq struct {
-	Name       string   `json:"name" binding:"required"`
-	Slug       string   `json:"slug"`
-	Phone      string   `json:"phone"`
-	Email      string   `json:"email"`
-	Line1      string   `json:"line1"`
-	Line2      string   `json:"line2"`
-	City       string   `json:"city"`
-	State      string   `json:"state"`
-	PostalCode string   `json:"postal_code"`
-	Country    string   `json:"country"`
-	CenterLat  float64  `json:"center_lat"`
-	CenterLng  float64  `json:"center_lng"`
-	RadiusKm   float64  `json:"radius_km"`
-	Areas      []string `json:"areas"`
-	IsActive   bool     `json:"is_active"`
-	IsDefault  bool     `json:"is_default"`
-	SortOrder  int      `json:"sort_order"`
+	Name         string               `json:"name" binding:"required"`
+	Slug         string               `json:"slug"`
+	Phone        string               `json:"phone"`
+	Email        string               `json:"email"`
+	Line1        string               `json:"line1"`
+	Line2        string               `json:"line2"`
+	City         string               `json:"city"`
+	State        string               `json:"state"`
+	PostalCode   string               `json:"postal_code"`
+	Country      string               `json:"country"`
+	CenterLat    float64              `json:"center_lat"`
+	CenterLng    float64              `json:"center_lng"`
+	RadiusKm     float64              `json:"radius_km"`
+	ServiceZones []models.ServiceZone `json:"service_zones"`
+	Areas        []string             `json:"areas"`
+	IsActive     bool                 `json:"is_active"`
+	IsDefault    bool                 `json:"is_default"`
+	SortOrder    int                  `json:"sort_order"`
 }
 
 func (h *BranchHandler) Create(c *gin.Context) {
@@ -151,7 +153,8 @@ func (h *BranchHandler) Create(c *gin.Context) {
 		Line1: req.Line1, Line2: req.Line2, City: req.City, State: req.State,
 		PostalCode: req.PostalCode, Country: req.Country,
 		CenterLat: req.CenterLat, CenterLng: req.CenterLng, RadiusKm: req.RadiusKm,
-		Areas: req.Areas, IsActive: req.IsActive, IsDefault: req.IsDefault, SortOrder: req.SortOrder,
+		ServiceZones: req.ServiceZones,
+		Areas:        req.Areas, IsActive: req.IsActive, IsDefault: req.IsDefault, SortOrder: req.SortOrder,
 	}
 	if err := h.store.CreateBranch(c.Request.Context(), b); err != nil {
 		errResponse(c, http.StatusConflict, err.Error())
@@ -184,7 +187,8 @@ func (h *BranchHandler) Update(c *gin.Context) {
 		Line1: req.Line1, Line2: req.Line2, City: req.City, State: req.State,
 		PostalCode: req.PostalCode, Country: req.Country,
 		CenterLat: req.CenterLat, CenterLng: req.CenterLng, RadiusKm: req.RadiusKm,
-		Areas: req.Areas, IsActive: req.IsActive, IsDefault: req.IsDefault, SortOrder: req.SortOrder,
+		ServiceZones: req.ServiceZones,
+		Areas:        req.Areas, IsActive: req.IsActive, IsDefault: req.IsDefault, SortOrder: req.SortOrder,
 	}
 	if err := h.store.UpdateBranch(c.Request.Context(), b); err != nil {
 		notFoundOrErr(c, err, "branch not found")

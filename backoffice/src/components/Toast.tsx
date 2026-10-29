@@ -56,7 +56,7 @@ const TYPE_CONFIG: Record<ToastType, {
   info:        { icon: Info,          accent: "bg-sky-500/10",     iconColor: "text-sky-500",        borderColor: "border-sky-400/20",    barColor: "bg-sky-500" },
   alert:       { icon: AlertOctagon,  accent: "bg-orange-500/10",  iconColor: "text-orange-500",     borderColor: "border-orange-400/20", barColor: "bg-orange-500" },
   reminder:    { icon: Bell,          accent: "bg-violet-500/10",   iconColor: "text-violet-500",     borderColor: "border-violet-400/20", barColor: "bg-violet-500" },
-  notification:{ icon: BellRing,      accent: "bg-indigo-500/10",  iconColor: "text-indigo-500",     borderColor: "border-indigo-400/20", barColor: "bg-indigo-500" },
+  notification:{ icon: BellRing,      accent: "bg-red-500/10",  iconColor: "text-red-500",     borderColor: "border-red-400/20", barColor: "bg-red-500" },
   push:        { icon: Send,          accent: "bg-cyan-500/10",    iconColor: "text-cyan-500",       borderColor: "border-cyan-400/20",   barColor: "bg-cyan-500" },
 };
 
@@ -108,7 +108,7 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   return (
     <div
       className={`relative overflow-hidden flex items-start gap-3 p-4 pb-3.5 rounded-2xl border ${cfg.borderColor} ${cfg.accent}
-        backdrop-blur-xl bg-white/70 shadow-lg shadow-slate-900/5
+        backdrop-blur-xl bg-white/70 shadow-lg shadow-neutral-900/5
         animate-in slide-in-from-right-full duration-300
         min-w-[320px] max-w-md`}
       onMouseEnter={() => setHovered(true)}
@@ -116,12 +116,12 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     >
       <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${cfg.iconColor}`} strokeWidth={2} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
-        {toast.message && <p className="text-sm text-slate-600 mt-0.5">{toast.message}</p>}
+        <p className="text-sm font-semibold text-neutral-900">{toast.title}</p>
+        {toast.message && <p className="text-sm text-neutral-600 mt-0.5">{toast.message}</p>}
       </div>
       <button
         onClick={onClose}
-        className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition"
+        className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition"
       >
         <X className="w-4 h-4" />
       </button>

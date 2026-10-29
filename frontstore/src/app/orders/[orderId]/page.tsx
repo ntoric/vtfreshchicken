@@ -22,14 +22,18 @@ import {
   X,
   Plus,
   Minus,
+  Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { fetchBootstrap, fetchOrder, listOrderReturns, createReturn, generateIdempotencyKey, fetchOrderReturnEligibility, listOrderShipments, trackShipment } from "@/lib/api";
+import { fetchBootstrap, fetchOrder, listOrderReturns, createReturn, generateIdempotencyKey, fetchOrderReturnEligibility, listOrderShipments, trackShipment, fetchMyReviews } from "@/lib/api";
 import { Header } from "@/components/Header";
 import { Toggle } from "@/components/Toggle";
 import { FullPageLoader } from "@/components/Loaders";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { InvoiceGenerator } from "@/components/checkout/InvoiceGenerator";
+import { ReviewFormModal, type ReviewableProduct } from "@/components/ReviewFormModal";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/components/Toast";
 import { getCurrencySymbol } from "@/lib/format";
 import type { OrderResponse, OrderReturn, CreateReturnRequest, OrderReturnEligibility, Shipment, TrackingResponse } from "@/types";
 import { RETURN_STATUS_LABELS, RETURN_TYPE_LABELS, REFUND_METHOD_LABELS } from "@/types";
@@ -42,6 +46,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   paid: { label: "Paid", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
   pending: { label: "Pending", color: "#d97706", bg: "bg-amber-50", border: "border-amber-200", icon: Clock },
   processing: { label: "Processing", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Settings },
+  ready: { label: "Ready for Delivery", color: "#4f46e5", bg: "bg-indigo-50", border: "border-indigo-200", icon: Package },
   failed: { label: "Failed", color: "#dc2626", bg: "bg-rose-50", border: "border-rose-200", icon: XCircle },
   shipped: { label: "Shipped", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
   delivered: { label: "Delivered", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
@@ -52,7 +57,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 function OrderDetailsContent({ orderId }: { orderId: string }) {
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
+  const { isAuthenticated } = useAuth();
+  const toast = useToast();
   const [cachedResponse, setCachedResponse] = useState<OrderResponse | null>(null);
+  const [reviewProduct, setReviewProduct] = useState<ReviewableProduct | null>(null);
   const qc = useQueryClient();
 
   // Return modal state
@@ -91,22 +99,33 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
     enabled: !!orderId && !!bootstrapQ.data,
   });
 
+  // Module feature flags (Developer → Modules & Features)
+  const returnsModuleOn = bootstrapQ.data?.modules?.returns !== false;
+  const shippingModuleOn = bootstrapQ.data?.modules?.shipping !== false;
+
   const returnsQ = useQuery({
     queryKey: ["order-returns", orderId],
     queryFn: () => listOrderReturns(orderId),
-    enabled: !!orderId && !!bootstrapQ.data,
+    enabled: !!orderId && !!bootstrapQ.data && returnsModuleOn,
   });
 
   const eligibilityQ = useQuery({
     queryKey: ["order-return-eligibility", orderId],
     queryFn: () => fetchOrderReturnEligibility(orderId),
-    enabled: !!orderId && !!bootstrapQ.data,
+    enabled: !!orderId && !!bootstrapQ.data && returnsModuleOn,
   });
 
   const shipmentsQ = useQuery({
     queryKey: ["order-shipments", orderId],
     queryFn: () => listOrderShipments(orderId),
-    enabled: !!orderId && !!bootstrapQ.data,
+    enabled: !!orderId && !!bootstrapQ.data && shippingModuleOn,
+  });
+
+  // Customer's submitted reviews — used to mark order items as already reviewed.
+  const myReviewsQ = useQuery({
+    queryKey: ["my-reviews"],
+    queryFn: () => fetchMyReviews(),
+    enabled: isAuthenticated,
   });
 
   const [trackingData, setTrackingData] = useState<Record<string, TrackingResponse | null>>({});
@@ -226,6 +245,18 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
   const transactionId = cachedResponse?.transaction_id;
   const paymentMethod = cachedResponse?.payment_method;
   const tenantName = bootstrap.store_name || "TruCommerce";
+  const brandColor = bootstrap.settings?.brand_color || "#4f46e5";
+
+  // Reviewable state: items can be reviewed once the order is delivered.
+  // Fulfilled orders were delivered earlier, so they stay reviewable.
+  const canReview = ["delivered", "fulfilled"].includes(order.status);
+  const reviewedProductIds = new Set((myReviewsQ.data?.items ?? []).map((r) => r.product_id));
+  const seenProductIds = new Set<string>();
+  const reviewItems = (order.items ?? []).filter((it) => {
+    if (seenProductIds.has(it.product_id)) return false;
+    seenProductIds.add(it.product_id);
+    return true;
+  });
 
   return (
     <div className="min-h-screen">
@@ -292,15 +323,15 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
               {(order.payment_method === "cod"
                 ? [
                     { key: "placed", label: "Order Placed", icon: FileText, active: true },
-                    { key: "packed", label: "Packed", icon: Package, active: ["paid", "processing", "shipped", "delivered", "fulfilled"].includes(order.status) },
+                    { key: "packed", label: "Packed", icon: Package, active: ["paid", "processing", "ready", "shipped", "delivered", "fulfilled"].includes(order.status) },
                     { key: "shipped", label: "Shipped", icon: Truck, active: ["shipped", "delivered", "fulfilled"].includes(order.status) },
                     { key: "paid", label: "Payment Received", icon: CreditCard, active: ["delivered", "fulfilled"].includes(order.status) },
                     { key: "delivered", label: "Delivered", icon: Home, active: ["delivered", "fulfilled"].includes(order.status) },
                   ]
                 : [
                     { key: "placed", label: "Order Placed", icon: FileText, active: true },
-                    { key: "paid", label: "Payment Confirmed", icon: CreditCard, active: ["paid", "processing", "shipped", "delivered"].includes(order.status) },
-                    { key: "processing", label: "Processing", icon: Settings, active: ["processing", "shipped", "delivered"].includes(order.status) },
+                    { key: "paid", label: "Payment Confirmed", icon: CreditCard, active: ["paid", "processing", "ready", "shipped", "delivered"].includes(order.status) },
+                    { key: "processing", label: "Processing", icon: Settings, active: ["processing", "ready", "shipped", "delivered"].includes(order.status) },
                     { key: "shipped", label: "Shipped", icon: Package, active: ["shipped", "delivered"].includes(order.status) },
                     { key: "delivered", label: "Delivered", icon: Home, active: ["delivered", "fulfilled"].includes(order.status) },
                     { key: "fulfilled", label: "Fulfilled", icon: CheckCircle, active: order.status === "fulfilled" },
@@ -356,7 +387,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
         )}
 
         {/* Carrier shipments with live tracking */}
-        {shipmentsQ.data?.items && shipmentsQ.data.items.length > 0 && (
+        {shippingModuleOn && shipmentsQ.data?.items && shipmentsQ.data.items.length > 0 && (
           <div className="bg-white rounded-2xl border p-4 sm:p-6 mb-6">
             <h3 className="font-bold text-gray-900 mb-4">Carrier Shipments</h3>
             <div className="space-y-4">
@@ -458,8 +489,59 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
           paymentMethod={paymentMethod}
         />
 
-        {/* Returns & Replacements section */}
-        {["delivered", "shipped", "paid", "processing"].includes(order.status) && (
+        {/* Rate & Review — item reviews open once the order is delivered */}
+        {canReview && (
+          <div className="bg-white rounded-2xl border p-4 sm:p-6 mt-6">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <Star className="w-5 h-5 text-gray-500" strokeWidth={1.75} />
+              Rate &amp; Review
+            </h3>
+            {!isAuthenticated ? (
+              <p className="text-sm text-gray-500 mt-3">
+                <Link href={`/account/login?redirect=/orders/${order.id}`} className="text-brand font-medium hover:underline">
+                  Sign in
+                </Link>{" "}
+                to review the items in this order.
+              </p>
+            ) : (
+              <div className="space-y-3 mt-4">
+                {reviewItems.map((item) => {
+                  const reviewed = reviewedProductIds.has(item.product_id);
+                  return (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400">Qty {item.quantity}</p>
+                      </div>
+                      {reviewed ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg flex-shrink-0">
+                          <CheckCircle className="w-3.5 h-3.5" /> Reviewed
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setReviewProduct({ product_id: item.product_id, name: item.name, image_url: item.image_url })}
+                          className="bg-brand text-white text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-brand-dark transition inline-flex items-center gap-1.5 flex-shrink-0"
+                        >
+                          <Star className="w-3.5 h-3.5" /> Write a Review
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Returns & Replacements section — hidden when the returns module is disabled */}
+        {returnsModuleOn && ["delivered", "shipped", "paid", "processing"].includes(order.status) && (
           <div className="bg-white rounded-2xl border p-4 sm:p-6 mt-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900 flex items-center gap-2">
@@ -857,6 +939,21 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
           </p>
         </div>
       </div>
+
+      {/* Review submission modal */}
+      {reviewProduct && (
+        <ReviewFormModal
+          product={reviewProduct}
+          brandColor={brandColor}
+          onClose={() => setReviewProduct(null)}
+          onSuccess={() => {
+            setReviewProduct(null);
+            qc.invalidateQueries({ queryKey: ["my-reviews"] });
+            qc.invalidateQueries({ queryKey: ["reviews", reviewProduct.product_id] });
+            toast.success("Review submitted!", "Thank you for your feedback.");
+          }}
+        />
+      )}
     </div>
   );
 }

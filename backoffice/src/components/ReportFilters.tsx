@@ -115,7 +115,7 @@ export function ReportFilters({
       {/* Date presets */}
       {dateRange && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 mr-1">Quick range:</span>
+          <span className="text-xs font-medium text-neutral-500 mr-1">Quick range:</span>
           {PRESETS.map((p) => {
             const active =
               p.days === null || p.days === undefined ? !value.from && !value.to :
@@ -127,7 +127,7 @@ export function ReportFilters({
                 key={p.label}
                 onClick={() => applyPreset(p)}
                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${
-                  active ? "bg-brand text-white" : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                  active ? "bg-brand text-white" : "bg-neutral-50 border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
                 }`}
               >
                 {p.label}
@@ -141,19 +141,19 @@ export function ReportFilters({
       <div className="flex flex-wrap items-center gap-3">
         {dateRange && (
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-slate-400" />
+            <Calendar className="w-4 h-4 text-neutral-400" />
             <input
               type="date"
               value={value.from || ""}
               onChange={(e) => onChange({ ...value, from: e.target.value || undefined })}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+              className="border border-neutral-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
             />
-            <span className="text-slate-400 text-sm">→</span>
+            <span className="text-neutral-400 text-sm">→</span>
             <input
               type="date"
               value={value.to || ""}
               onChange={(e) => onChange({ ...value, to: e.target.value || undefined })}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+              className="border border-neutral-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
             />
           </div>
         )}
@@ -163,7 +163,7 @@ export function ReportFilters({
             key={sel.key}
             value={value[sel.key] || ""}
             onChange={(e) => onChange({ ...value, [sel.key]: e.target.value || undefined })}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+            className="border border-neutral-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
           >
             <option value="">{sel.placeholder || sel.label}</option>
             {sel.options.map((opt) => (
@@ -174,13 +174,13 @@ export function ReportFilters({
 
         {search && (
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+              className="w-full border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
             />
           </div>
         )}
@@ -188,7 +188,7 @@ export function ReportFilters({
         {hasFilters && (
           <button
             onClick={clearAll}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-rose-600 transition ml-auto"
+            className="flex items-center gap-1 text-xs text-neutral-500 hover:text-rose-600 transition ml-auto"
           >
             <X className="w-3.5 h-3.5" /> Clear filters
           </button>

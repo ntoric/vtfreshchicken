@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { notFound } from "next/navigation";
 import { Poppins, Fraunces } from "next/font/google";
 import "./globals.css";
 
@@ -99,7 +98,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     bootstrap = await fetchBootstrap();
   } catch (err) {
     console.error("[RootLayout] fetchBootstrap failed:", err);
-    notFound();
+    // notFound() is not allowed in the root layout — render a minimal fallback.
+    return (
+      <html lang="en">
+        <body>
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
+            <div style={{ textAlign: "center" }}>
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 600 }}>Store unavailable</h1>
+              <p style={{ marginTop: "0.5rem", color: "#666" }}>We couldn&apos;t reach the store backend. Please try again shortly.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    );
   }
 
   const brand = bootstrap.settings?.brand_color || "#4f46e5";

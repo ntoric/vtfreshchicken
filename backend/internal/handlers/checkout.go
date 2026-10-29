@@ -60,6 +60,7 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 	// Resolve the fulfilling branch from the delivery location. When the store
 	// has active branches, orders are accepted only inside a branch's service
 	// area and assigned to the nearest covering branch.
+	var deliveryBranch *models.Branch
 	if hasBranches, bErr := h.store.HasActiveBranches(c.Request.Context(), tid); bErr == nil && hasBranches {
 		area := req.DeliveryArea
 		if area == "" {
@@ -75,6 +76,7 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 			return
 		}
 		req.BranchID = &branch.ID
+		deliveryBranch = branch
 	}
 
 	// Look up the payment gateway from the registry
@@ -132,13 +134,62 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 		return
 	}
 
+	// Stock-aware allocation: pick the nearest covering branch that can
+	// fulfil every item — not just the geographically nearest.
+	if deliveryBranch != nil {
+		area := req.DeliveryArea
+		if area == "" {
+			area = req.ShippingAddress.City
+		}
+		fb, rErr := h.store.ResolveFulfillmentBranch(c.Request.Context(), tid, req.DeliveryLat, req.DeliveryLng, area, cart.Items)
+		if rErr == services.ErrNoBranchStock {
+			errResponse(c, http.StatusUnprocessableEntity, "no serviceable branch has enough stock for your order")
+			return
+		}
+		if rErr != nil {
+			errResponse(c, http.StatusInternalServerError, rErr.Error())
+			return
+		}
+		if fb == nil {
+			errResponse(c, http.StatusUnprocessableEntity, "delivery is not available for the selected location")
+			return
+		}
+		deliveryBranch = fb
+		req.BranchID = &fb.ID
+	}
+
+	// Branch-exclusive products can only be fulfilled by their own branch.
+	if deliveryBranch != nil {
+		pids := make([]uuid.UUID, 0, len(cart.Items))
+		for _, ci := range cart.Items {
+			pids = append(pids, ci.ProductID)
+		}
+		blocked, bErr := h.store.BranchBlockedProducts(c.Request.Context(), tid, deliveryBranch.ID, pids)
+		if bErr != nil {
+			errResponse(c, http.StatusInternalServerError, bErr.Error())
+			return
+		}
+		if len(blocked) > 0 {
+			errResponse(c, http.StatusUnprocessableEntity,
+				fmt.Sprintf("these items are not available at %s: %s", deliveryBranch.Name, strings.Join(blocked, ", ")))
+			return
+		}
+	}
+
 	// Calculate the grand total for the payment gateway
 	// (must match what CreateOrderFromCart will compute)
 	subtotal := services.CartSubtotal(cart)
 
+	// Module feature flags — disabled modules contribute nothing to the order
+	// total even if a stale client submits their fields.
+	mods, _ := h.store.ModuleEnabledMap(c.Request.Context(), tid)
+	shippingModuleOn := moduleOn(mods, services.ModuleShipping)
+	discountsModuleOn := moduleOn(mods, services.ModuleDiscounts)
+	taxModuleOn := moduleOn(mods, services.ModuleTax)
+
 	// Calculate shipping using the shipping module (replaces hardcoded rates)
 	shippingTotal := 0.0
-	if len(req.ItemShippingMethods) > 0 {
+	if shippingModuleOn && len(req.ItemShippingMethods) > 0 {
 		// Per-item shipping methods (split-shipment support): compute cost per item.
 		shipItems := make([]models.ShippingCalculationItem, 0, len(cart.Items))
 		for _, ci := range cart.Items {
@@ -150,6 +201,25 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 				Weight:           ci.Weight,
 				FreeShipping:     ci.FreeShipping,
 			})
+		}
+		// Validate submitted method codes against the store's active methods so
+		// a stale or tampered request can't silently ship an item for free.
+		methods, mErr := h.store.ListActiveShippingMethods(c.Request.Context(), tid)
+		if mErr != nil {
+			errResponse(c, http.StatusInternalServerError, mErr.Error())
+			return
+		}
+		if len(methods) > 0 {
+			activeCodes := make(map[string]bool, len(methods))
+			for _, m := range methods {
+				activeCodes[m.Code] = true
+			}
+			for _, ism := range req.ItemShippingMethods {
+				if ism.MethodCode != "" && !activeCodes[ism.MethodCode] {
+					errResponse(c, http.StatusBadRequest, "invalid shipping method: "+ism.MethodCode)
+					return
+				}
+			}
 		}
 		itemMethod := make(map[int]string)
 		for _, ism := range req.ItemShippingMethods {
@@ -165,8 +235,8 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 				shippingTotal += st
 			}
 		}
-	} else if req.ShippingMethod != "" {
-		// Order-level shipping method (legacy / single-shipment path)
+	} else if shippingModuleOn && req.ShippingMethod != "" {
+		// Order-level shipping method (single-shipment path)
 		shipItems := make([]models.ShippingCalculationItem, 0, len(cart.Items))
 		for _, ci := range cart.Items {
 			shipItems = append(shipItems, models.ShippingCalculationItem{
@@ -182,18 +252,34 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 		if sErr == nil {
 			shippingTotal = st
 		} else {
-			// Fall back to legacy hardcoded rates if method not found
-			if req.ShippingMethod == "express" {
-				shippingTotal = 15.00
-			} else if subtotal >= 50 {
-				shippingTotal = 0
-			} else {
-				shippingTotal = 5.99
+			// No configured fallback: delivery is free while the store has no
+			// active shipping methods; an unknown code is rejected so the
+			// charged total always matches a configured rate.
+			methods, mErr := h.store.ListActiveShippingMethods(c.Request.Context(), tid)
+			if mErr != nil {
+				errResponse(c, http.StatusInternalServerError, mErr.Error())
+				return
+			}
+			if len(methods) > 0 {
+				errResponse(c, http.StatusBadRequest, "invalid shipping method: "+req.ShippingMethod)
+				return
 			}
 		}
 	}
+
+	// Distance-based delivery charge: when the dedicated shipping module is
+	// disabled, the fulfilling branch's service zones set the delivery fee
+	// from the customer's distance to the branch (exact map location only —
+	// named-area picks have no coordinates and stay free).
+	if !shippingModuleOn && deliveryBranch != nil && len(deliveryBranch.ServiceZones) > 0 &&
+		req.DeliveryLat != nil && req.DeliveryLng != nil {
+		d := services.HaversineKm(*req.DeliveryLat, *req.DeliveryLng, deliveryBranch.CenterLat, deliveryBranch.CenterLng)
+		if charge, zi := services.BranchDeliveryCharge(deliveryBranch, d); zi >= 0 {
+			shippingTotal = charge
+		}
+	}
 	discountTotal := 0.0
-	if req.DiscountCode != "" {
+	if discountsModuleOn && req.DiscountCode != "" {
 		dc, derr := h.store.ValidateDiscountCode(c.Request.Context(), cart.TenantID, req.DiscountCode, subtotal, req.BranchID)
 		if derr == nil && dc != nil {
 			if dc.DiscountType == "percentage" {
@@ -210,7 +296,7 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 	// Calculate tax using the tax module (replaces hardcoded 8%)
 	taxTotal := 0.0
 	settings, sErr := h.store.GetTenantSettings(c.Request.Context(), tid)
-	if sErr == nil && settings != nil {
+	if sErr == nil && settings != nil && taxModuleOn {
 		// Build tax calculation items from cart (tax_class_id is loaded with cart items)
 		taxItems := make([]models.TaxCalculationItem, 0, len(cart.Items))
 		for _, ci := range cart.Items {

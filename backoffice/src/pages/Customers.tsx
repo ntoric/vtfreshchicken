@@ -127,7 +127,7 @@ export function Customers() {
         <PageHeader title="Customers" subtitle={`${total} customers`} />
         <button
           onClick={() => setExportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
+          className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
         >
           <Download className="w-4 h-4" /> Export CSV
         </button>
@@ -168,7 +168,7 @@ export function Customers() {
           ) : (
             <div className="bg-white rounded-2xl border overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-left">
+                <thead className="bg-neutral-50 text-neutral-500 text-left">
                   <tr>
                     <th className="px-4 py-3 font-medium">Name</th>
                     <th className="px-4 py-3 font-medium">Email</th>
@@ -182,30 +182,30 @@ export function Customers() {
                     <tr
                       key={c.id}
                       onClick={() => openDetail(c)}
-                      className={`hover:bg-slate-50 cursor-pointer ${selectedId === c.id ? "bg-brand/5" : ""}`}
+                      className={`hover:bg-neutral-50 cursor-pointer ${selectedId === c.id ? "bg-brand/5" : ""}`}
                     >
-                      <td className="px-4 py-3 font-medium text-slate-900">{c.full_name || "—"}</td>
-                      <td className="px-4 py-3 text-slate-600">{c.email}</td>
-                      <td className="px-4 py-3 text-slate-500">{c.phone || "—"}</td>
+                      <td className="px-4 py-3 font-medium text-neutral-900">{c.full_name || "—"}</td>
+                      <td className="px-4 py-3 text-neutral-600">{c.email}</td>
+                      <td className="px-4 py-3 text-neutral-500">{c.phone || "—"}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          c.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                          c.is_active ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
                         }`}>
                           {c.is_active ? "Active" : "Disabled"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-neutral-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                   {listQ.data && listQ.data.items.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No customers found.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">No customers found.</td></tr>
                   )}
                 </tbody>
               </table>
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-                  <span className="text-slate-500">{page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}</span>
+                  <span className="text-neutral-500">{page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}</span>
                   <div className="flex gap-2">
                     <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 border rounded disabled:opacity-40">Prev</button>
                     <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-3 py-1 border rounded disabled:opacity-40">Next</button>
@@ -219,7 +219,7 @@ export function Customers() {
         {/* Customer detail panel */}
         <div className="lg:col-span-1">
           {!selectedId ? (
-            <div className="bg-white rounded-2xl border p-8 text-center text-slate-400 text-sm">
+            <div className="bg-white rounded-2xl border p-8 text-center text-neutral-400 text-sm">
               Select a customer to view details.
             </div>
           ) : detailQ.isLoading ? (
@@ -230,11 +230,11 @@ export function Customers() {
             <div className="bg-white rounded-2xl border p-6 space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-slate-900">{detailQ.data.full_name || "—"}</h3>
-                  <p className="text-sm text-slate-500">{detailQ.data.email}</p>
+                  <h3 className="font-semibold text-neutral-900">{detailQ.data.full_name || "—"}</h3>
+                  <p className="text-sm text-neutral-500">{detailQ.data.email}</p>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  detailQ.data.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                  detailQ.data.is_active ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
                 }`}>
                   {detailQ.data.is_active ? "Active" : "Disabled"}
                 </span>
@@ -242,13 +242,13 @@ export function Customers() {
 
               {/* Order stats */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500">Orders</p>
-                  <p className="text-lg font-semibold text-slate-900">{detailQ.data.order_count}</p>
+                <div className="bg-neutral-50 rounded-lg p-3">
+                  <p className="text-xs text-neutral-500">Orders</p>
+                  <p className="text-lg font-semibold text-neutral-900">{detailQ.data.order_count}</p>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500">Total Spent</p>
-                  <p className="text-lg font-semibold text-slate-900">{formatMoney(detailQ.data.total_spent)}</p>
+                <div className="bg-neutral-50 rounded-lg p-3">
+                  <p className="text-xs text-neutral-500">Total Spent</p>
+                  <p className="text-lg font-semibold text-neutral-900">{formatMoney(detailQ.data.total_spent)}</p>
                 </div>
               </div>
 
@@ -265,12 +265,12 @@ export function Customers() {
                   {/* Addresses */}
                   {detailQ.data.addresses.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-600 mb-2">Addresses</h4>
+                      <h4 className="text-xs font-medium text-neutral-600 mb-2">Addresses</h4>
                       <div className="space-y-2">
                         {detailQ.data.addresses.map((a) => (
-                          <div key={a.id} className="text-xs bg-slate-50 rounded-lg p-2">
+                          <div key={a.id} className="text-xs bg-neutral-50 rounded-lg p-2">
                             <p className="font-medium">{a.label}{a.is_default && <span className="text-brand ml-1">(default)</span>}</p>
-                            <p className="text-slate-500">{a.line1}, {a.city}, {a.country} {a.postal_code}</p>
+                            <p className="text-neutral-500">{a.line1}, {a.city}, {a.country} {a.postal_code}</p>
                           </div>
                         ))}
                       </div>
@@ -280,23 +280,23 @@ export function Customers() {
                   {/* Admin notes */}
                   {detailQ.data.admin_notes && (
                     <div>
-                      <h4 className="text-xs font-medium text-slate-600 mb-1">Admin Notes</h4>
-                      <p className="text-xs text-slate-600 bg-amber-50 rounded-lg p-2">{detailQ.data.admin_notes}</p>
+                      <h4 className="text-xs font-medium text-neutral-600 mb-1">Admin Notes</h4>
+                      <p className="text-xs text-neutral-600 bg-amber-50 rounded-lg p-2">{detailQ.data.admin_notes}</p>
                     </div>
                   )}
 
                   {/* Wallet */}
                   <div className="border-t pt-3">
-                    <h4 className="text-xs font-medium text-slate-600 mb-2">Wallet</h4>
+                    <h4 className="text-xs font-medium text-neutral-600 mb-2">Wallet</h4>
                     {walletQ.isLoading ? (
-                      <div className="h-8 bg-slate-50 rounded animate-pulse" />
+                      <div className="h-8 bg-neutral-50 rounded animate-pulse" />
                     ) : walletQ.error ? (
                       <p className="text-xs text-rose-500">Failed to load wallet.</p>
                     ) : walletQ.data ? (
                       <>
-                        <div className="bg-indigo-50 rounded-lg p-3 mb-2">
-                          <p className="text-xs text-indigo-500">Current Balance</p>
-                          <p className="text-lg font-bold text-indigo-700">
+                        <div className="bg-red-50 rounded-lg p-3 mb-2">
+                          <p className="text-xs text-red-500">Current Balance</p>
+                          <p className="text-lg font-bold text-red-700">
                             {formatMoney(walletQ.data.balance, walletQ.data.currency_code)}
                           </p>
                         </div>
@@ -324,7 +324,7 @@ export function Customers() {
                                 });
                               }}
                               disabled={walletAdjustMut.isPending || !walletAdjustAmount}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium disabled:opacity-50"
                             >
                               {walletAdjustMut.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                               {walletAdjustMut.isPending ? "…" : "Adjust"}
@@ -341,13 +341,13 @@ export function Customers() {
                         {/* Recent transactions */}
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {walletTxnsQ.isLoading ? (
-                            <p className="text-xs text-slate-400">Loading…</p>
+                            <p className="text-xs text-neutral-400">Loading…</p>
                           ) : walletTxnsQ.data && walletTxnsQ.data.items.length > 0 ? (
                             walletTxnsQ.data.items.map((t) => (
-                              <div key={t.id} className="flex items-center justify-between text-xs bg-slate-50 rounded px-2 py-1.5">
+                              <div key={t.id} className="flex items-center justify-between text-xs bg-neutral-50 rounded px-2 py-1.5">
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-slate-700 truncate">{t.description || t.source}</p>
-                                  <p className="text-slate-400 text-[10px]">
+                                  <p className="font-medium text-neutral-700 truncate">{t.description || t.source}</p>
+                                  <p className="text-neutral-400 text-[10px]">
                                     {new Date(t.created_at).toLocaleDateString()}{" "}
                                     {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                   </p>
@@ -358,7 +358,7 @@ export function Customers() {
                               </div>
                             ))
                           ) : (
-                            <p className="text-xs text-slate-400 text-center py-2">No transactions.</p>
+                            <p className="text-xs text-neutral-400 text-center py-2">No transactions.</p>
                           )}
                         </div>
                       </>
@@ -430,8 +430,8 @@ export function Customers() {
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-white rounded-2xl border p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-2xl font-semibold text-slate-900 mt-1">{value}</p>
+      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="text-2xl font-semibold text-neutral-900 mt-1">{value}</p>
     </div>
   );
 }
@@ -439,8 +439,8 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-slate-900 font-medium">{value}</span>
+      <span className="text-neutral-500">{label}</span>
+      <span className="text-neutral-900 font-medium">{value}</span>
     </div>
   );
 }
@@ -448,7 +448,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-neutral-600 mb-1">{label}</label>
       {children}
     </div>
   );

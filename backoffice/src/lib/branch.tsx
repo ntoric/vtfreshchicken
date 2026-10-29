@@ -38,7 +38,7 @@ export function BranchGuard() {
   }, [branch?.id]);
 
   if (q.isLoading) {
-    return <div className="p-8 text-sm text-slate-400">Loading branch…</div>;
+    return <div className="p-8 text-sm text-neutral-400">Loading branch…</div>;
   }
   if (!branch) {
     return <Navigate to="/" replace />;

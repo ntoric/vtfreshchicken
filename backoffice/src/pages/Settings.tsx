@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useModules } from "@/lib/modules";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/components/Toast";
@@ -14,66 +15,66 @@ function MiniSplashPreview({ style, background, subtitle, showLogo, showProgress
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden">
       {background === "orbs" && (
         <>
-          <div className="absolute top-[-20%] left-[-10%] w-32 h-32 rounded-full blur-2xl bg-indigo-500 opacity-10 animate-pulse" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-40 h-40 rounded-full blur-2xl bg-indigo-500 opacity-10 animate-pulse" />
+          <div className="absolute top-[-20%] left-[-10%] w-32 h-32 rounded-full blur-2xl bg-red-500 opacity-10 animate-pulse" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-40 h-40 rounded-full blur-2xl bg-red-500 opacity-10 animate-pulse" />
         </>
       )}
       {background === "waves" && (
         <svg className="absolute inset-0 w-full h-full opacity-10" preserveAspectRatio="none" viewBox="0 0 400 200" fill="none">
-          <path d="M0,80 Q100,50 200,80 T400,80" stroke="#6366f1" strokeWidth="1.5" />
-          <path d="M0,120 Q100,90 200,120 T400,120" stroke="#6366f1" strokeWidth="1" />
+          <path d="M0,80 Q100,50 200,80 T400,80" stroke="#ef4444" strokeWidth="1.5" />
+          <path d="M0,120 Q100,90 200,120 T400,120" stroke="#ef4444" strokeWidth="1" />
         </svg>
       )}
       <div className="relative z-10 flex flex-col items-center gap-2">
         {style === "rings" && (
           <div className="relative w-12 h-12 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: "#6366f1", borderRightColor: "#6366f1", animationDuration: "2s" }} />
-            <div className="absolute inset-1 rounded-full border-2 border-transparent animate-spin" style={{ borderBottomColor: "#6366f1", borderLeftColor: "#6366f1", animationDirection: "reverse", animationDuration: "1.5s", opacity: 0.5 }} />
-            {showLogo && <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">{initials}</div>}
+            <div className="absolute inset-0 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: "#ef4444", borderRightColor: "#ef4444", animationDuration: "2s" }} />
+            <div className="absolute inset-1 rounded-full border-2 border-transparent animate-spin" style={{ borderBottomColor: "#ef4444", borderLeftColor: "#ef4444", animationDirection: "reverse", animationDuration: "1.5s", opacity: 0.5 }} />
+            {showLogo && <div className="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center text-white text-[10px] font-bold">{initials}</div>}
           </div>
         )}
         {style === "spinner" && (
           <div className="relative w-10 h-10">
-            <div className="absolute inset-0 rounded-full border-3 border-slate-200" style={{ borderWidth: 3 }} />
-            <div className="absolute inset-0 rounded-full border-transparent animate-spin" style={{ borderTopColor: "#6366f1", borderRightColor: "#6366f1", borderWidth: 3, animationDuration: "1s" }} />
-            {showLogo && <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-indigo-600">{initials}</div>}
+            <div className="absolute inset-0 rounded-full border-3 border-neutral-200" style={{ borderWidth: 3 }} />
+            <div className="absolute inset-0 rounded-full border-transparent animate-spin" style={{ borderTopColor: "#ef4444", borderRightColor: "#ef4444", borderWidth: 3, animationDuration: "1s" }} />
+            {showLogo && <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-red-600">{initials}</div>}
           </div>
         )}
         {style === "pulse" && (
           <div className="relative w-12 h-12 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-indigo-500 opacity-20 animate-ping" />
-            <div className="absolute inset-1 rounded-full bg-indigo-500 opacity-30 animate-ping" style={{ animationDelay: "0.5s" }} />
-            {showLogo && <div className="relative w-7 h-7 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-[10px] font-bold animate-pulse">{initials}</div>}
+            <div className="absolute inset-0 rounded-full bg-red-500 opacity-20 animate-ping" />
+            <div className="absolute inset-1 rounded-full bg-red-500 opacity-30 animate-ping" style={{ animationDelay: "0.5s" }} />
+            {showLogo && <div className="relative w-7 h-7 rounded-xl bg-red-600 flex items-center justify-center text-white text-[10px] font-bold animate-pulse">{initials}</div>}
           </div>
         )}
         {style === "dots" && (
           <div className="flex items-center gap-1.5">
             {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: `${i * 0.12}s`, animationDuration: "0.8s" }} />
+              <span key={i} className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: `${i * 0.12}s`, animationDuration: "0.8s" }} />
             ))}
           </div>
         )}
         {style === "bars" && (
           <div className="flex items-end gap-1 h-8">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="w-1.5 rounded-full bg-indigo-600" style={{ height: "100%", animation: `pulse 1s ease-in-out ${i * 0.1}s infinite` }} />
+              <div key={i} className="w-1.5 rounded-full bg-red-600" style={{ height: "100%", animation: `pulse 1s ease-in-out ${i * 0.1}s infinite` }} />
             ))}
           </div>
         )}
         <div className="text-center">
-          <div className="text-sm font-bold text-slate-900">Store</div>
-          <div className="text-[8px] uppercase tracking-[0.2em] text-slate-400 mt-0.5">{subtitle || "Loading…"}</div>
+          <div className="text-sm font-bold text-neutral-900">Store</div>
+          <div className="text-[8px] uppercase tracking-[0.2em] text-neutral-400 mt-0.5">{subtitle || "Loading…"}</div>
         </div>
         {showDots && style !== "dots" && (
           <div className="flex items-center gap-1">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="w-1 h-1 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: `${i * 0.15}s`, animationDuration: "1s" }} />
+              <span key={i} className="w-1 h-1 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: `${i * 0.15}s`, animationDuration: "1s" }} />
             ))}
           </div>
         )}
         {showProgress && (
-          <div className="w-20 h-0.5 bg-slate-200 rounded-full overflow-hidden">
-            <div className="h-full w-1/3 rounded-full bg-indigo-600 animate-pulse" />
+          <div className="w-20 h-0.5 bg-neutral-200 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-red-600 animate-pulse" />
           </div>
         )}
       </div>
@@ -277,8 +278,8 @@ function Section({ title, description, children }: { title: string; description?
   return (
     <div className="bg-white rounded-2xl border p-6 space-y-4">
       <div>
-        <h3 className="font-semibold text-slate-900">{title}</h3>
-        {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
+        <h3 className="font-semibold text-neutral-900">{title}</h3>
+        {description && <p className="text-sm text-neutral-500 mt-0.5">{description}</p>}
       </div>
       {children}
     </div>
@@ -288,13 +289,13 @@ function Section({ title, description, children }: { title: string; description?
 function TextInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <span className="text-sm font-medium text-neutral-700">{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+        className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
       />
     </label>
   );
@@ -303,13 +304,13 @@ function TextInput({ label, value, onChange, placeholder }: { label: string; val
 function TextArea({ label, value, onChange, placeholder, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <span className="text-sm font-medium text-neutral-700">{label}</span>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-none"
+        className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none"
       />
     </label>
   );
@@ -319,13 +320,13 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
   return (
     <div className="flex items-center justify-between py-2">
       <div>
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
+        <p className="text-sm font-medium text-neutral-700">{label}</p>
+        {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
       </div>
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`relative w-12 h-6 rounded-full transition ${checked ? "bg-indigo-600" : "bg-slate-200"}`}
+        className={`relative w-12 h-6 rounded-full transition ${checked ? "bg-red-600" : "bg-neutral-200"}`}
       >
         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : ""}`} />
       </button>
@@ -338,12 +339,14 @@ export function Settings() {
   const qc = useQueryClient();
   const toast = useToast();
 
+  const { isEnabled: moduleEnabled } = useModules();
+
   const settingsQ = useQuery({
     queryKey: ["settings", tenant],
     queryFn: () => api.getSettings(tenant),
   });
 
-  const [brandColor, setBrandColor] = useState("#4f46e5");
+  const [brandColor, setBrandColor] = useState("#dc2626");
   const [logoUrl, setLogoUrl] = useState("");
   const [landingEnabled, setLandingEnabled] = useState(false);
   const [anonymousCheckout, setAnonymousCheckout] = useState(true);
@@ -416,7 +419,7 @@ export function Settings() {
 
   useEffect(() => {
     if (settingsQ.data) {
-      setBrandColor(settingsQ.data.brand_color || "#4f46e5");
+      setBrandColor(settingsQ.data.brand_color || "#dc2626");
       setLogoUrl(settingsQ.data.logo_url || "");
       setLandingEnabled(settingsQ.data.landing_page_enabled || false);
       setAnonymousCheckout(settingsQ.data.anonymous_checkout ?? true);
@@ -755,10 +758,10 @@ export function Settings() {
       <div>
         <PageHeader title="Settings" />
         <div className="bg-white rounded-2xl border p-8 animate-pulse space-y-4 max-w-3xl">
-          <div className="h-6 bg-slate-100 rounded w-1/4" />
-          <div className="h-10 bg-slate-100 rounded" />
-          <div className="h-6 bg-slate-100 rounded w-1/4" />
-          <div className="h-10 bg-slate-100 rounded" />
+          <div className="h-6 bg-neutral-100 rounded w-1/4" />
+          <div className="h-10 bg-neutral-100 rounded" />
+          <div className="h-6 bg-neutral-100 rounded w-1/4" />
+          <div className="h-10 bg-neutral-100 rounded" />
         </div>
       </div>
     );
@@ -780,8 +783,8 @@ export function Settings() {
       <div className="space-y-6 max-w-3xl">
         {/* Account Info */}
         <Section title="Account" description="Your account information">
-          <div className="space-y-1 text-sm text-slate-600">
-            <p><span className="font-medium text-slate-900">{user?.full_name}</span> ({user?.email})</p>
+          <div className="space-y-1 text-sm text-neutral-600">
+            <p><span className="font-medium text-neutral-900">{user?.full_name}</span> ({user?.email})</p>
             <p className="capitalize">Role: {user?.role.replace("_", " ")}</p>
           </div>
         </Section>
@@ -790,19 +793,19 @@ export function Settings() {
         <Section title="Store Branding" description="Customize the look and feel of your storefront">
           <div className="space-y-4">
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Brand Color</span>
+              <span className="text-sm font-medium text-neutral-700">Brand Color</span>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
                   value={brandColor}
                   onChange={(e) => setBrandColor(e.target.value)}
-                  className="w-12 h-10 rounded-lg border border-slate-200 cursor-pointer"
+                  className="w-12 h-10 rounded-lg border border-neutral-200 cursor-pointer"
                 />
                 <input
                   type="text"
                   value={brandColor}
                   onChange={(e) => setBrandColor(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                 />
               </div>
             </label>
@@ -810,7 +813,7 @@ export function Settings() {
             <button
               onClick={handleSaveBranding}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Branding
@@ -822,11 +825,11 @@ export function Settings() {
         <Section title="Default Currency" description="The currency customers see by default when visiting your storefront">
           <div className="space-y-4">
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Default Currency</span>
+              <span className="text-sm font-medium text-neutral-700">Default Currency</span>
               <select
                 value={defaultCurrencyCode}
                 onChange={(e) => setDefaultCurrencyCode(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
               >
                 <option value="">— Select a currency —</option>
                 {currencies.filter((c) => c.is_active).map((c) => (
@@ -835,14 +838,14 @@ export function Settings() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-neutral-400 mt-1">
                 Customers can still switch currencies from the storefront header. Their selection is remembered across visits.
               </p>
             </label>
             <button
               onClick={handleSaveCurrency}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Default Currency
@@ -854,11 +857,11 @@ export function Settings() {
         <Section title="Language Settings" description="Configure the default language and which languages your storefront supports">
           <div className="space-y-4">
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Default Language</span>
+              <span className="text-sm font-medium text-neutral-700">Default Language</span>
               <select
                 value={defaultLanguage}
                 onChange={(e) => setDefaultLanguage(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
               >
                 {languages.filter((l) => l.is_active).map((l) => (
                   <option key={l.code} value={l.code}>
@@ -866,14 +869,14 @@ export function Settings() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-neutral-400 mt-1">
                 This is the language customers see by default when visiting your storefront.
               </p>
             </label>
 
             <div className="space-y-2">
-              <span className="text-sm font-medium text-slate-700">Supported Languages</span>
-              <p className="text-xs text-slate-400">
+              <span className="text-sm font-medium text-neutral-700">Supported Languages</span>
+              <p className="text-xs text-neutral-400">
                 Select which languages customers can switch between in the storefront header.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
@@ -886,8 +889,8 @@ export function Settings() {
                       onClick={() => toggleSupportedLanguage(l.code)}
                       className={`px-2.5 py-1 rounded-md text-sm font-medium border transition ${
                         selected
-                          ? "bg-indigo-600 text-white border-indigo-600"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          ? "bg-red-600 text-white border-red-600"
+                          : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300"
                       }`}
                     >
                       {l.name} ({l.code})
@@ -905,7 +908,7 @@ export function Settings() {
             <button
               onClick={handleSaveLanguage}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Language Settings
@@ -916,17 +919,17 @@ export function Settings() {
         {/* SMTP / Email */}
         <Section title="Email (SMTP) Settings" description="Configure transactional email delivery for order confirmations and notifications">
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">Enable Store SMTP</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-medium text-neutral-900">Enable Store SMTP</p>
+                <p className="text-xs text-neutral-500 mt-0.5">
                   When enabled, this store uses its own SMTP server. When disabled, falls back to platform-level SMTP (from env vars).
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSmtpEnabled(!smtpEnabled)}
-                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${smtpEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${smtpEnabled ? "bg-emerald-500" : "bg-neutral-200"}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${smtpEnabled ? "translate-x-7" : ""}`} />
               </button>
@@ -935,12 +938,12 @@ export function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <TextInput label="SMTP Host" value={smtpHost} onChange={setSmtpHost} placeholder="smtp.gmail.com" />
               <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-700">SMTP Port</span>
+                <span className="text-sm font-medium text-neutral-700">SMTP Port</span>
                 <input
                   type="number"
                   value={smtpPort}
                   onChange={(e) => setSmtpPort(parseInt(e.target.value) || 587)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                 />
               </label>
             </div>
@@ -948,13 +951,13 @@ export function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <TextInput label="Username" value={smtpUser} onChange={setSmtpUser} placeholder="user@example.com" />
               <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-700">Password</span>
+                <span className="text-sm font-medium text-neutral-700">Password</span>
                 <input
                   type="password"
                   value={smtpPass}
                   onChange={(e) => setSmtpPass(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                 />
               </label>
             </div>
@@ -965,11 +968,11 @@ export function Settings() {
             </div>
 
             <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Encryption</span>
+              <span className="text-sm font-medium text-neutral-700">Encryption</span>
               <select
                 value={smtpEncryption}
                 onChange={(e) => setSmtpEncryption(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
               >
                 <option value="starttls">STARTTLS (recommended, port 587)</option>
                 <option value="ssl">SSL/TLS (port 465)</option>
@@ -981,7 +984,7 @@ export function Settings() {
               <button
                 onClick={handleSaveSMTP}
                 disabled={smtpSaveMut.isPending}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
                 {smtpSaveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Save SMTP Settings
@@ -990,20 +993,20 @@ export function Settings() {
 
             {/* Test email */}
             <div className="border-t pt-4 space-y-3">
-              <h4 className="font-semibold text-slate-900 text-sm">Send Test Email</h4>
-              <p className="text-xs text-slate-500">Verify your SMTP configuration by sending a test email.</p>
+              <h4 className="font-semibold text-neutral-900 text-sm">Send Test Email</h4>
+              <p className="text-xs text-neutral-500">Verify your SMTP configuration by sending a test email.</p>
               <div className="flex gap-2">
                 <input
                   type="email"
                   value={smtpTestEmail}
                   onChange={(e) => setSmtpTestEmail(e.target.value)}
                   placeholder="recipient@example.com"
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
                 />
                 <button
                   onClick={handleTestSMTP}
                   disabled={smtpTestMut.isPending || !smtpTestEmail}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-700 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-50"
                 >
                   {smtpTestMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                   {smtpTestMut.isPending ? "Sending..." : "Send Test"}
@@ -1021,17 +1024,17 @@ export function Settings() {
         {/* Checkout */}
         <Section title="Checkout Settings" description="Control whether customers can purchase without an account">
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">Allow Guest Checkout</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-medium text-neutral-900">Allow Guest Checkout</p>
+                <p className="text-xs text-neutral-500 mt-0.5">
                   When enabled, customers can purchase without registering or logging in. When disabled, customers must log in before checkout.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setAnonymousCheckout(!anonymousCheckout)}
-                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${anonymousCheckout ? "bg-emerald-500" : "bg-slate-200"}`}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${anonymousCheckout ? "bg-emerald-500" : "bg-neutral-200"}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${anonymousCheckout ? "translate-x-7" : ""}`} />
               </button>
@@ -1039,7 +1042,7 @@ export function Settings() {
             <button
               onClick={handleSaveCheckout}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Checkout Settings
@@ -1050,17 +1053,17 @@ export function Settings() {
         {/* Delivery Service Area */}
         <Section title="Delivery Service Area" description="Restrict orders to a delivery circle (center point + radius) and a list of named areas shown in the storefront location picker">
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">Restrict Delivery Area</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-medium text-neutral-900">Restrict Delivery Area</p>
+                <p className="text-xs text-neutral-500 mt-0.5">
                   When enabled, customers must choose a location inside the service circle or a listed area to place an order.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSaEnabled(!saEnabled)}
-                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${saEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${saEnabled ? "bg-emerald-500" : "bg-neutral-200"}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${saEnabled ? "translate-x-7" : ""}`} />
               </button>
@@ -1074,33 +1077,33 @@ export function Settings() {
                   <TextInput label="Default Country" value={saCountry} onChange={setSaCountry} placeholder="India" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Center Latitude</label>
-                    <p className="text-xs text-slate-500 mb-2">Service circle centre</p>
+                  <div className="bg-neutral-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-neutral-900 mb-1">Center Latitude</label>
+                    <p className="text-xs text-neutral-500 mb-2">Service circle centre</p>
                     <input
                       type="number"
                       step="any"
                       value={saCenterLat}
                       onChange={(e) => setSaCenterLat(e.target.value)}
                       placeholder="11.051"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Center Longitude</label>
-                    <p className="text-xs text-slate-500 mb-2">Service circle centre</p>
+                  <div className="bg-neutral-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-neutral-900 mb-1">Center Longitude</label>
+                    <p className="text-xs text-neutral-500 mb-2">Service circle centre</p>
                     <input
                       type="number"
                       step="any"
                       value={saCenterLng}
                       onChange={(e) => setSaCenterLng(e.target.value)}
                       placeholder="76.071"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Radius (km)</label>
-                    <p className="text-xs text-slate-500 mb-2">Circle range around the centre</p>
+                  <div className="bg-neutral-50 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-neutral-900 mb-1">Radius (km)</label>
+                    <p className="text-xs text-neutral-500 mb-2">Circle range around the centre</p>
                     <input
                       type="number"
                       min={1}
@@ -1108,7 +1111,7 @@ export function Settings() {
                       value={saRadiusKm}
                       onChange={(e) => setSaRadiusKm(e.target.value)}
                       placeholder="50"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                 </div>
@@ -1119,7 +1122,7 @@ export function Settings() {
                   placeholder={"Malappuram\nManjeri\nPerinthalmanna"}
                   rows={6}
                 />
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-neutral-400">
                   A location counts as deliverable when it is inside the circle <em>or</em> matches a listed area name. The circle is shown on the storefront map picker.
                 </p>
               </div>
@@ -1127,7 +1130,7 @@ export function Settings() {
             <button
               onClick={handleSaveServiceArea}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Service Area
@@ -1135,20 +1138,21 @@ export function Settings() {
           </div>
         </Section>
 
-        {/* Return & Refund Policy */}
+        {/* Return & Refund Policy — hidden when the returns module is disabled */}
+        {moduleEnabled("returns") && (
         <Section title="Return & Refund Policy" description="Set how many days after delivery customers can request returns, refunds, or replacements">
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">Enable Returns & Refunds</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-medium text-neutral-900">Enable Returns & Refunds</p>
+                <p className="text-xs text-neutral-500 mt-0.5">
                   When disabled, customers cannot request returns, refunds, or replacements on the storefront. Existing requests remain manageable under Orders → Returns.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setReturnsEnabled(!returnsEnabled)}
-                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${returnsEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
+                className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${returnsEnabled ? "bg-emerald-500" : "bg-neutral-200"}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${returnsEnabled ? "translate-x-7" : ""}`} />
               </button>
@@ -1157,44 +1161,44 @@ export function Settings() {
             {returnsEnabled && (
               <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-50 rounded-xl p-4">
-                <label className="block text-sm font-medium text-slate-900 mb-1">Return Period (days)</label>
-                <p className="text-xs text-slate-500 mb-2">General return window after delivery</p>
+              <div className="bg-neutral-50 rounded-xl p-4">
+                <label className="block text-sm font-medium text-neutral-900 mb-1">Return Period (days)</label>
+                <p className="text-xs text-neutral-500 mb-2">General return window after delivery</p>
                 <input
                   type="number"
                   min={1}
                   max={365}
                   value={returnPeriodDays}
                   onChange={(e) => setReturnPeriodDays(Math.max(1, parseInt(e.target.value) || 30))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <label className="block text-sm font-medium text-slate-900 mb-1">Refund Period (days)</label>
-                <p className="text-xs text-slate-500 mb-2">Refund request window after delivery</p>
+              <div className="bg-neutral-50 rounded-xl p-4">
+                <label className="block text-sm font-medium text-neutral-900 mb-1">Refund Period (days)</label>
+                <p className="text-xs text-neutral-500 mb-2">Refund request window after delivery</p>
                 <input
                   type="number"
                   min={1}
                   max={365}
                   value={refundPeriodDays}
                   onChange={(e) => setRefundPeriodDays(Math.max(1, parseInt(e.target.value) || 30))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <label className="block text-sm font-medium text-slate-900 mb-1">Replacement Period (days)</label>
-                <p className="text-xs text-slate-500 mb-2">Replacement request window after delivery</p>
+              <div className="bg-neutral-50 rounded-xl p-4">
+                <label className="block text-sm font-medium text-neutral-900 mb-1">Replacement Period (days)</label>
+                <p className="text-xs text-neutral-500 mb-2">Replacement request window after delivery</p>
                 <input
                   type="number"
                   min={1}
                   max={365}
                   value={replacementPeriodDays}
                   onChange={(e) => setReplacementPeriodDays(Math.max(1, parseInt(e.target.value) || 15))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               These periods start from the order&apos;s delivery date. Options for expired periods are automatically hidden from the customer dashboard and order page.
             </p>
               </>
@@ -1202,13 +1206,14 @@ export function Settings() {
             <button
               onClick={handleSaveReturnPolicy}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Return Policy
             </button>
           </div>
         </Section>
+        )}
 
         {/* Storefront SEO */}
         <Section title="Storefront SEO" description="Default meta tags, Open Graph image, canonical URL, and social links for your storefront. Individual products and categories can override these.">
@@ -1221,7 +1226,7 @@ export function Settings() {
             <button
               onClick={handleSaveSEO}
               disabled={saveMut.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50"
             >
               {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Save SEO Settings
@@ -1235,12 +1240,12 @@ export function Settings() {
           description="Configure every section of your landing page — hero, features, testimonials, editorial sections, and more"
         >
           <div className="space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-900">Enable Landing Page</p>
-                <p className="text-xs text-slate-500 mt-0.5">When enabled, visitors see the landing page instead of the product grid.</p>
+                <p className="text-sm font-medium text-neutral-900">Enable Landing Page</p>
+                <p className="text-xs text-neutral-500 mt-0.5">When enabled, visitors see the landing page instead of the product grid.</p>
               </div>
-              <button type="button" onClick={() => setLandingEnabled(!landingEnabled)} className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${landingEnabled ? "bg-emerald-500" : "bg-slate-200"}`}>
+              <button type="button" onClick={() => setLandingEnabled(!landingEnabled)} className={`relative w-14 h-7 rounded-full transition flex-shrink-0 ${landingEnabled ? "bg-emerald-500" : "bg-neutral-200"}`}>
                 <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${landingEnabled ? "translate-x-7" : ""}`} />
               </button>
             </div>
@@ -1248,9 +1253,9 @@ export function Settings() {
             {landingEnabled && (
               <div className="space-y-4 pt-2">
                 {/* Tab bar */}
-                <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-2">
+                <div className="flex flex-wrap gap-1 border-b border-neutral-200 pb-2">
                   {LANDING_TABS.map((tab) => (
-                    <button key={tab.id} onClick={() => setLandingTab(tab.id)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${landingTab === tab.id ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                    <button key={tab.id} onClick={() => setLandingTab(tab.id)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${landingTab === tab.id ? "bg-red-600 text-white" : "text-neutral-600 hover:bg-neutral-100"}`}>
                       {tab.label}
                     </button>
                   ))}
@@ -1274,16 +1279,16 @@ export function Settings() {
                     <div className="space-y-3">
                       <Toggle label="Show Features Section" checked={content.show_features} onChange={(v) => setContent({ ...content, show_features: v })} />
                       {content.show_features && content.features.map((f, i) => (
-                        <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Feature {i + 1}</span><button onClick={() => removeFeature(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                        <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Feature {i + 1}</span><button onClick={() => removeFeature(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                           <div className="grid grid-cols-2 gap-2">
-                            <label className="block space-y-1"><span className="text-xs text-slate-600">Icon</span><select value={f.icon} onChange={(e) => updateFeature(i, "icon", e.target.value)} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
+                            <label className="block space-y-1"><span className="text-xs text-neutral-600">Icon</span><select value={f.icon} onChange={(e) => updateFeature(i, "icon", e.target.value)} className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
                             <TextInput label="Title" value={f.title} onChange={(v) => updateFeature(i, "title", v)} />
                           </div>
                           <TextInput label="Description" value={f.text} onChange={(v) => updateFeature(i, "text", v)} />
                         </div>
                       ))}
-                      {content.show_features && content.features.length < 6 && <button onClick={addFeature} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Feature</button>}
+                      {content.show_features && content.features.length < 6 && <button onClick={addFeature} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Feature</button>}
                     </div>
                   )}
 
@@ -1309,14 +1314,14 @@ export function Settings() {
                     <div className="space-y-3">
                       <Toggle label="Show Testimonials" checked={content.show_testimonials} onChange={(v) => setContent({ ...content, show_testimonials: v })} />
                       {content.show_testimonials && content.testimonials.map((t, i) => (
-                        <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Testimonial {i + 1}</span><button onClick={() => removeTestimonial(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                        <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Testimonial {i + 1}</span><button onClick={() => removeTestimonial(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                           <div className="grid grid-cols-2 gap-2"><TextInput label="Name" value={t.name} onChange={(v) => updateTestimonial(i, "name", v)} /><TextInput label="Role" value={t.role} onChange={(v) => updateTestimonial(i, "role", v)} /></div>
                           <TextArea label="Quote" value={t.text} onChange={(v) => updateTestimonial(i, "text", v)} rows={2} />
-                          <label className="block space-y-1"><span className="text-xs text-slate-600">Rating</span><select value={t.rating} onChange={(e) => updateTestimonial(i, "rating", parseInt(e.target.value))} className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white">{[5, 4, 3, 2, 1].map((r) => <option key={r} value={r}>{r} stars</option>)}</select></label>
+                          <label className="block space-y-1"><span className="text-xs text-neutral-600">Rating</span><select value={t.rating} onChange={(e) => updateTestimonial(i, "rating", parseInt(e.target.value))} className="px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white">{[5, 4, 3, 2, 1].map((r) => <option key={r} value={r}>{r} stars</option>)}</select></label>
                         </div>
                       ))}
-                      {content.show_testimonials && content.testimonials.length < 6 && <button onClick={addTestimonial} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Testimonial</button>}
+                      {content.show_testimonials && content.testimonials.length < 6 && <button onClick={addTestimonial} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Testimonial</button>}
                     </div>
                   )}
 
@@ -1338,7 +1343,7 @@ export function Settings() {
                   {landingTab === "marquee" && (
                     <div className="space-y-3">
                       <Toggle label="Show Brand Marquee" checked={content.show_marquee} onChange={(v) => setContent({ ...content, show_marquee: v })} />
-                      {content.show_marquee && <label className="block space-y-1"><span className="text-sm font-medium text-slate-700">Brand Names (one per line)</span><textarea value={content.marquee_brands.join("\n")} onChange={(e) => updateMarqueeBrands(e.target.value)} rows={6} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none" placeholder="VOGUE&#10;GQ&#10;ELLE" /></label>}
+                      {content.show_marquee && <label className="block space-y-1"><span className="text-sm font-medium text-neutral-700">Brand Names (one per line)</span><textarea value={content.marquee_brands.join("\n")} onChange={(e) => updateMarqueeBrands(e.target.value)} rows={6} className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm resize-none" placeholder="VOGUE&#10;GQ&#10;ELLE" /></label>}
                     </div>
                   )}
 
@@ -1386,13 +1391,13 @@ export function Settings() {
                           <TextInput label="Title" value={content.lookbook.title} onChange={(v) => updateLookbook({ title: v })} />
                           <TextArea label="Subtitle" value={content.lookbook.subtitle} onChange={(v) => updateLookbook({ subtitle: v })} rows={2} />
                           {content.lookbook.items.map((item, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Look {i + 1}</span><button onClick={() => removeLookbookItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Look {i + 1}</span><button onClick={() => removeLookbookItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                               <TextInput label="Image URL" value={item.image_url} onChange={(v) => updateLookbookItem(i, { image_url: v })} placeholder="https://..." />
                               <div className="grid grid-cols-2 gap-2"><TextInput label="Category" value={item.category} onChange={(v) => updateLookbookItem(i, { category: v })} /><TextInput label="Title" value={item.title} onChange={(v) => updateLookbookItem(i, { title: v })} /></div>
                             </div>
                           ))}
-                          <button onClick={addLookbookItem} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Look</button>
+                          <button onClick={addLookbookItem} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Look</button>
                         </>
                       )}
                     </div>
@@ -1407,13 +1412,13 @@ export function Settings() {
                           <TextInput label="Title" value={content.trend_report.title} onChange={(v) => updateTrendReport({ title: v })} />
                           <TextArea label="Subtitle" value={content.trend_report.subtitle} onChange={(v) => updateTrendReport({ subtitle: v })} rows={2} />
                           {content.trend_report.trends.map((t, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Trend {i + 1}</span><button onClick={() => removeTrend(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Trend {i + 1}</span><button onClick={() => removeTrend(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                               <div className="grid grid-cols-2 gap-2"><TextInput label="Number" value={t.number} onChange={(v) => updateTrend(i, { number: v })} /><TextInput label="Title" value={t.title} onChange={(v) => updateTrend(i, { title: v })} /></div>
                               <TextArea label="Description" value={t.text} onChange={(v) => updateTrend(i, { text: v })} rows={3} />
                             </div>
                           ))}
-                          <button onClick={addTrend} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Trend</button>
+                          <button onClick={addTrend} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Trend</button>
                         </>
                       )}
                     </div>
@@ -1428,14 +1433,14 @@ export function Settings() {
                           <TextInput label="Title" value={content.sustainability.title} onChange={(v) => updateSustainability({ title: v })} />
                           <TextArea label="Subtitle" value={content.sustainability.subtitle} onChange={(v) => updateSustainability({ subtitle: v })} rows={2} />
                           {content.sustainability.values.map((val, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Value {i + 1}</span><button onClick={() => removeSustainabilityValue(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
-                              <label className="block space-y-1"><span className="text-xs text-slate-600">Icon</span><select value={val.icon} onChange={(e) => updateSustainabilityValue(i, { icon: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Value {i + 1}</span><button onClick={() => removeSustainabilityValue(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                              <label className="block space-y-1"><span className="text-xs text-neutral-600">Icon</span><select value={val.icon} onChange={(e) => updateSustainabilityValue(i, { icon: e.target.value })} className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
                               <TextInput label="Title" value={val.title} onChange={(v) => updateSustainabilityValue(i, { title: v })} />
                               <TextInput label="Description" value={val.text} onChange={(v) => updateSustainabilityValue(i, { text: v })} />
                             </div>
                           ))}
-                          <button onClick={addSustainabilityValue} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Value</button>
+                          <button onClick={addSustainabilityValue} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Value</button>
                         </>
                       )}
                     </div>
@@ -1450,15 +1455,15 @@ export function Settings() {
                           <TextInput label="Title" value={content.style_guide.title} onChange={(v) => updateStyleGuide({ title: v })} />
                           <TextArea label="Subtitle" value={content.style_guide.subtitle} onChange={(v) => updateStyleGuide({ subtitle: v })} rows={2} />
                           {content.style_guide.articles.map((a, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Article {i + 1}</span><button onClick={() => removeStyleArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Article {i + 1}</span><button onClick={() => removeStyleArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                               <TextInput label="Image URL" value={a.image_url} onChange={(v) => updateStyleArticle(i, { image_url: v })} placeholder="https://..." />
                               <div className="grid grid-cols-2 gap-2"><TextInput label="Category" value={a.category} onChange={(v) => updateStyleArticle(i, { category: v })} /><TextInput label="Title" value={a.title} onChange={(v) => updateStyleArticle(i, { title: v })} /></div>
                               <TextArea label="Paragraph 1" value={a.text1} onChange={(v) => updateStyleArticle(i, { text1: v })} rows={3} />
                               <TextArea label="Paragraph 2" value={a.text2} onChange={(v) => updateStyleArticle(i, { text2: v })} rows={3} />
                             </div>
                           ))}
-                          <button onClick={addStyleArticle} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Article</button>
+                          <button onClick={addStyleArticle} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Article</button>
                         </>
                       )}
                     </div>
@@ -1472,16 +1477,16 @@ export function Settings() {
                         <>
                           <TextInput label="Section Title" value={content.stats.title} onChange={(v) => updateStats({ title: v })} />
                           {content.stats.items.map((s, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Stat {i + 1}</span><button onClick={() => removeStatsItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Stat {i + 1}</span><button onClick={() => removeStatsItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                               <div className="grid grid-cols-3 gap-2">
-                                <label className="block space-y-1"><span className="text-xs text-slate-600">Value</span><input type="number" value={s.value} onChange={(e) => updateStatsItem(i, { value: parseInt(e.target.value) || 0 })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm" /></label>
+                                <label className="block space-y-1"><span className="text-xs text-neutral-600">Value</span><input type="number" value={s.value} onChange={(e) => updateStatsItem(i, { value: parseInt(e.target.value) || 0 })} className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm" /></label>
                                 <TextInput label="Suffix" value={s.suffix} onChange={(v) => updateStatsItem(i, { suffix: v })} />
                                 <TextInput label="Label" value={s.label} onChange={(v) => updateStatsItem(i, { label: v })} />
                               </div>
                             </div>
                           ))}
-                          <button onClick={addStatsItem} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Stat</button>
+                          <button onClick={addStatsItem} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Stat</button>
                         </>
                       )}
                     </div>
@@ -1496,15 +1501,15 @@ export function Settings() {
                           <TextInput label="Title" value={content.journal.title} onChange={(v) => updateJournal({ title: v })} />
                           <TextArea label="Subtitle" value={content.journal.subtitle} onChange={(v) => updateJournal({ subtitle: v })} rows={2} />
                           {content.journal.articles.map((a, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Article {i + 1}</span><div className="flex items-center gap-2"><Toggle label="Featured" checked={a.featured} onChange={(v) => updateJournalArticle(i, { featured: v })} /><button onClick={() => removeJournalArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Article {i + 1}</span><div className="flex items-center gap-2"><Toggle label="Featured" checked={a.featured} onChange={(v) => updateJournalArticle(i, { featured: v })} /><button onClick={() => removeJournalArticle(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div></div>
                               <TextInput label="Image URL" value={a.image_url} onChange={(v) => updateJournalArticle(i, { image_url: v })} placeholder="https://..." />
                               <div className="grid grid-cols-2 gap-2"><TextInput label="Category" value={a.category} onChange={(v) => updateJournalArticle(i, { category: v })} /><TextInput label="Read Time" value={a.read_time} onChange={(v) => updateJournalArticle(i, { read_time: v })} /></div>
                               <TextInput label="Title" value={a.title} onChange={(v) => updateJournalArticle(i, { title: v })} />
                               <TextArea label="Text" value={a.text} onChange={(v) => updateJournalArticle(i, { text: v })} rows={3} />
                             </div>
                           ))}
-                          <button onClick={addJournalArticle} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Article</button>
+                          <button onClick={addJournalArticle} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Article</button>
                         </>
                       )}
                     </div>
@@ -1524,7 +1529,7 @@ export function Settings() {
                               <button onClick={() => removeInstagramImage(i)} className="mt-5 text-xs text-rose-500 hover:text-rose-700 flex-shrink-0">Remove</button>
                             </div>
                           ))}
-                          <button onClick={addInstagramImage} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Image</button>
+                          <button onClick={addInstagramImage} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Image</button>
                         </>
                       )}
                     </div>
@@ -1539,13 +1544,13 @@ export function Settings() {
                           <TextInput label="Title" value={content.faq.title} onChange={(v) => updateFAQ({ title: v })} />
                           <TextArea label="Subtitle" value={content.faq.subtitle} onChange={(v) => updateFAQ({ subtitle: v })} rows={2} />
                           {content.faq.items.map((item, i) => (
-                            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Question {i + 1}</span><button onClick={() => removeFAQItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                            <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Question {i + 1}</span><button onClick={() => removeFAQItem(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
                               <TextInput label="Question" value={item.question} onChange={(v) => updateFAQItem(i, { question: v })} />
                               <TextArea label="Answer" value={item.answer} onChange={(v) => updateFAQItem(i, { answer: v })} rows={3} />
                             </div>
                           ))}
-                          <button onClick={addFAQItem} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Question</button>
+                          <button onClick={addFAQItem} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Question</button>
                         </>
                       )}
                     </div>
@@ -1572,14 +1577,14 @@ export function Settings() {
                     <div className="space-y-3">
                       <Toggle label="Show Trust Badges" checked={content.show_trust_badges} onChange={(v) => setContent({ ...content, show_trust_badges: v })} />
                       {content.show_trust_badges && (content.trust_badges || []).map((tb, i) => (
-                        <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-2">
-                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-slate-500">Badge {i + 1}</span><button onClick={() => removeTrustBadge(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
-                          <label className="block space-y-1"><span className="text-xs text-slate-600">Icon</span><select value={tb.icon} onChange={(e) => updateTrustBadge(i, { icon: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
+                        <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between"><span className="text-xs font-medium text-neutral-500">Badge {i + 1}</span><button onClick={() => removeTrustBadge(i)} className="text-xs text-rose-500 hover:text-rose-700">Remove</button></div>
+                          <label className="block space-y-1"><span className="text-xs text-neutral-600">Icon</span><select value={tb.icon} onChange={(e) => updateTrustBadge(i, { icon: e.target.value })} className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm bg-white">{ICON_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></label>
                           <TextInput label="Title" value={tb.title} onChange={(v) => updateTrustBadge(i, { title: v })} />
                           <TextInput label="Subtext" value={tb.subtext} onChange={(v) => updateTrustBadge(i, { subtext: v })} />
                         </div>
                       ))}
-                      {content.show_trust_badges && <button onClick={addTrustBadge} className="text-sm text-indigo-600 font-medium hover:text-indigo-700">+ Add Badge</button>}
+                      {content.show_trust_badges && <button onClick={addTrustBadge} className="text-sm text-red-600 font-medium hover:text-red-700">+ Add Badge</button>}
                     </div>
                   )}
 
@@ -1590,13 +1595,13 @@ export function Settings() {
                       {content.splash.enabled && (
                         <>
                           <div>
-                            <label className="block text-xs font-medium text-slate-600 mb-1.5">Animation Style</label>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1.5">Animation Style</label>
                             <div className="grid grid-cols-5 gap-2">
                               {(["rings", "spinner", "pulse", "dots", "bars"] as const).map((s) => (
                                 <button
                                   key={s}
                                   onClick={() => setContent({ ...content, splash: { ...content.splash!, style: s } })}
-                                  className={`px-3 py-2 text-xs font-medium rounded-lg border transition capitalize ${content.splash!.style === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                  className={`px-3 py-2 text-xs font-medium rounded-lg border transition capitalize ${content.splash!.style === s ? "bg-red-600 text-white border-red-600" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"}`}
                                 >
                                   {s}
                                 </button>
@@ -1604,13 +1609,13 @@ export function Settings() {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-slate-600 mb-1.5">Background Effect</label>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1.5">Background Effect</label>
                             <div className="grid grid-cols-3 gap-2">
                               {(["waves", "orbs", "none"] as const).map((b) => (
                                 <button
                                   key={b}
                                   onClick={() => setContent({ ...content, splash: { ...content.splash!, background: b } })}
-                                  className={`px-3 py-2 text-xs font-medium rounded-lg border transition capitalize ${content.splash!.background === b ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                  className={`px-3 py-2 text-xs font-medium rounded-lg border transition capitalize ${content.splash!.background === b ? "bg-red-600 text-white border-red-600" : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"}`}
                                 >
                                   {b}
                                 </button>
@@ -1624,9 +1629,9 @@ export function Settings() {
                             <Toggle label="Show Loading Dots" checked={content.splash.show_dots} onChange={(v) => setContent({ ...content, splash: { ...content.splash!, show_dots: v } })} />
                           </div>
                           {/* Live preview */}
-                          <div className="border border-slate-200 rounded-xl overflow-hidden">
-                            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
-                              <span className="text-xs font-medium text-slate-500">Live Preview</span>
+                          <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                            <div className="px-3 py-2 bg-neutral-50 border-b border-neutral-200">
+                              <span className="text-xs font-medium text-neutral-500">Live Preview</span>
                             </div>
                             <div className="relative h-48 bg-stone-50 overflow-hidden">
                               <MiniSplashPreview style={content.splash.style} background={content.splash.background} subtitle={content.splash.subtitle} showLogo={content.splash.show_logo} showProgress={content.splash.show_progress} showDots={content.splash.show_dots} />
@@ -1640,12 +1645,12 @@ export function Settings() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t">
-                  <button onClick={handleSaveLanding} disabled={saveMut.isPending} className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+                  <button onClick={handleSaveLanding} disabled={saveMut.isPending} className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50">
                     {saveMut.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                     {saveMut.isPending ? "Saving..." : "Save Landing Page"}
                   </button>
-                  <button onClick={handleUseDefaults} className="px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition">Reset to Defaults</button>
-                  <a href={`/${tenant}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition">Preview Store <ArrowRight className="w-4 h-4 inline" /></a>
+                  <button onClick={handleUseDefaults} className="px-4 py-2.5 border border-neutral-200 text-neutral-600 text-sm font-medium rounded-lg hover:bg-neutral-50 transition">Reset to Defaults</button>
+                  <a href={`/${tenant}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 border border-neutral-200 text-neutral-600 text-sm font-medium rounded-lg hover:bg-neutral-50 transition">Preview Store <ArrowRight className="w-4 h-4 inline" /></a>
                 </div>
               </div>
             )}

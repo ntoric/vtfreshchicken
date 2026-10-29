@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
 import { Toggle } from "@/components/Toggle";
 import { useToast } from "@/components/Toast";
-import type { PaymentGatewayConfig } from "@/types";
+import { MODULES_QUERY_KEY } from "@/lib/modules";
+import type { PaymentGatewayConfig, StoreModule } from "@/types";
 
 // The backend returns this sentinel for stored secret values. Sending it back
 // on update preserves the stored secret instead of overwriting it.
@@ -51,6 +52,19 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
   const qc = useQueryClient();
   const toast = useToast();
 
+  const modulesQ = useQuery({
+    queryKey: MODULES_QUERY_KEY,
+    queryFn: () => api.listModules(),
+  });
+  const moduleMut = useMutation({
+    mutationFn: (m: StoreModule) => api.updateModule(tenant, m.module_code, !m.is_enabled),
+    onSuccess: (m) => {
+      qc.invalidateQueries({ queryKey: MODULES_QUERY_KEY });
+      toast.success(`${m.display_name} ${m.is_enabled ? "enabled" : "disabled"}`);
+    },
+    onError: (e) => toast.error("Update failed", (e as Error).message),
+  });
+
   const gatewaysQ = useQuery({
     queryKey: ["dev-payment-gateways", tenant],
     queryFn: () => api.listPaymentGatewayConfigs(tenant),
@@ -87,11 +101,11 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
 
       {/* Environment */}
       <div className="bg-white rounded-2xl border p-6 mb-6">
-        <h3 className="font-semibold text-slate-900 mb-3">Environment</h3>
+        <h3 className="font-semibold text-neutral-900 mb-3">Environment</h3>
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-slate-500">Payment processing:</span>
+          <span className="text-neutral-500">Payment processing:</span>
           {methodsQ.isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+            <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
           ) : (
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -103,16 +117,61 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
               {methodsQ.data?.test_mode ? "Test mode" : "Live mode"}
             </span>
           )}
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-neutral-400">
             Test mode is active outside production (APP_ENV ≠ production).
           </span>
         </div>
       </div>
 
+      {/* Modules & Features */}
+      <div className="bg-white rounded-2xl border p-6 mb-6">
+        <h3 className="font-semibold text-neutral-900">Modules &amp; Features</h3>
+        <p className="text-sm text-neutral-500 mt-0.5 mb-4">
+          Enable or disable store modules. A disabled module hides its related menus,
+          pages, widgets, and components on both the frontstore and the backoffice.
+        </p>
+
+        {modulesQ.isLoading && <TableSkeleton cols={3} rows={4} />}
+
+        {modulesQ.data && (
+          <div className="divide-y border rounded-xl overflow-hidden">
+            {modulesQ.data.items.map((m) => (
+              <div key={m.module_code} className="flex items-center gap-4 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-neutral-800 truncate">{m.display_name}</span>
+                    <code className="text-[11px] font-mono text-neutral-400">{m.module_code}</code>
+                  </div>
+                  {m.description && (
+                    <p className="text-xs text-neutral-400 mt-0.5">{m.description}</p>
+                  )}
+                </div>
+                {moduleMut.isPending && moduleMut.variables?.module_code === m.module_code && (
+                  <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+                )}
+                <Toggle
+                  checked={m.is_enabled}
+                  onChange={() => moduleMut.mutate(m)}
+                  disabled={moduleMut.isPending}
+                  label="Enabled"
+                  size="sm"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {modulesQ.data && modulesQ.data.items.length === 0 && (
+          <div className="border rounded-xl p-12 text-center text-neutral-400 text-sm">
+            No modules configured.
+          </div>
+        )}
+      </div>
+
       {/* Payment methods */}
       <div className="bg-white rounded-2xl border p-6">
-        <h3 className="font-semibold text-slate-900">Payment Methods</h3>
-        <p className="text-sm text-slate-500 mt-0.5 mb-4">
+        <h3 className="font-semibold text-neutral-900">Payment Methods</h3>
+        <p className="text-sm text-neutral-500 mt-0.5 mb-4">
           Enable or disable payment methods on the storefront and configure per-gateway
           credentials. Credentials saved here take precedence over environment variables
           (e.g. <code className="font-mono text-xs">RAZORPAY_KEY_ID</code>). Secret values are
@@ -140,7 +199,7 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
         )}
 
         {gatewaysQ.data && gatewaysQ.data.items.length === 0 && (
-          <div className="border rounded-xl p-12 text-center text-slate-400 text-sm">
+          <div className="border rounded-xl p-12 text-center text-neutral-400 text-sm">
             No payment gateways configured.
           </div>
         )}
@@ -173,8 +232,8 @@ function GatewayRow({
       <div className="flex items-center gap-4 px-4 py-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-800 truncate">{g.display_name}</span>
-            <code className="text-[11px] font-mono text-slate-400">{g.gateway_code}</code>
+            <span className="font-medium text-neutral-800 truncate">{g.display_name}</span>
+            <code className="text-[11px] font-mono text-neutral-400">{g.gateway_code}</code>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span
@@ -185,17 +244,17 @@ function GatewayRow({
               {g.is_test_mode ? "Test" : "Live"}
             </span>
             {g.is_enabled && !live && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-500">
                 not in storefront
               </span>
             )}
           </div>
         </div>
-        {toggling && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        {toggling && <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />}
         <Toggle checked={g.is_enabled} onChange={onToggle} disabled={toggling} label="Enabled" size="sm" />
         <button
           onClick={onEdit}
-          className="border rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          className="border rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
         >
           {editing ? "Close" : "Configure"}
         </button>
@@ -274,10 +333,10 @@ function GatewayEditor({
     SUGGESTED_KEYS[g.gateway_code]?.find((s) => s.key === key)?.label;
 
   return (
-    <div className="bg-slate-50 border-t px-4 py-4 space-y-4">
+    <div className="bg-neutral-50 border-t px-4 py-4 space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium text-slate-700 block mb-1">Display Name</label>
+          <label className="text-sm font-medium text-neutral-700 block mb-1">Display Name</label>
           <input
             type="text"
             value={displayName}
@@ -286,7 +345,7 @@ function GatewayEditor({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-slate-700 block mb-1">Sort Order</label>
+          <label className="text-sm font-medium text-neutral-700 block mb-1">Sort Order</label>
           <input
             type="number"
             value={sortOrder}
@@ -305,9 +364,9 @@ function GatewayEditor({
 
       {/* Config / credentials */}
       <div>
-        <p className="text-sm font-medium text-slate-700 mb-2">Configuration</p>
+        <p className="text-sm font-medium text-neutral-700 mb-2">Configuration</p>
         {entries.length === 0 && (
-          <p className="text-xs text-slate-400 mb-2">No configuration keys for this gateway.</p>
+          <p className="text-xs text-neutral-400 mb-2">No configuration keys for this gateway.</p>
         )}
         <div className="space-y-2">
           {entries.map((e, idx) => {
@@ -316,9 +375,9 @@ function GatewayEditor({
             return (
               <div key={idx} className="flex items-center gap-2">
                 <div className="w-48 flex-shrink-0">
-                  <code className="text-xs font-mono text-slate-600 break-all">{e.key}</code>
+                  <code className="text-xs font-mono text-neutral-600 break-all">{e.key}</code>
                   {suggestedLabel(e.key) && (
-                    <span className="block text-[10px] text-slate-400">{suggestedLabel(e.key)}</span>
+                    <span className="block text-[10px] text-neutral-400">{suggestedLabel(e.key)}</span>
                   )}
                 </div>
                 <input
@@ -331,7 +390,7 @@ function GatewayEditor({
                 <button
                   onClick={() => removeEntry(idx)}
                   title="Remove key"
-                  className="text-slate-400 hover:text-rose-500 p-1"
+                  className="text-neutral-400 hover:text-rose-500 p-1"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -351,7 +410,7 @@ function GatewayEditor({
           <button
             onClick={addKey}
             disabled={!newKey.trim()}
-            className="inline-flex items-center gap-1 border rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+            className="inline-flex items-center gap-1 border rounded-lg px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-40"
           >
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
@@ -361,7 +420,7 @@ function GatewayEditor({
       <div className="flex gap-3 pt-1">
         <button
           onClick={onClose}
-          className="border rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 bg-white"
+          className="border rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 bg-white"
         >
           Cancel
         </button>

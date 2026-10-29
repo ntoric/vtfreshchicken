@@ -42,7 +42,7 @@ func RegisterOrderTools(s *server.MCPServer, c *Client) {
 	s.AddTool(mcp.NewTool("update_order_status",
 		mcp.WithDescription("Update the status of an order. Requires orders.update permission."),
 		mcp.WithString("id", mcp.Required(), mcp.Description("Order UUID")),
-		mcp.WithString("status", mcp.Required(), mcp.Description("New status (pending, confirmed, processing, shipped, delivered, cancelled, refunded)")),
+		mcp.WithString("status", mcp.Required(), mcp.Description("New status (pending, paid, processing, ready, shipped, delivered, cancelled, refunded)")),
 		mcp.WithString("note", mcp.Description("Optional status change note")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()

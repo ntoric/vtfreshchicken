@@ -27,6 +27,9 @@ type ShippingProviderStore interface {
 	CreateOrderShipmentWithItems(ctx context.Context, tenantID, orderID uuid.UUID, providerCode string, itemIDs []uuid.UUID, itemQuantities []models.ShipmentItemQuantity, estimatedDelivery *time.Time) (*models.Shipment, error)
 	TrackShipment(ctx context.Context, tenantID, shipmentID uuid.UUID) (*models.TrackingResponse, error)
 	TestShippingProvider(ctx context.Context, tenantID, id uuid.UUID) (*models.ProviderTestResult, error)
+
+	// OrderInBranch gates branch-bound staff to their own branch's orders.
+	OrderInBranch(ctx context.Context, tenantID, orderID, branchID uuid.UUID) (bool, error)
 }
 
 type ShippingProviderHandler struct {
@@ -142,11 +145,29 @@ func (h *ShippingProviderHandler) TestProvider(c *gin.Context) {
 
 // ---- Shipments ----
 
+// orderBranchAllowed reports whether a branch-bound caller may access the
+// order's shipments — they can only reach their own branch's orders.
+func (h *ShippingProviderHandler) orderBranchAllowed(c *gin.Context, tenantID, orderID uuid.UUID) bool {
+	if !branchRestricted(c) {
+		return true
+	}
+	scope := branchFilter(c)
+	if scope == nil {
+		return true
+	}
+	ok, err := h.store.OrderInBranch(c.Request.Context(), tenantID, orderID, *scope)
+	return err == nil && ok
+}
+
 func (h *ShippingProviderHandler) ListOrderShipments(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(uuid.UUID)
 	orderID, err := uuid.Parse(c.Param("orderId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	if !h.orderBranchAllowed(c, tenantID, orderID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
 		return
 	}
 	shipments, err := h.store.ListOrderShipments(c.Request.Context(), tenantID, orderID)
@@ -162,6 +183,10 @@ func (h *ShippingProviderHandler) CreateOrderShipment(c *gin.Context) {
 	orderID, err := uuid.Parse(c.Param("orderId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	if !h.orderBranchAllowed(c, tenantID, orderID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
 		return
 	}
 	var req models.ShipmentCreateRequest

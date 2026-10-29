@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import { X, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useModules } from "@/lib/modules";
 import { TopNavbar } from "@/components/TopNavbar";
 import type { UserRole } from "@/types";
 
@@ -10,6 +11,8 @@ interface NavItem {
   label: string;
   icon: string;
   roles?: UserRole[];
+  /** Store module code — item is hidden while the module is disabled. */
+  module?: string;
 }
 
 interface NavGroup {
@@ -58,7 +61,7 @@ const SECTIONS: NavSection[] = [
         icon: SALES_ICON,
         children: [
           { to: "/orders", label: "Orders", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
-          { to: "/returns", label: "Returns", icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" },
+          { to: "/returns", label: "Returns", module: "returns", icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" },
           { to: "/payments", label: "Payments", icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" },
         ],
       },
@@ -66,26 +69,27 @@ const SECTIONS: NavSection[] = [
         label: "Promotions",
         icon: PROMO_ICON,
         children: [
-          { to: "/offers", label: "Offers", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { to: "/discounts", label: "Discounts", icon: "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" },
+          { to: "/offers", label: "Offers", module: "promotions", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+          { to: "/discounts", label: "Discounts", module: "discounts", icon: "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" },
         ],
       },
       {
         label: "Logistics",
         icon: LOGISTICS_ICON,
         children: [
-          { to: "/tax", label: "Tax", icon: "M19.5 4.5 4.5 19.5M6.75 9a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM17.25 19.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" },
-          { to: "/shipping", label: "Shipping", icon: "M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" },
+          { to: "/tax", label: "Tax", module: "tax", icon: "M19.5 4.5 4.5 19.5M6.75 9a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM17.25 19.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" },
+          { to: "/shipping", label: "Shipping", module: "shipping", icon: "M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" },
         ],
       },
       { to: "/customers", label: "Customers", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+      { to: "/reviews", label: "Reviews", icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" },
       { to: "/reports", label: "Reports", icon: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" },
       { to: "/exports", label: "Exports", icon: "M12 3v12m0 0l-4-4m4 4l4-4M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" },
       {
         label: "Content",
         icon: CONTENT_ICON,
         children: [
-          { to: "/pages", label: "Page Builder", icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+          { to: "/pages", label: "Page Builder", module: "page_builder", icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
           { to: "/notifications", label: "Notifications", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022 23.848 23.848 0 005.454 1.31m6.715 0a24.255 24.255 0 01-6.715 0m6.715 0a3 3 0 11-6.715 0" },
         ],
       },
@@ -109,6 +113,12 @@ const expandLabel = "block md:hidden md:group-hover:block";
 
 export function Layout() {
   const { user, tenantName } = useAuth();
+  const { isEnabled: moduleEnabled } = useModules();
+
+  // Delivery partners use the dedicated portal, not the admin shell.
+  if (user?.role === "delivery_partner") {
+    return <Navigate to="/delivery" replace />;
+  }
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -150,21 +160,21 @@ export function Layout() {
   };
 
   // Hide nav entries restricted to other roles (items without `roles` are
-  // visible to everyone). Groups are hidden when all their children are.
+  // visible to everyone) or belonging to a disabled store module. Groups are
+  // hidden when all their children are.
   const role = user?.role;
+  const itemVisible = (item: NavItem) =>
+    (!item.roles || (!!role && item.roles.includes(role))) &&
+    (!item.module || moduleEnabled(item.module));
   const visibleSections = SECTIONS.map((section) => ({
     ...section,
     items: section.items
       .map((item) =>
         isNavGroup(item)
-          ? { ...item, children: item.children.filter((c) => !c.roles || (!!role && c.roles.includes(role))) }
+          ? { ...item, children: item.children.filter(itemVisible) }
           : item,
       )
-      .filter((item) =>
-        isNavGroup(item)
-          ? item.children.length > 0
-          : !item.roles || (!!role && item.roles.includes(role)),
-      ),
+      .filter((item) => (isNavGroup(item) ? item.children.length > 0 : itemVisible(item))),
   }));
 
   const brandName = tenantName || "Store";
@@ -182,13 +192,13 @@ export function Layout() {
 
       {/* Sidebar — collapsed (icons only) on desktop, expands on hover; full drawer on mobile */}
       <aside
-        className={`group bg-slate-900 text-slate-300 flex flex-col fixed h-full z-50 overflow-hidden
+        className={`group bg-neutral-900 text-neutral-300 flex flex-col fixed h-full z-50 overflow-hidden
           transition-all duration-300
           w-64 md:w-16 md:hover:w-64 md:hover:shadow-2xl
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* Brand header */}
-        <div className="px-3 md:px-2 py-5 border-b border-slate-700 flex items-center justify-between">
+        <div className="px-3 md:px-2 py-5 border-b border-neutral-700 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white font-bold text-lg">
             <span className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-sm flex-shrink-0 mx-auto md:mx-0">
               {brandName.charAt(0).toUpperCase() || "S"}
@@ -197,18 +207,18 @@ export function Layout() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden text-slate-400 hover:text-white"
+            className="md:hidden text-neutral-400 hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <p className={`px-5 -mt-2 pb-1 text-xs text-slate-500 ${expandLabel}`}>{brandSubtitle}</p>
+        <p className={`px-5 -mt-2 pb-1 text-xs text-neutral-500 ${expandLabel}`}>{brandSubtitle}</p>
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-4">
           {visibleSections.map((section) => (
             <div key={section.title}>
-              <p className={`px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${expandLabel}`}>
+              <p className={`px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 ${expandLabel}`}>
                 {section.title}
               </p>
               <div className="space-y-1">
@@ -226,7 +236,7 @@ export function Layout() {
                           title={item.label}
                           className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition
                             md:justify-center md:group-hover:justify-start
-                            ${hasActiveChild ? "text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}
+                            ${hasActiveChild ? "text-white" : "text-neutral-300 hover:bg-neutral-800 hover:text-white"}`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
@@ -247,7 +257,7 @@ export function Layout() {
                                   `flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm transition
                                     ${isActive
                                       ? "bg-brand/20 text-white font-medium"
-                                      : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                      : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
                                     }`
                                 }
                               >
@@ -274,7 +284,7 @@ export function Layout() {
                           md:justify-center md:group-hover:justify-start
                           ${isActive
                             ? "bg-brand text-white"
-                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                            : "text-neutral-300 hover:bg-neutral-800 hover:text-white"
                           }`
                       }
                     >
@@ -291,7 +301,7 @@ export function Layout() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-slate-700 p-4" />
+        <div className="border-t border-neutral-700 p-4" />
       </aside>
 
       {/* Main content */}

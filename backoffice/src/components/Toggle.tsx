@@ -36,7 +36,7 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       className={`relative inline-flex flex-shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
         dims.track
-      } ${checked ? "bg-brand" : "bg-slate-300"} ${className}`}
+      } ${checked ? "bg-brand" : "bg-neutral-300"} ${className}`}
     >
       <span
         className={`inline-block ${dims.knob} transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
@@ -59,13 +59,13 @@ export function Toggle({
             <label
               id={`${id}-label`}
               onClick={() => !disabled && onChange(!checked)}
-              className={`block text-sm font-medium text-slate-700 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+              className={`block text-sm font-medium text-neutral-700 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
             >
               {label}
             </label>
           )}
           {description && (
-            <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+            <p className="text-xs text-neutral-400 mt-0.5">{description}</p>
           )}
         </div>
       )}

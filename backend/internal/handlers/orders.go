@@ -50,6 +50,12 @@ func (h *OrderHandler) orderBranchAllowed(c *gin.Context, tid, orderID uuid.UUID
 		return true
 	}
 	ok, err := h.store.OrderInBranch(c.Request.Context(), tid, orderID, *scope)
+	if err == nil && ok {
+		return true
+	}
+	// A pending handoff addressed to this branch lets its staff view the
+	// order so they can decide whether to accept.
+	ok, err = h.store.PendingHandoffToBranch(c.Request.Context(), tid, orderID, *scope)
 	return err == nil && ok
 }
 
@@ -111,7 +117,7 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 
 	// Validate the status is a known value
 	validStatuses := map[string]bool{
-		"pending": true, "paid": true, "processing": true, "shipped": true,
+		"pending": true, "paid": true, "processing": true, "ready": true, "shipped": true,
 		"delivered": true, "fulfilled": true, "cancelled": true, "refunded": true, "failed": true,
 	}
 	if !validStatuses[req.Status] {

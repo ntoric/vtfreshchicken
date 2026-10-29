@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton } from "@/components/Skeletons";
-import { usePagination, Pagination } from "@/components/Pagination";
+import { Pagination } from "@/components/Pagination";
 import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { Toggle } from "@/components/Toggle";
@@ -107,7 +107,7 @@ export function Notifications() {
             className={`px-4 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition ${
               tab === t
                 ? "border-brand text-brand"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent text-neutral-500 hover:text-neutral-700"
             }`}
           >
             {t}
@@ -149,14 +149,18 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
     queryKey: ["notif-events", tenant],
     queryFn: () => api.listNotificationEvents(tenant),
   });
-  const events = eventsQ.data ?? [];
+  const events = eventsQ.data?.items ?? [];
 
+  const [page, setPage] = useState(0);
+  const limit = 8;
   const templatesQ = useQuery({
-    queryKey: ["notif-templates", tenant],
-    queryFn: () => api.listNotificationTemplates(tenant),
+    queryKey: ["notif-templates", tenant, page],
+    queryFn: () => api.listNotificationTemplates(tenant, undefined, { limit, offset: page * limit }),
   });
 
-  const pg = usePagination(templatesQ.data ?? [], 8);
+  const rows = templatesQ.data?.items ?? [];
+  const total = templatesQ.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const create = useMutation({
     mutationFn: () => api.createNotificationTemplate(tenant, form),
@@ -288,10 +292,10 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
       {showForm && (
         <div className="bg-white rounded-2xl border p-6 mb-6 space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">
+            <h3 className="font-semibold text-neutral-900">
               {editingId ? "Edit Template" : "New Template"}
             </h3>
-            <button onClick={resetForm} className="text-sm text-slate-500 hover:text-slate-700">
+            <button onClick={resetForm} className="text-sm text-neutral-500 hover:text-neutral-700">
               Cancel
             </button>
           </div>
@@ -299,7 +303,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           {/* Basic fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Event</span>
+              <span className="text-sm font-medium text-neutral-700">Event</span>
               <select
                 value={form.event_id}
                 onChange={(e) => setForm({ ...form, event_id: e.target.value })}
@@ -314,7 +318,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Template Name</span>
+              <span className="text-sm font-medium text-neutral-700">Template Name</span>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -326,7 +330,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Medium</span>
+              <span className="text-sm font-medium text-neutral-700">Medium</span>
               <select
                 value={form.medium}
                 onChange={(e) => setForm({ ...form, medium: e.target.value })}
@@ -340,7 +344,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Recipient Type</span>
+              <span className="text-sm font-medium text-neutral-700">Recipient Type</span>
               <select
                 value={form.recipient_type}
                 onChange={(e) => setForm({ ...form, recipient_type: e.target.value })}
@@ -363,7 +367,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           </div>
 
           <label className="space-y-1 block">
-            <span className="text-sm font-medium text-slate-700">Subject</span>
+            <span className="text-sm font-medium text-neutral-700">Subject</span>
             <input
               value={form.subject}
               onChange={(e) => setForm({ ...form, subject: e.target.value })}
@@ -374,9 +378,9 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
 
           {/* CKEditor for HTML body */}
           <div className="space-y-1">
-            <span className="text-sm font-medium text-slate-700">Body (HTML)</span>
-            <p className="text-xs text-slate-400">
-              Use <code className="bg-slate-100 px-1 rounded">{"{{variable}}"}</code> placeholders for templating.
+            <span className="text-sm font-medium text-neutral-700">Body (HTML)</span>
+            <p className="text-xs text-neutral-400">
+              Use <code className="bg-neutral-100 px-1 rounded">{"{{variable}}"}</code> placeholders for templating.
               Available: {varKeys.length > 0 ? varKeys.map((k) => `{{${k}}}`).join(", ") : "none — add parameters below"}
             </p>
             <div className="border rounded-lg overflow-hidden">
@@ -397,7 +401,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           </div>
 
           <label className="space-y-1 block">
-            <span className="text-sm font-medium text-slate-700">Body (Plain Text)</span>
+            <span className="text-sm font-medium text-neutral-700">Body (Plain Text)</span>
             <textarea
               value={form.body_text}
               onChange={(e) => setForm({ ...form, body_text: e.target.value })}
@@ -410,7 +414,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           {/* Parameters editor */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700">Template Parameters</span>
+              <span className="text-sm font-medium text-neutral-700">Template Parameters</span>
               <button
                 onClick={() =>
                   setForm({
@@ -424,7 +428,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
               </button>
             </div>
             {form.parameters.length === 0 && (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 No parameters. Add variables that can be substituted in the subject and body.
               </p>
             )}
@@ -442,7 +446,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                   placeholder="Label"
                   className={`${inp} col-span-4`}
                 />
-                <span className="col-span-3 flex items-center gap-2 text-xs text-slate-600">
+                <span className="col-span-3 flex items-center gap-2 text-xs text-neutral-600">
                   <Toggle
                     size="sm"
                     checked={p.required}
@@ -464,7 +468,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           {form.recipient_type === "specific_emails" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700">Specific Recipients</span>
+                <span className="text-sm font-medium text-neutral-700">Specific Recipients</span>
                 <button
                   onClick={() =>
                     setForm({
@@ -526,17 +530,17 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
           {/* Preview + Send (only when editing an existing template) */}
           {editingId && (
             <div className="border-t pt-5 space-y-4">
-              <h4 className="font-semibold text-slate-900 text-sm">Preview & Send</h4>
+              <h4 className="font-semibold text-neutral-900 text-sm">Preview & Send</h4>
 
               {/* Preview params */}
               <div className="space-y-2">
-                <span className="text-sm font-medium text-slate-700">Preview Parameters</span>
+                <span className="text-sm font-medium text-neutral-700">Preview Parameters</span>
                 {varKeys.length === 0 && (
-                  <p className="text-xs text-slate-400">No template parameters defined.</p>
+                  <p className="text-xs text-neutral-400">No template parameters defined.</p>
                 )}
                 {varKeys.map((k) => (
                   <div key={k} className="grid grid-cols-3 gap-2 items-center">
-                    <label className="text-xs font-mono text-slate-600">{`{{${k}}}`}</label>
+                    <label className="text-xs font-mono text-neutral-600">{`{{${k}}}`}</label>
                     <input
                       value={previewParams[k] ?? ""}
                       onChange={(e) => setPreviewParams({ ...previewParams, [k]: e.target.value })}
@@ -548,7 +552,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                 <button
                   onClick={() => previewMut.mutate()}
                   disabled={previewMut.isPending}
-                  className="inline-flex items-center gap-1.5 text-sm bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md hover:bg-slate-200 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-sm bg-neutral-100 text-neutral-700 px-2.5 py-1 rounded-md hover:bg-neutral-200 disabled:opacity-50"
                 >
                   {previewMut.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {previewMut.isPending ? "Rendering…" : "Render Preview"}
@@ -557,19 +561,19 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
 
               {previewResult && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-700">Preview Output</p>
-                  <div className="bg-slate-50 border rounded-lg p-3">
-                    <p className="text-xs text-slate-500 mb-1">Subject</p>
-                    <p className="text-sm font-medium text-slate-900 mb-2">{previewResult.subject}</p>
-                    <p className="text-xs text-slate-500 mb-1">HTML Body</p>
+                  <p className="text-sm font-medium text-neutral-700">Preview Output</p>
+                  <div className="bg-neutral-50 border rounded-lg p-3">
+                    <p className="text-xs text-neutral-500 mb-1">Subject</p>
+                    <p className="text-sm font-medium text-neutral-900 mb-2">{previewResult.subject}</p>
+                    <p className="text-xs text-neutral-500 mb-1">HTML Body</p>
                     <div
                       className="prose prose-sm max-w-none bg-white border rounded p-3"
                       dangerouslySetInnerHTML={{ __html: previewResult.body_html }}
                     />
                     {previewResult.body_text && (
                       <>
-                        <p className="text-xs text-slate-500 mt-2 mb-1">Plain Text</p>
-                        <pre className="text-xs text-slate-700 whitespace-pre-wrap bg-white border rounded p-3">
+                        <p className="text-xs text-neutral-500 mt-2 mb-1">Plain Text</p>
+                        <pre className="text-xs text-neutral-700 whitespace-pre-wrap bg-white border rounded p-3">
                           {previewResult.body_text}
                         </pre>
                       </>
@@ -580,7 +584,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
 
               {/* Send */}
               <div className="space-y-2">
-                <span className="text-sm font-medium text-slate-700">Send Test Notification</span>
+                <span className="text-sm font-medium text-neutral-700">Send Test Notification</span>
                 <input
                   value={sendTo}
                   onChange={(e) => setSendTo(e.target.value)}
@@ -589,7 +593,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                 />
                 {varKeys.map((k) => (
                   <div key={k} className="grid grid-cols-3 gap-2 items-center">
-                    <label className="text-xs font-mono text-slate-600">{`{{${k}}}`}</label>
+                    <label className="text-xs font-mono text-neutral-600">{`{{${k}}}`}</label>
                     <input
                       value={sendParams[k] ?? ""}
                       onChange={(e) => setSendParams({ ...sendParams, [k]: e.target.value })}
@@ -618,7 +622,7 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
       ) : (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Event</th>
@@ -629,30 +633,30 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pg.pageItems.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50">
+              {rows.map((t) => (
+                <tr key={t.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-400">{t.subject}</p>
+                    <p className="font-medium text-neutral-900">{t.name}</p>
+                    <p className="text-xs text-neutral-400">{t.subject}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {t.event_name ?? <span className="text-slate-400">—</span>}
+                  <td className="px-4 py-3 text-neutral-600">
+                    {t.event_name ?? <span className="text-neutral-400">—</span>}
                     {t.event_code && (
-                      <span className="block text-xs text-slate-400 font-mono">{t.event_code}</span>
+                      <span className="block text-xs text-neutral-400 font-mono">{t.event_code}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 capitalize">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 capitalize">
                       {t.medium}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 capitalize">
+                  <td className="px-4 py-3 text-neutral-600 capitalize">
                     {t.recipient_type.replace(/_/g, " ")}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        t.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        t.is_active ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
                       }`}
                     >
                       {t.is_active ? "Active" : "Inactive"}
@@ -678,9 +682,9 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                   </td>
                 </tr>
               ))}
-              {templatesQ.data && templatesQ.data.length === 0 && (
+              {templatesQ.data && rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
                     No notification templates yet.
                   </td>
                 </tr>
@@ -688,12 +692,12 @@ function TemplatesTab({ tenant, qc, confirmDlg, toast }: TabProps) {
             </tbody>
           </table>
           <Pagination
-            page={pg.page}
-            totalPages={pg.totalPages}
-            total={pg.total}
-            start={pg.start}
-            end={pg.end}
-            onPage={pg.setPage}
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            start={page * limit}
+            end={Math.min((page + 1) * limit, total)}
+            onPage={setPage}
           />
         </div>
       )}
@@ -734,11 +738,15 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyEventForm);
 
+  const [page, setPage] = useState(0);
+  const limit = 10;
   const q = useQuery({
-    queryKey: ["notif-events", tenant],
-    queryFn: () => api.listNotificationEvents(tenant),
+    queryKey: ["notif-events", tenant, page],
+    queryFn: () => api.listNotificationEvents(tenant, { limit, offset: page * limit }),
   });
-  const pg = usePagination(q.data ?? [], 10);
+  const rows = q.data?.items ?? [];
+  const total = q.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const create = useMutation({
     mutationFn: () => api.createNotificationEvent(tenant, form),
@@ -806,7 +814,7 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
 
       {showForm && (
         <div className="bg-white rounded-2xl border p-6 mb-6 space-y-4">
-          <h3 className="font-semibold text-slate-900">{editingId ? "Edit Event" : "New Event"}</h3>
+          <h3 className="font-semibold text-neutral-900">{editingId ? "Edit Event" : "New Event"}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
               placeholder="Code (e.g. order_placed)"
@@ -862,7 +870,7 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
       ) : (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -873,15 +881,15 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pg.pageItems.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-50">
+              {rows.map((e) => (
+                <tr key={e.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-mono text-brand">{e.code}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{e.name}</td>
-                  <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{e.description || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-neutral-900">{e.name}</td>
+                  <td className="px-4 py-3 text-neutral-500 max-w-xs truncate">{e.description || "—"}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        e.is_instant ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"
+                        e.is_instant ? "bg-sky-100 text-sky-700" : "bg-neutral-100 text-neutral-500"
                       }`}
                     >
                       {e.is_instant ? "Instant" : "Digest"}
@@ -890,7 +898,7 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        e.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        e.is_active ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
                       }`}
                     >
                       {e.is_active ? "Active" : "Inactive"}
@@ -916,9 +924,9 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
                   </td>
                 </tr>
               ))}
-              {q.data && q.data.length === 0 && (
+              {q.data && rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
                     No notification events yet.
                   </td>
                 </tr>
@@ -926,12 +934,12 @@ function EventsTab({ tenant, qc, confirmDlg, toast }: TabProps) {
             </tbody>
           </table>
           <Pagination
-            page={pg.page}
-            totalPages={pg.totalPages}
-            total={pg.total}
-            start={pg.start}
-            end={pg.end}
-            onPage={pg.setPage}
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            start={page * limit}
+            end={Math.min((page + 1) * limit, total)}
+            onPage={setPage}
           />
         </div>
       )}
@@ -960,7 +968,7 @@ function LogsTab({ tenant }: { tenant: string }) {
       ) : (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Medium</th>
                 <th className="px-4 py-3 font-medium">Recipient</th>
@@ -972,10 +980,10 @@ function LogsTab({ tenant }: { tenant: string }) {
             </thead>
             <tbody className="divide-y">
               {logs.map((l: NotificationLog) => (
-                <tr key={l.id} className="hover:bg-slate-50">
+                <tr key={l.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-3 capitalize">{l.medium}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{l.recipient}</td>
-                  <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{l.subject || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-neutral-900">{l.recipient}</td>
+                  <td className="px-4 py-3 text-neutral-600 max-w-xs truncate">{l.subject || "—"}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -990,14 +998,14 @@ function LogsTab({ tenant }: { tenant: string }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-rose-500 max-w-xs truncate">{l.error || "—"}</td>
-                  <td className="px-4 py-3 text-xs text-slate-400">
+                  <td className="px-4 py-3 text-xs text-neutral-400">
                     {l.sent_at ? new Date(l.sent_at).toLocaleString() : "—"}
                   </td>
                 </tr>
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
                     No notification logs yet.
                   </td>
                 </tr>
@@ -1006,21 +1014,21 @@ function LogsTab({ tenant }: { tenant: string }) {
           </table>
           {total > limit && (
             <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-              <span className="text-slate-500">
+              <span className="text-neutral-500">
                 Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setOffset(Math.max(0, offset - limit))}
                   disabled={offset === 0}
-                  className="px-3 py-1 border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50"
+                  className="px-3 py-1 border border-neutral-200 rounded-lg disabled:opacity-40 hover:bg-neutral-50"
                 >
                   Prev
                 </button>
                 <button
                   onClick={() => setOffset(offset + limit)}
                   disabled={offset + limit >= total}
-                  className="px-3 py-1 border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50"
+                  className="px-3 py-1 border border-neutral-200 rounded-lg disabled:opacity-40 hover:bg-neutral-50"
                 >
                   Next
                 </button>

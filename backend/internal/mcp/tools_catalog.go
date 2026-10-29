@@ -115,7 +115,7 @@ func RegisterCatalogTools(s *server.MCPServer, c *Client) {
 
 	s.AddTool(mcp.NewTool("create_attribute",
 		mcp.WithDescription("Create a new attribute. Requires attributes.manage permission."),
-		mcp.WithObject("attribute", mcp.Required(), mcp.Description("Attribute object with name, slug, type (text, number, boolean, select, color, datetime), is_filterable, is_variant_defining, is_batch, options")),
+		mcp.WithObject("attribute", mcp.Required(), mcp.Description("Attribute object with name, slug, type (text, number, boolean, select, color, datetime), is_filterable, is_variant, is_batch, is_internal (hidden from storefront), options")),
 	), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		body := argMap(args, "attribute")

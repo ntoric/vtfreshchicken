@@ -24,12 +24,13 @@ func NewCatalogHandler(store *services.Store) *CatalogHandler {
 
 func (h *CatalogHandler) ListCategories(c *gin.Context) {
 	tid := tenantID(c)
-	cats, err := h.store.ListCategories(c.Request.Context(), tid)
+	limit, offset := pagingParams(c)
+	cats, total, err := h.store.ListCategoriesPaged(c.Request.Context(), tid, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": cats})
+	c.JSON(http.StatusOK, gin.H{"items": cats, "total": total, "limit": limit, "offset": offset})
 }
 
 type categoryReq struct {
@@ -108,12 +109,13 @@ func (h *CatalogHandler) DeleteCategory(c *gin.Context) {
 
 func (h *CatalogHandler) ListAttributes(c *gin.Context) {
 	tid := tenantID(c)
-	attrs, err := h.store.ListAttributes(c.Request.Context(), tid)
+	limit, offset := pagingParams(c)
+	attrs, total, err := h.store.ListAttributesPaged(c.Request.Context(), tid, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": attrs})
+	c.JSON(http.StatusOK, gin.H{"items": attrs, "total": total, "limit": limit, "offset": offset})
 }
 
 type attributeReq struct {
@@ -123,6 +125,7 @@ type attributeReq struct {
 	IsFilterable bool                    `json:"is_filterable"`
 	IsVariant    bool                    `json:"is_variant"`
 	IsBatch      bool                    `json:"is_batch"`
+	IsInternal   bool                    `json:"is_internal"`
 	Options      []models.AttributeOption `json:"options"`
 }
 
@@ -136,7 +139,7 @@ func (h *CatalogHandler) CreateAttribute(c *gin.Context) {
 	if req.Type == "" {
 		req.Type = "text"
 	}
-	a := &models.Attribute{TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type, IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, Options: req.Options}
+	a := &models.Attribute{TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type, IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, IsInternal: req.IsInternal, Options: req.Options}
 	if err := h.store.CreateAttribute(c.Request.Context(), a); err != nil {
 		errResponse(c, http.StatusConflict, err.Error())
 		return
@@ -173,7 +176,7 @@ func (h *CatalogHandler) UpdateAttribute(c *gin.Context) {
 	}
 	a := &models.Attribute{
 		ID: id, TenantID: tid, Slug: req.Slug, Name: req.Name, Type: req.Type,
-		IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, Options: req.Options,
+		IsFilterable: req.IsFilterable, IsVariant: req.IsVariant, IsBatch: req.IsBatch, IsInternal: req.IsInternal, Options: req.Options,
 	}
 	if err := h.store.UpdateAttribute(c.Request.Context(), a); err != nil {
 		notFoundOrErr(c, err, "attribute not found")
@@ -190,7 +193,7 @@ func (h *CatalogHandler) ListProductsAdmin(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	search := c.Query("search")
 	status := c.Query("status")
-	f := services.ProductFilter{TenantID: tid, Limit: limit, Offset: offset, IncludeAll: true, Status: status}
+	f := services.ProductFilter{TenantID: tid, Limit: limit, Offset: offset, IncludeAll: true, Status: status, BranchID: branchFilter(c)}
 	if search != "" {
 		f.Search = &search
 	}
@@ -221,6 +224,20 @@ type productReq struct {
 	Attributes  []models.ProductAttributeValue `json:"attributes"`
 	Variants    []models.Variant             `json:"variants"`
 	TaxClassID  *string                      `json:"tax_class_id"`
+	BranchID    *string                      `json:"branch_id"` // nil/"" = all branches
+}
+
+// parseBranchIDField converts an optional request branch_id string into a
+// *uuid.UUID; nil/"" means store-wide (all branches).
+func parseBranchIDField(raw *string) (*uuid.UUID, error) {
+	if raw == nil || *raw == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(*raw)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 func (h *CatalogHandler) CreateProduct(c *gin.Context) {
@@ -242,6 +259,19 @@ func (h *CatalogHandler) CreateProduct(c *gin.Context) {
 		IsFeatured: req.IsFeatured, Stock: req.Stock, LowStockThreshold: req.LowStockThreshold, TrackInventory: req.TrackInventory,
 		ImageURL: req.ImageURL, Images: req.Images, Attributes: req.Attributes, Variants: req.Variants,
 	}
+	branchID, err := parseBranchIDField(req.BranchID)
+	if err != nil {
+		errResponse(c, http.StatusBadRequest, "invalid branch_id")
+		return
+	}
+	// Branch-bound staff always create products owned by their own branch;
+	// for everyone else a request inside a branch scope defaults to it.
+	if scope := branchFilter(c); scope != nil {
+		if branchRestricted(c) || branchID == nil {
+			branchID = scope
+		}
+	}
+	p.BranchID = branchID
 	if req.CategoryID != nil && *req.CategoryID != "" {
 		cid, err := uuid.Parse(*req.CategoryID)
 		if err != nil {
@@ -279,6 +309,16 @@ func (h *CatalogHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 	tid := tenantID(c)
+	// Branch-bound staff can only mutate products owned by their branch.
+	if branchRestricted(c) {
+		if scope := branchFilter(c); scope != nil {
+			ok, err := h.store.ProductManagedByBranch(c.Request.Context(), tid, id, *scope)
+			if err != nil || !ok {
+				errResponse(c, http.StatusNotFound, "product not found")
+				return
+			}
+		}
+	}
 	var req productReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errResponse(c, http.StatusBadRequest, err.Error())
@@ -314,6 +354,25 @@ func (h *CatalogHandler) UpdateProduct(c *gin.Context) {
 		}
 		p.VendorID = &vid
 	}
+	// Branch assignment: nil = preserve existing, "" = clear to store-wide,
+	// uuid = assign. Branch-bound staff always keep their own branch.
+	var branchID *uuid.UUID
+	if req.BranchID == nil {
+		if existing, gErr := h.store.GetProductByID(c.Request.Context(), tid, id); gErr == nil && existing != nil {
+			branchID = existing.BranchID
+		}
+	} else {
+		var perr error
+		branchID, perr = parseBranchIDField(req.BranchID)
+		if perr != nil {
+			errResponse(c, http.StatusBadRequest, "invalid branch_id")
+			return
+		}
+	}
+	if branchRestricted(c) {
+		branchID = branchFilter(c)
+	}
+	p.BranchID = branchID
 	if err := h.store.UpdateProduct(c.Request.Context(), p); err != nil {
 		notFoundOrErr(c, err, "product not found")
 		return
@@ -327,6 +386,15 @@ func (h *CatalogHandler) DeleteProduct(c *gin.Context) {
 		return
 	}
 	tid := tenantID(c)
+	if branchRestricted(c) {
+		if scope := branchFilter(c); scope != nil {
+			ok, err := h.store.ProductManagedByBranch(c.Request.Context(), tid, id, *scope)
+			if err != nil || !ok {
+				errResponse(c, http.StatusNotFound, "product not found")
+				return
+			}
+		}
+	}
 	if err := h.store.DeleteProduct(c.Request.Context(), tid, id); err != nil {
 		notFoundOrErr(c, err, "product not found")
 		return
@@ -342,6 +410,13 @@ func (h *CatalogHandler) GetProduct(c *gin.Context) {
 		notFoundOrErr(c, err, "product not found")
 		return
 	}
+	// Branch-bound staff can't open products from other branches.
+	if branchRestricted(c) && p.BranchID != nil {
+		if scope := branchFilter(c); scope != nil && *p.BranchID != *scope {
+			errResponse(c, http.StatusNotFound, "product not found")
+			return
+		}
+	}
 	c.JSON(http.StatusOK, p)
 }
 
@@ -351,7 +426,17 @@ func (h *CatalogHandler) GetProductByID(c *gin.Context) {
 	if !ok {
 		return
 	}
-	p, err := h.store.GetProductByID(c.Request.Context(), tenantID(c), id)
+	tid := tenantID(c)
+	if branchRestricted(c) {
+		if scope := branchFilter(c); scope != nil {
+			ok, err := h.store.ProductVisibleInBranch(c.Request.Context(), tid, id, *scope)
+			if err != nil || !ok {
+				errResponse(c, http.StatusNotFound, "product not found")
+				return
+			}
+		}
+	}
+	p, err := h.store.GetProductByID(c.Request.Context(), tid, id)
 	if err != nil {
 		notFoundOrErr(c, err, "product not found")
 		return
@@ -363,12 +448,18 @@ func (h *CatalogHandler) GetProductByID(c *gin.Context) {
 
 func (h *CatalogHandler) ListOffers(c *gin.Context) {
 	tid := tenantID(c)
-	offers, err := h.store.ListOffersScoped(c.Request.Context(), tid, branchFilter(c))
+	limit, offset := pagingParams(c)
+	offers, total, err := h.store.ListOffersPaged(c.Request.Context(), tid, services.OfferListFilter{
+		BranchID: branchFilter(c),
+		Search:   c.Query("search"),
+		Status:   c.Query("status"),
+		Type:     c.Query("type"),
+	}, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": offers})
+	c.JSON(http.StatusOK, gin.H{"items": offers, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *CatalogHandler) GetOffer(c *gin.Context) {
@@ -484,12 +575,19 @@ func (h *CatalogHandler) DeleteOffer(c *gin.Context) {
 
 func (h *CatalogHandler) ListDiscountCodes(c *gin.Context) {
 	tid := tenantID(c)
-	codes, err := h.store.ListDiscountCodesScoped(c.Request.Context(), tid, branchFilter(c))
+	limit, offset := pagingParams(c)
+	codes, total, err := h.store.ListDiscountCodesPaged(c.Request.Context(), tid, services.DiscountListFilter{
+		BranchID: branchFilter(c),
+		Search:   c.Query("search"),
+		Status:   c.Query("status"),
+		Type:     c.Query("type"),
+		Validity: c.Query("validity"),
+	}, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": codes})
+	c.JSON(http.StatusOK, gin.H{"items": codes, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *CatalogHandler) GetDiscountCode(c *gin.Context) {
@@ -588,7 +686,7 @@ func (h *CatalogHandler) DeleteDiscountCode(c *gin.Context) {
 }
 
 func (h *CatalogHandler) DiscountStats(c *gin.Context) {
-	stats, err := h.store.DiscountStats(c.Request.Context(), tenantID(c))
+	stats, err := h.store.DiscountStats(c.Request.Context(), tenantID(c), branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

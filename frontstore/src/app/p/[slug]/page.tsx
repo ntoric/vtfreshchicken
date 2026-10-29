@@ -14,15 +14,28 @@ export default function DynamicPage({ params }: { params: { slug: string } }) {
     queryFn: () => fetchBootstrap(),
   });
 
+  const pageBuilderEnabled = bootstrapQ.data?.modules?.page_builder !== false;
+
   const pageQ = useQuery({
     queryKey: ["store-page", params.slug],
     queryFn: () => fetchStorePage(params.slug),
     retry: 1,
+    enabled: pageBuilderEnabled,
   });
 
   if (bootstrapQ.isLoading) return <StorefrontSkeleton />;
   if (bootstrapQ.error || !bootstrapQ.data) {
     return <div className="min-h-screen flex items-center justify-center text-rose-500">Failed to load. Please try again.</div>;
+  }
+
+  // Page Builder module disabled — builder pages are not served.
+  if (!pageBuilderEnabled) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center text-gray-400">
+        <h1 className="text-3xl font-bold text-gray-700 mb-2">Page Not Found</h1>
+        <p>The page you're looking for doesn't exist or hasn't been published.</p>
+      </div>
+    );
   }
 
   const currencyObj = bootstrapQ.data.currencies.find((c) => c.code === currency);

@@ -25,11 +25,12 @@ func (s *Store) ListPaymentTransactions(ctx context.Context, tenantID uuid.UUID,
 
 // PaymentTxnFilter holds optional filters for listing payment transactions.
 type PaymentTxnFilter struct {
-	Status  string
-	Gateway string
-	Type    string
-	Search  string
-	Dr      DateRangeFilter
+	Status   string
+	Gateway  string
+	Type     string
+	Search   string
+	BranchID *uuid.UUID // restrict to transactions on orders fulfilled by this branch
+	Dr       DateRangeFilter
 }
 
 func (s *Store) ListPaymentTransactionsFiltered(ctx context.Context, tenantID uuid.UUID, f PaymentTxnFilter, limit, offset int) ([]models.PaymentTransaction, int, error) {
@@ -55,6 +56,11 @@ func (s *Store) ListPaymentTransactionsFiltered(ctx context.Context, tenantID uu
 	if f.Search != "" {
 		where += fmt.Sprintf(" AND (COALESCE(pt.gateway_txn_id,'') ILIKE $%d OR COALESCE(pt.customer_email,'') ILIKE $%d OR COALESCE(pt.customer_name,'') ILIKE $%d OR pt.id::text ILIKE $%d)", argIdx, argIdx, argIdx, argIdx)
 		args = append(args, "%"+f.Search+"%")
+		argIdx++
+	}
+	if f.BranchID != nil {
+		where += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM orders bo WHERE bo.id=pt.order_id AND bo.branch_id=$%d)", argIdx)
+		args = append(args, *f.BranchID)
 		argIdx++
 	}
 	drClause, args, argIdx := dateRangeClause("pt.created_at", f.Dr, args, argIdx)
@@ -517,7 +523,7 @@ func (s *Store) UpdatePaymentGatewayConfig(ctx context.Context, pgc *models.Paym
 
 // ---------------- Payment Stats ----------------
 
-func (s *Store) PaymentStats(ctx context.Context, tenantID uuid.UUID, dr DateRangeFilter) (*models.PaymentStats, error) {
+func (s *Store) PaymentStats(ctx context.Context, tenantID uuid.UUID, dr DateRangeFilter, branchID *uuid.UUID) (*models.PaymentStats, error) {
 	stats := &models.PaymentStats{}
 
 	// Build date-range clause for payment_transactions.created_at
@@ -525,7 +531,18 @@ func (s *Store) PaymentStats(ctx context.Context, tenantID uuid.UUID, dr DateRan
 	drIdx := 1
 	drArgs = append(drArgs, tenantID)
 	drIdx++
+	if branchID != nil {
+		drArgs = append(drArgs, *branchID)
+		drIdx++
+	}
 	drClause, drArgs, drIdx := dateRangeClause("pt.created_at", dr, drArgs, drIdx)
+
+	// Scoped to a branch: only transactions on that branch's orders count.
+	branchClause := ""
+	if branchID != nil {
+		branchClause = " AND EXISTS (SELECT 1 FROM orders bo WHERE bo.id=pt.order_id AND bo.branch_id=$2)"
+	}
+	drClause += branchClause
 
 	// Total collected (successful captures)
 	s.Pool.QueryRow(ctx,

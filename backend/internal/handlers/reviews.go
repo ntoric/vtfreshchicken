@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -66,7 +67,35 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 		errResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	ctx := c.Request.Context()
+	// Route middleware (RequireAuth + RequireRole customer) guarantees a uid.
+	uid := userID(c)
+	// One review per customer per product.
+	existing, err := h.store.GetUserReview(ctx, tid, uid, productID)
+	if err != nil {
+		errResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if existing != nil {
+		errResponse(c, http.StatusConflict, "you have already reviewed this product")
+		return
+	}
+	// Reviews are limited to items the customer received in a delivered order.
+	delivered, err := h.store.HasDeliveredOrderItem(ctx, tid, uid, productID)
+	if err != nil {
+		errResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !delivered {
+		errResponse(c, http.StatusForbidden, "you can only review items from delivered orders")
+		return
+	}
 	authorName := req.AuthorName
+	if authorName == "" {
+		if u, err := h.store.GetUserByID(ctx, uid); err == nil && u.FullName != "" {
+			authorName = u.FullName
+		}
+	}
 	if authorName == "" {
 		authorName = "Anonymous"
 	}
@@ -78,10 +107,8 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 		Title:      req.Title,
 		Body:       req.Body,
 		IsApproved: true,
-	}
-	if uid := getUserID(c); uid != nil {
-		r.UserID = uid
-		r.IsVerified = true
+		UserID:     &uid,
+		IsVerified: true,
 	}
 	// Convert image inputs to models, capping at 8 images.
 	var images []models.ReviewImage
@@ -98,7 +125,7 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 			SortOrder: i,
 		})
 	}
-	if err := h.store.CreateReview(c.Request.Context(), r, images); err != nil {
+	if err := h.store.CreateReview(ctx, r, images); err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -182,39 +209,74 @@ func (h *ReviewHandler) GetSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, summary)
 }
 
-// Admin: list all reviews (including unapproved) for a product
+// AdminListReviews lists all reviews (approved + pending) for the store, with
+// product info and optional filters: product_id, rating, status
+// (approved|pending), search, limit, offset. Also returns aggregate stats.
 func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 	tid := tenantID(c)
-	productIDStr := c.Query("product_id")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-
-	if productIDStr != "" {
-		productID, err := uuid.Parse(productIDStr)
+	f := services.AdminReviewFilter{
+		Status: c.Query("status"),
+		Search: strings.TrimSpace(c.Query("search")),
+	}
+	f.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "50"))
+	f.Offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
+	f.Rating, _ = strconv.Atoi(c.Query("rating"))
+	if s := c.Query("product_id"); s != "" {
+		pid, err := uuid.Parse(s)
 		if err != nil {
 			errResponse(c, http.StatusBadRequest, "invalid product_id")
 			return
 		}
-		rows, err := h.store.Pool.Query(c.Request.Context(),
-			`SELECT id, tenant_id, product_id, user_id, author_name, rating, title, body, is_verified, is_approved, created_at
-			 FROM product_reviews WHERE tenant_id=$1 AND product_id=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
-			tid, productID, limit, offset)
-		if err != nil {
-			errResponse(c, http.StatusInternalServerError, err.Error())
-			return
-		}
-		defer rows.Close()
-		var out []models.Review
-		for rows.Next() {
-			var r models.Review
-			if err := rows.Scan(&r.ID, &r.TenantID, &r.ProductID, &r.UserID, &r.AuthorName, &r.Rating, &r.Title, &r.Body, &r.IsVerified, &r.IsApproved, &r.CreatedAt); err != nil {
-				errResponse(c, http.StatusInternalServerError, err.Error())
-				return
-			}
-			out = append(out, r)
-		}
-		c.JSON(http.StatusOK, gin.H{"items": out, "total": len(out)})
+		f.ProductID = &pid
+	}
+	items, total, err := h.store.AdminListReviews(c.Request.Context(), tid, f)
+	if err != nil {
+		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": []models.Review{}, "total": 0})
+	stats, err := h.store.AdminReviewStats(c.Request.Context(), tid)
+	if err != nil {
+		errResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items, "total": total, "stats": stats})
+}
+
+type updateReviewReq struct {
+	IsApproved *bool `json:"is_approved" binding:"required"`
+}
+
+// AdminUpdateReview toggles a review's approval (storefront visibility).
+func (h *ReviewHandler) AdminUpdateReview(c *gin.Context) {
+	tid := tenantID(c)
+	reviewID, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var req updateReviewReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	r, err := h.store.SetReviewApproval(c.Request.Context(), tid, reviewID, *req.IsApproved)
+	if err != nil {
+		notFoundOrErr(c, err, "review not found")
+		return
+	}
+	c.JSON(http.StatusOK, r)
+}
+
+// AdminDeleteReview permanently deletes a review. Route-level middleware
+// restricts this to superadmin.
+func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
+	tid := tenantID(c)
+	reviewID, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	if err := h.store.DeleteReview(c.Request.Context(), tid, reviewID); err != nil {
+		notFoundOrErr(c, err, "review not found")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

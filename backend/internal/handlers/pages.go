@@ -19,15 +19,16 @@ func NewPagesHandler(store *services.Store) *PagesHandler {
 	return &PagesHandler{store: store}
 }
 
-// ListPages returns all store pages for the tenant.
+// ListPages returns the store pages for the tenant (paginated).
 func (h *PagesHandler) ListPages(c *gin.Context) {
 	tid := tenantID(c)
-	pages, err := h.store.ListStorePages(c.Request.Context(), tid)
+	limit, offset := pagingParams(c)
+	pages, total, err := h.store.ListStorePagesPaged(c.Request.Context(), tid, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": pages})
+	c.JSON(http.StatusOK, gin.H{"items": pages, "total": total, "limit": limit, "offset": offset})
 }
 
 // GetPage returns a single store page by ID.
@@ -129,6 +130,10 @@ func (h *PagesHandler) DeletePage(c *gin.Context) {
 // PublicGetPage returns a published page by slug (for storefront rendering).
 func (h *PagesHandler) PublicGetPage(c *gin.Context) {
 	tid := tenantID(c)
+	if !h.store.IsModuleEnabled(c.Request.Context(), tid, services.ModulePageBuilder) {
+		errResponse(c, http.StatusNotFound, "page not found")
+		return
+	}
 	slug := c.Param("slug")
 	if slug == "" {
 		errResponse(c, http.StatusBadRequest, "slug is required")

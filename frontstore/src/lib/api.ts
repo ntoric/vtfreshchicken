@@ -87,6 +87,7 @@ export interface ProductQuery {
   limit?: number;
   offset?: number;
   attrs?: Record<string, string[]>;
+  branch_id?: string; // restrict listing to products available at this branch
 }
 
 export async function fetchProducts(
@@ -104,6 +105,7 @@ export async function fetchProducts(
   if (query.product_ids && query.product_ids.length > 0) params.set("product_ids", query.product_ids.join(","));
   if (query.limit != null) params.set("limit", String(query.limit));
   if (query.offset != null) params.set("offset", String(query.offset));
+  if (query.branch_id) params.set("branch_id", query.branch_id);
   if (query.attrs) {
     for (const [slug, vals] of Object.entries(query.attrs)) {
       for (const v of vals) params.append("attr", `${slug}:${v}`);
@@ -117,10 +119,12 @@ export async function fetchProducts(
 export async function fetchProduct(
   slug: string,
   currency?: string,
-  lang?: string
+  lang?: string,
+  branchId?: string
 ): Promise<{ product: Product; currency: string; language: string }> {
   const params = new URLSearchParams();
   if (currency) params.set("currency", currency);
+  if (branchId) params.set("branch_id", branchId);
   const headers: Record<string, string> = {};
   if (lang) headers["Accept-Language"] = lang;
   return fetchJson(`${API}/products/${slug}?${params}`, { headers });

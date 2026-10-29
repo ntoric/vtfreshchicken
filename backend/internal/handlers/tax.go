@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/trucommerce/backend/internal/models"
+	"github.com/trucommerce/backend/internal/services"
 )
 
 type TaxHandler struct {
@@ -16,17 +17,20 @@ type TaxHandler struct {
 
 type TaxStore interface {
 	ListTaxClasses(ctx context.Context, tenantID uuid.UUID) ([]models.TaxClass, error)
+	ListTaxClassesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxClass, int, error)
 	GetTaxClass(ctx context.Context, tenantID, classID uuid.UUID) (*models.TaxClass, error)
 	CreateTaxClass(ctx context.Context, tc *models.TaxClass) error
 	UpdateTaxClass(ctx context.Context, tc *models.TaxClass) error
 	DeleteTaxClass(ctx context.Context, tenantID, classID uuid.UUID) error
 
 	ListTaxZones(ctx context.Context, tenantID uuid.UUID) ([]models.TaxZone, error)
+	ListTaxZonesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxZone, int, error)
 	CreateTaxZone(ctx context.Context, tz *models.TaxZone) error
 	UpdateTaxZone(ctx context.Context, tz *models.TaxZone) error
 	DeleteTaxZone(ctx context.Context, tenantID, zoneID uuid.UUID) error
 
 	ListTaxRates(ctx context.Context, tenantID uuid.UUID) ([]models.TaxRate, error)
+	ListTaxRatesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxRate, int, error)
 	CreateTaxRate(ctx context.Context, tr *models.TaxRate) error
 	UpdateTaxRate(ctx context.Context, tr *models.TaxRate) error
 	DeleteTaxRate(ctx context.Context, tenantID, rateID uuid.UUID) error
@@ -35,6 +39,7 @@ type TaxStore interface {
 
 	CalculateTax(ctx context.Context, tenantID uuid.UUID, req *models.TaxCalculationRequest, settings *models.TenantSettings) (*models.TaxCalculationResult, error)
 	GetTenantSettings(ctx context.Context, tenantID uuid.UUID) (*models.TenantSettings, error)
+	IsModuleEnabled(ctx context.Context, tenantID uuid.UUID, code string) bool
 }
 
 func NewTaxHandler(s TaxStore) *TaxHandler {
@@ -54,6 +59,10 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 		return
 	}
 	tid := tenantID(c)
+	if !h.store.IsModuleEnabled(c.Request.Context(), tid, services.ModuleTax) {
+		c.JSON(http.StatusOK, &models.TaxCalculationResult{TaxTotal: 0, Breakdown: []models.TaxBreakdownLine{}})
+		return
+	}
 	settings, err := h.store.GetTenantSettings(c.Request.Context(), tid)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, "failed to load tenant settings")
@@ -70,12 +79,13 @@ func (h *TaxHandler) CalculateTax(c *gin.Context) {
 // ---------------- Tax Classes ----------------
 
 func (h *TaxHandler) ListTaxClasses(c *gin.Context) {
-	classes, err := h.store.ListTaxClasses(c.Request.Context(), tenantID(c))
+	limit, offset := pagingParams(c)
+	classes, total, err := h.store.ListTaxClassesPaged(c.Request.Context(), tenantID(c), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": classes})
+	c.JSON(http.StatusOK, gin.H{"items": classes, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *TaxHandler) CreateTaxClass(c *gin.Context) {
@@ -136,12 +146,13 @@ func (h *TaxHandler) DeleteTaxClass(c *gin.Context) {
 // ---------------- Tax Zones ----------------
 
 func (h *TaxHandler) ListTaxZones(c *gin.Context) {
-	zones, err := h.store.ListTaxZones(c.Request.Context(), tenantID(c))
+	limit, offset := pagingParams(c)
+	zones, total, err := h.store.ListTaxZonesPaged(c.Request.Context(), tenantID(c), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": zones})
+	c.JSON(http.StatusOK, gin.H{"items": zones, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *TaxHandler) CreateTaxZone(c *gin.Context) {
@@ -202,12 +213,13 @@ func (h *TaxHandler) DeleteTaxZone(c *gin.Context) {
 // ---------------- Tax Rates ----------------
 
 func (h *TaxHandler) ListTaxRates(c *gin.Context) {
-	rates, err := h.store.ListTaxRates(c.Request.Context(), tenantID(c))
+	limit, offset := pagingParams(c)
+	rates, total, err := h.store.ListTaxRatesPaged(c.Request.Context(), tenantID(c), limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": rates})
+	c.JSON(http.StatusOK, gin.H{"items": rates, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *TaxHandler) CreateTaxRate(c *gin.Context) {

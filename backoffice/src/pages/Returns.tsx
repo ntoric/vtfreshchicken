@@ -120,7 +120,7 @@ export function Returns() {
         <PageHeader title="Returns & Replacements" subtitle={`${total} return${total !== 1 ? "s" : ""}`} />
         <button
           onClick={() => setExportOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
+          className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
         >
           <Download className="w-4 h-4" /> Export CSV
         </button>
@@ -136,12 +136,12 @@ export function Returns() {
               key={tab.key}
               onClick={() => { setStatusFilter(tab.key); setPage(0); }}
               className={`px-2.5 py-1 rounded-md text-sm font-medium whitespace-nowrap transition ${
-                active ? "bg-brand text-white" : "bg-white border text-slate-600 hover:bg-slate-50"
+                active ? "bg-brand text-white" : "bg-white border text-neutral-600 hover:bg-neutral-50"
               }`}
             >
               {tab.label}
               {count > 0 && (
-                <span className={`ml-1.5 text-xs ${active ? "text-white/80" : "text-slate-400"}`}>
+                <span className={`ml-1.5 text-xs ${active ? "text-white/80" : "text-neutral-400"}`}>
                   {count}
                 </span>
               )}
@@ -155,7 +155,7 @@ export function Returns() {
         <select
           value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/20"
         >
           <option value="">All Types</option>
           <option value="refund">Refund</option>
@@ -167,27 +167,27 @@ export function Returns() {
           placeholder="Search by return #, order ID, customer name, or email..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          className="flex-1 min-w-[200px] max-w-md px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+          className="flex-1 min-w-[200px] max-w-md px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
         />
         <input
           type="date"
           value={from}
           onChange={(e) => { setFrom(e.target.value); setPage(0); }}
-          className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+          className="border border-neutral-200 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
           title="From date"
         />
-        <span className="text-slate-400 text-sm">→</span>
+        <span className="text-neutral-400 text-sm">→</span>
         <input
           type="date"
           value={to}
           onChange={(e) => { setTo(e.target.value); setPage(0); }}
-          className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+          className="border border-neutral-200 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
           title="To date"
         />
         {(from || to) && (
           <button
             onClick={() => { setFrom(""); setTo(""); setPage(0); }}
-            className="text-xs text-slate-500 hover:text-rose-600 transition"
+            className="text-xs text-neutral-500 hover:text-rose-600 transition"
           >
             Clear dates
           </button>
@@ -199,7 +199,7 @@ export function Returns() {
       ) : q.data && q.data.items.length > 0 ? (
         <div className="bg-white rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-left">
+            <thead className="bg-neutral-50 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Return #</th>
                 <th className="px-4 py-3 font-medium">Order</th>
@@ -213,11 +213,11 @@ export function Returns() {
             </thead>
             <tbody className="divide-y">
               {q.data.items.map((r) => {
-                const sCfg = RETURN_STATUS_LABELS[r.status] || { label: r.status, color: "text-slate-600", bg: "bg-slate-100" };
-                const tCfg = RETURN_TYPE_LABELS[r.type] || { label: r.type, color: "text-slate-600", bg: "bg-slate-100" };
+                const sCfg = RETURN_STATUS_LABELS[r.status] || { label: r.status, color: "text-neutral-600", bg: "bg-neutral-100" };
+                const tCfg = RETURN_TYPE_LABELS[r.type] || { label: r.type, color: "text-neutral-600", bg: "bg-neutral-100" };
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50 transition">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.return_number}</td>
+                  <tr key={r.id} className="hover:bg-neutral-50 transition">
+                    <td className="px-4 py-3 font-mono text-xs text-neutral-700">{r.return_number}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => navigate(`/orders/${r.order_id}`)}
@@ -227,8 +227,8 @@ export function Returns() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-800">{r.customer_name || "—"}</div>
-                      <div className="text-xs text-slate-400">{r.customer_email || ""}</div>
+                      <div className="font-medium text-neutral-800">{r.customer_name || "—"}</div>
+                      <div className="text-xs text-neutral-400">{r.customer_email || ""}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tCfg.bg} ${tCfg.color}`}>
@@ -243,10 +243,10 @@ export function Returns() {
                     <td className="px-4 py-3 font-medium">
                       {r.refund_amount > 0 ? fmtMoney(r.refund_amount) : "—"}
                       {r.refund_amount > 0 && (
-                        <div className="text-xs text-slate-400">{REFUND_METHOD_LABELS[r.refund_method] || r.refund_method}</div>
+                        <div className="text-xs text-neutral-400">{REFUND_METHOD_LABELS[r.refund_method] || r.refund_method}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-neutral-500">
                       {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -267,8 +267,8 @@ export function Returns() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50">
-              <p className="text-xs text-slate-500">
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-neutral-50">
+              <p className="text-xs text-neutral-500">
                 Showing {page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}
               </p>
               <div className="flex gap-2">
@@ -279,7 +279,7 @@ export function Returns() {
                 >
                   Prev
                 </button>
-                <span className="px-3 py-1 text-sm text-slate-500">
+                <span className="px-3 py-1 text-sm text-neutral-500">
                   Page {page + 1} / {totalPages}
                 </span>
                 <button
@@ -295,8 +295,8 @@ export function Returns() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border p-12 text-center">
-          <PackageOpen className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-400 text-sm">
+          <PackageOpen className="w-12 h-12 mx-auto text-neutral-300 mb-3" />
+          <p className="text-neutral-400 text-sm">
             {search || statusFilter || typeFilter ? "No returns match your filters." : "No returns yet."}
           </p>
         </div>
@@ -316,18 +316,18 @@ export function Returns() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold text-slate-800">Update Return Status</h3>
-              <button onClick={() => setStatusModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <h3 className="text-lg font-bold text-neutral-800">Update Return Status</h3>
+              <button onClick={() => setStatusModalOpen(false)} className="text-neutral-400 hover:text-neutral-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-slate-500 mb-4">
+            <p className="text-sm text-neutral-500 mb-4">
               Return <span className="font-mono">{selectedReturn.return_number}</span>
             </p>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1">New Status</label>
+                <label className="text-sm font-medium text-neutral-700 block mb-1">New Status</label>
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
@@ -353,7 +353,7 @@ export function Returns() {
               )}
 
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1">
+                <label className="text-sm font-medium text-neutral-700 block mb-1">
                   {newStatus === "rejected" ? "Rejection Reason" : "Note"}
                 </label>
                 <textarea
@@ -382,7 +382,7 @@ export function Returns() {
                 </button>
                 <button
                   onClick={() => { setStatusModalOpen(false); setNewStatus(""); setNote(""); }}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 border rounded-lg hover:bg-slate-50 transition"
+                  className="px-4 py-2 text-sm font-medium text-neutral-600 border rounded-lg hover:bg-neutral-50 transition"
                 >
                   Cancel
                 </button>
@@ -422,8 +422,8 @@ function ReturnDetailsModal({
   onClose: () => void;
   onOpenStatus: () => void;
 }) {
-  const sCfg = RETURN_STATUS_LABELS[ret.status] || { label: ret.status, color: "text-slate-600", bg: "bg-slate-100" };
-  const tCfg = RETURN_TYPE_LABELS[ret.type] || { label: ret.type, color: "text-slate-600", bg: "bg-slate-100" };
+  const sCfg = RETURN_STATUS_LABELS[ret.status] || { label: ret.status, color: "text-neutral-600", bg: "bg-neutral-100" };
+  const tCfg = RETURN_TYPE_LABELS[ret.type] || { label: ret.type, color: "text-neutral-600", bg: "bg-neutral-100" };
   const items = ret.items || [];
   const history = ret.status_history || [];
 
@@ -439,12 +439,12 @@ function ReturnDetailsModal({
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
           <div>
-            <h3 className="text-lg font-bold text-slate-800">{ret.return_number}</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="text-lg font-bold text-neutral-800">{ret.return_number}</h3>
+            <p className="text-sm text-neutral-500">
               Order <span className="font-mono">#{ret.order_id.slice(0, 8)}</span> · {ret.customer_name || "—"}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -468,25 +468,25 @@ function ReturnDetailsModal({
           {/* Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-slate-400 text-xs">Reason</p>
-              <p className="text-slate-700">{ret.reason || "—"}</p>
+              <p className="text-neutral-400 text-xs">Reason</p>
+              <p className="text-neutral-700">{ret.reason || "—"}</p>
             </div>
             <div>
-              <p className="text-slate-400 text-xs">Refund Method</p>
-              <p className="text-slate-700">{REFUND_METHOD_LABELS[ret.refund_method] || ret.refund_method}</p>
+              <p className="text-neutral-400 text-xs">Refund Method</p>
+              <p className="text-neutral-700">{REFUND_METHOD_LABELS[ret.refund_method] || ret.refund_method}</p>
             </div>
             <div>
-              <p className="text-slate-400 text-xs">Restock Items</p>
-              <p className="text-slate-700">{ret.restock ? "Yes" : "No"}</p>
+              <p className="text-neutral-400 text-xs">Restock Items</p>
+              <p className="text-neutral-700">{ret.restock ? "Yes" : "No"}</p>
             </div>
             <div>
-              <p className="text-slate-400 text-xs">Created</p>
-              <p className="text-slate-700">{fmtDate(ret.created_at)}</p>
+              <p className="text-neutral-400 text-xs">Created</p>
+              <p className="text-neutral-700">{fmtDate(ret.created_at)}</p>
             </div>
             {ret.completed_at && (
               <div>
-                <p className="text-slate-400 text-xs">Completed</p>
-                <p className="text-slate-700">{fmtDate(ret.completed_at)}</p>
+                <p className="text-neutral-400 text-xs">Completed</p>
+                <p className="text-neutral-700">{fmtDate(ret.completed_at)}</p>
               </div>
             )}
           </div>
@@ -505,10 +505,10 @@ function ReturnDetailsModal({
           {/* Items */}
           {items.length > 0 && (
             <div>
-              <h4 className="font-semibold text-slate-800 mb-2">Returned Items ({items.length})</h4>
+              <h4 className="font-semibold text-neutral-800 mb-2">Returned Items ({items.length})</h4>
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-500 text-left">
+                  <thead className="bg-neutral-50 text-neutral-500 text-left">
                     <tr>
                       <th className="px-3 py-2 font-medium">Product</th>
                       <th className="px-3 py-2 font-medium text-center">Qty</th>
@@ -520,12 +520,12 @@ function ReturnDetailsModal({
                     {items.map((it) => (
                       <tr key={it.id}>
                         <td className="px-3 py-2">
-                          <div className="font-medium text-slate-800">{it.name}</div>
-                          {it.sku && <div className="text-xs text-slate-400 font-mono">{it.sku}</div>}
-                          {it.reason && <div className="text-xs text-slate-500 mt-0.5">{it.reason}</div>}
+                          <div className="font-medium text-neutral-800">{it.name}</div>
+                          {it.sku && <div className="text-xs text-neutral-400 font-mono">{it.sku}</div>}
+                          {it.reason && <div className="text-xs text-neutral-500 mt-0.5">{it.reason}</div>}
                         </td>
-                        <td className="px-3 py-2 text-center text-slate-600">{it.quantity}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{fmtMoney(it.unit_price)}</td>
+                        <td className="px-3 py-2 text-center text-neutral-600">{it.quantity}</td>
+                        <td className="px-3 py-2 text-right text-neutral-600">{fmtMoney(it.unit_price)}</td>
                         <td className="px-3 py-2 text-right font-medium">{fmtMoney(it.line_total)}</td>
                       </tr>
                     ))}
@@ -538,23 +538,23 @@ function ReturnDetailsModal({
           {/* Status History */}
           {history.length > 0 && (
             <div>
-              <h4 className="font-semibold text-slate-800 mb-2">Status History</h4>
+              <h4 className="font-semibold text-neutral-800 mb-2">Status History</h4>
               <div className="space-y-0">
                 {history.slice().reverse().map((event, i) => {
-                  const eCfg = RETURN_STATUS_LABELS[event.status] || { label: event.status, color: "text-slate-600", bg: "bg-slate-100" };
+                  const eCfg = RETURN_STATUS_LABELS[event.status] || { label: event.status, color: "text-neutral-600", bg: "bg-neutral-100" };
                   const isLast = i === history.length - 1;
                   return (
                     <div key={i} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className={`w-3 h-3 rounded-full ${eCfg.bg}`} />
-                        {!isLast && <div className="w-0.5 flex-1 bg-slate-200 my-1" />}
+                        {!isLast && <div className="w-0.5 flex-1 bg-neutral-200 my-1" />}
                       </div>
                       <div className="pb-4 flex-1">
                         <div className="flex items-center gap-2">
                           <span className={`text-sm font-medium ${eCfg.color}`}>{eCfg.label}</span>
-                          <span className="text-xs text-slate-400">{fmtDate(event.timestamp)}</span>
+                          <span className="text-xs text-neutral-400">{fmtDate(event.timestamp)}</span>
                         </div>
-                        {event.note && <p className="text-xs text-slate-500 mt-0.5">{event.note}</p>}
+                        {event.note && <p className="text-xs text-neutral-500 mt-0.5">{event.note}</p>}
                       </div>
                     </div>
                   );

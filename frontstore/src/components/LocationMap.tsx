@@ -42,9 +42,11 @@ interface LocationMapProps {
   /** Recenter target — only changes for explicit moves (locate me / area pick). */
   center: [number, number];
   onMove: (lat: number, lng: number) => void;
-  /** Optional service circles to overlay (one per branch): center lat/lng + radius in km. */
+  /** Optional service circles to overlay (one per branch): center lat/lng + radius in km.
+   *  `outer` marks a branch's delivery boundary — drawn solid; inner zone
+   *  rings are drawn lighter/dashed. */
   circle?: { center: [number, number]; radiusKm: number };
-  circles?: { center: [number, number]; radiusKm: number }[];
+  circles?: { center: [number, number]; radiusKm: number; outer?: boolean }[];
 }
 
 export default function LocationMap({ position, center, onMove, circle, circles }: LocationMapProps) {
@@ -74,7 +76,9 @@ export default function LocationMap({ position, center, onMove, circle, circles 
           key={i}
           center={c.center}
           radius={c.radiusKm * 1000}
-          pathOptions={{ color: "#dc2626", weight: 1.5, fillOpacity: 0.08, dashArray: "6 4" }}
+          pathOptions={c.outer === false
+            ? { color: "#f59e0b", weight: 1, fillOpacity: 0.03, dashArray: "3 4" }
+            : { color: "#dc2626", weight: 1.5, fillOpacity: 0.08, dashArray: "6 4" }}
         />
       ))}
       <Marker

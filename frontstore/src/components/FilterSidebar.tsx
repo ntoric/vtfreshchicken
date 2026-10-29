@@ -24,7 +24,7 @@ export function FilterSidebar({
   const [localMin, setLocalMin] = useState(minPrice?.toString() || "");
   const [localMax, setLocalMax] = useState(maxPrice?.toString() || "");
 
-  const filterable = attributes.filter((a) => a.is_filterable);
+  const filterable = attributes.filter((a) => a.is_filterable && !a.is_internal);
 
   function toggle(slug: string, value: string) {
     const current = selected[slug] || [];

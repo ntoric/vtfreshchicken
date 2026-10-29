@@ -43,6 +43,7 @@ services:
       target: ${APP_ENV:-development}
     container_name: trucommerce-backend
     restart: unless-stopped
+    image: ntoric/vtchicken_backend:${APP_ENV:-dev}
     environment:
       # Application
       APP_ENV: ${APP_ENV:-development}
@@ -127,6 +128,7 @@ services:
       dockerfile: Dockerfile
       target: ${APP_ENV:-development}
     container_name: trucommerce-frontstore
+    image: ntoric/vtchicken_frontstore:${APP_ENV:-dev}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:13000}
@@ -144,6 +146,8 @@ services:
       - /app/.next
     networks:
       - trucommerce
+    profiles:
+      - frontend
 
   backoffice:
     build:
@@ -151,6 +155,7 @@ services:
       dockerfile: Dockerfile
       target: ${APP_ENV:-development}
     container_name: trucommerce-backoffice
+    image: ntoric/vtchicken_backoffice:${APP_ENV:-dev}
     restart: unless-stopped
     environment:
       VITE_API_BASE_URL: http://backend:8080
@@ -162,6 +167,8 @@ services:
       - /app/node_modules
     networks:
       - trucommerce
+    profiles:
+      - frontend
 
   mcp-server:
     build:
@@ -169,6 +176,7 @@ services:
       dockerfile: Dockerfile
       target: ${APP_ENV:-development}
     container_name: trucommerce-mcp
+    image: ntoric/vtchicken_mcp:${APP_ENV:-dev}
     restart: unless-stopped
     command: ["sh", "-c", "go run ./cmd/mcp-server --transport sse --addr :9100"]
     environment:

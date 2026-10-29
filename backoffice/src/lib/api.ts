@@ -1,4 +1,5 @@
 import type {
+  OrderHandoff,
   AuthResponse,
   Attribute,
   Category,
@@ -39,6 +40,8 @@ import type {
   PaymentTransaction,
   Product,
   RefundRequest,
+  Review,
+  ReviewListResponse,
   RolePermission,
   SetupCompleteRequest,
   SetupStatus,
@@ -62,6 +65,7 @@ import type {
   WalletStats,
   WalletTransaction,
   WalletTransactionListResponse,
+  StoreModule,
   StorePage,
   StorePageRequest,
   ExportJob,
@@ -119,6 +123,25 @@ export function generateIdempotencyKey(): string {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 11);
 }
 
+// Query params shared by server-side paginated list endpoints. Extra keys
+// (search, status, type, ...) are passed through as query params; empty values
+// are omitted. Omitting limit returns the full list.
+export interface PageParams {
+  limit?: number;
+  offset?: number;
+  [k: string]: string | number | undefined;
+}
+
+function pageQuery(p?: PageParams): string {
+  if (!p) return "";
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(p)) {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  }
+  const s = qs.toString();
+  return s ? `?${s}` : "";
+}
+
 async function req<T>(path: string, init?: RequestInit & { idempotencyKey?: string }): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -141,7 +164,22 @@ async function req<T>(path: string, init?: RequestInit & { idempotencyKey?: stri
     throw new Error((body as { error?: string }).error || `request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  return normalizeListItems(await res.json()) as T;
+}
+
+// The backend serializes empty Go slices as null. Normalize "items" list
+// envelopes to [] so callers can safely use .length/.map on them.
+function normalizeListItems(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    for (const v of value) normalizeListItems(v);
+  } else if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of Object.keys(obj)) {
+      if (key === "items" && obj[key] === null) obj[key] = [];
+      else normalizeListItems(obj[key]);
+    }
+  }
+  return value;
 }
 
 // Upload a single image file (multipart/form-data)
@@ -203,8 +241,19 @@ export const api = {
     }),
   me: () => req<User>("/api/me"),
 
+  // ---- Modules & Features ----
+  // Public list — used to gate menus/pages for every role.
+  listModules: () => req<{ items: StoreModule[]; modules: Record<string, boolean> }>(`/api/modules`),
+  // Superadmin-only toggle (Developer → Modules & Features).
+  updateModule: (tenant: string, code: string, isEnabled: boolean) =>
+    req<StoreModule>(`/api/developer/modules/${code}`, {
+      method: "PUT",
+      body: JSON.stringify({ is_enabled: isEnabled }),
+    }),
+
   // ---- Branches ----
-  listBranches: (tenant: string) => req<{ items: import("@/types").Branch[] }>(`/api/branches`),
+  listBranches: (tenant: string, params?: PageParams) =>
+    req<{ items: import("@/types").Branch[]; total: number }>(`/api/branches${pageQuery(params)}`),
   getBranch: (tenant: string, id: string) => req<import("@/types").Branch>(`/api/branches/${id}`),
   createBranch: (tenant: string, body: any, idempotencyKey?: string) =>
     req(`/api/branches`, { method: "POST", body: JSON.stringify(body), idempotencyKey }),
@@ -216,7 +265,8 @@ export const api = {
     req(`/api/branches/${id}/default`, { method: "PUT" }),
 
   // ---- Vendors ----
-  listVendors: (tenant: string) => req<{ items: Vendor[] }>(`/api/vendors`),
+  listVendors: (tenant: string, params?: PageParams) =>
+    req<{ items: Vendor[]; total: number }>(`/api/vendors${pageQuery(params)}`),
   getVendor: (tenant: string, id: string) => req<Vendor>(`/api/vendors/${id}`),
   createVendor: (tenant: string, body: any) =>
     req(`/api/vendors`, { method: "POST", body: JSON.stringify(body) }),
@@ -284,6 +334,45 @@ export const api = {
       body: JSON.stringify({ notes }),
     }),
 
+  // ---- Delivery (partner portal + staff assignment) ----
+  listDeliveryBranches: () =>
+    req<{ items: import("@/types").Branch[] }>(`/api/delivery/branches`),
+  listDeliveryOrders: (tenant: string, params?: { view?: "queue" | "active" | "history"; partner_id?: string; unassigned?: boolean; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.view) qs.set("view", params.view);
+    if (params?.partner_id) qs.set("partner_id", params.partner_id);
+    if (params?.unassigned) qs.set("unassigned", "true");
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.offset) qs.set("offset", String(params.offset));
+    const q = qs.toString();
+    return req<{ items: OrderWithDetails[]; total: number; limit: number; offset: number }>(
+      `/api/delivery/orders${q ? `?${q}` : ""}`
+    );
+  },
+  listDeliveryPartners: (tenant: string, branchId?: string) =>
+    req<{ items: User[] }>(`/api/delivery/partners${branchId ? `?branch_id=${branchId}` : ""}`),
+  assignDeliveryPartner: (tenant: string, orderId: string, partnerId: string | null, idempotencyKey?: string) =>
+    req<{ order: OrderWithDetails; message: string }>(`/api/delivery/orders/${orderId}/assign`, {
+      method: "PUT",
+      body: JSON.stringify({ partner_id: partnerId ?? "" }),
+      idempotencyKey,
+    }),
+  claimDeliveryOrder: (orderId: string, idempotencyKey?: string) =>
+    req<{ order: OrderWithDetails; message: string }>(`/api/delivery/orders/${orderId}/claim`, {
+      method: "POST",
+      idempotencyKey,
+    }),
+  startDeliveryOrder: (orderId: string, idempotencyKey?: string) =>
+    req<{ order: OrderWithDetails; message: string }>(`/api/delivery/orders/${orderId}/start`, {
+      method: "POST",
+      idempotencyKey,
+    }),
+  completeDeliveryOrder: (orderId: string, idempotencyKey?: string) =>
+    req<{ order: OrderWithDetails; message: string }>(`/api/delivery/orders/${orderId}/deliver`, {
+      method: "POST",
+      idempotencyKey,
+    }),
+
   // ---- Returns / Replacements / Refunds ----
   listReturns: (tenant: string, params?: { status?: string; type?: string; search?: string; limit?: number; offset?: number; from?: string; to?: string }) => {
     const qs = new URLSearchParams();
@@ -317,8 +406,8 @@ export const api = {
     }),
 
   // ---- Categories ----
-  listCategories: (tenant: string) =>
-    req<{ items: Category[] }>(`/api/categories`),
+  listCategories: (tenant: string, params?: PageParams) =>
+    req<{ items: Category[]; total: number }>(`/api/categories${pageQuery(params)}`),
   createCategory: (tenant: string, body: Partial<Category>) =>
     req(`/api/categories`, { method: "POST", body: JSON.stringify(body) }),
   updateCategory: (tenant: string, id: string, body: Partial<Category>) =>
@@ -327,8 +416,8 @@ export const api = {
     req(`/api/categories/${id}`, { method: "DELETE" }),
 
   // ---- Attributes ----
-  listAttributes: (tenant: string) =>
-    req<{ items: Attribute[] }>(`/api/attributes`),
+  listAttributes: (tenant: string, params?: PageParams) =>
+    req<{ items: Attribute[]; total: number }>(`/api/attributes${pageQuery(params)}`),
   createAttribute: (tenant: string, body: Partial<Attribute>) =>
     req(`/api/attributes`, { method: "POST", body: JSON.stringify(body) }),
   updateAttribute: (tenant: string, id: string, body: Partial<Attribute>) =>
@@ -337,15 +426,8 @@ export const api = {
     req(`/api/attributes/${id}`, { method: "DELETE" }),
 
   // ---- Products ----
-  listProductsAdmin: (tenant: string, search?: string, status?: string) => {
-    const qs = new URLSearchParams();
-    if (search) qs.set("search", search);
-    if (status) qs.set("status", status);
-    const q = qs.toString();
-    return req<{ items: Product[]; total: number }>(
-      `/api/products/admin${q ? `?${q}` : ""}`
-    );
-  },
+  listProductsAdmin: (tenant: string, params?: PageParams) =>
+    req<{ items: Product[]; total: number }>(`/api/products/admin${pageQuery(params)}`),
   getProductById: (tenant: string, id: string) =>
     req<Product>(`/api/products/admin/${id}`),
   getProduct: (tenant: string, slug: string) =>
@@ -357,8 +439,29 @@ export const api = {
   deleteProduct: (tenant: string, id: string) =>
     req(`/api/products/${id}`, { method: "DELETE" }),
 
+  // ---- Reviews ----
+  listReviews: (
+    tenant: string,
+    params?: { product_id?: string; rating?: number; status?: string; search?: string; limit?: number; offset?: number }
+  ) => {
+    const qs = new URLSearchParams();
+    if (params?.product_id) qs.set("product_id", params.product_id);
+    if (params?.rating) qs.set("rating", String(params.rating));
+    if (params?.status && params.status !== "all") qs.set("status", params.status);
+    if (params?.search) qs.set("search", params.search);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.offset) qs.set("offset", String(params.offset));
+    const q = qs.toString();
+    return req<ReviewListResponse>(`/api/reviews${q ? `?${q}` : ""}`);
+  },
+  updateReview: (tenant: string, id: string, is_approved: boolean) =>
+    req<Review>(`/api/reviews/${id}`, { method: "PUT", body: JSON.stringify({ is_approved }) }),
+  deleteReview: (tenant: string, id: string) =>
+    req<{ ok: boolean }>(`/api/reviews/${id}`, { method: "DELETE" }),
+
   // ---- Offers ----
-  listOffers: (tenant: string) => req<{ items: Offer[] }>(`/api/offers`),
+  listOffers: (tenant: string, params?: PageParams) =>
+    req<{ items: Offer[]; total: number }>(`/api/offers${pageQuery(params)}`),
   getOffer: (tenant: string, id: string) => req<Offer>(`/api/offers/${id}`),
   createOffer: (tenant: string, body: any) =>
     req(`/api/offers`, { method: "POST", body: JSON.stringify(body) }),
@@ -368,8 +471,8 @@ export const api = {
     req(`/api/offers/${id}`, { method: "DELETE" }),
 
   // ---- Discounts ----
-  listDiscounts: (tenant: string) =>
-    req<{ items: DiscountCode[] }>(`/api/discounts`),
+  listDiscounts: (tenant: string, params?: PageParams) =>
+    req<{ items: DiscountCode[]; total: number }>(`/api/discounts${pageQuery(params)}`),
   getDiscount: (tenant: string, id: string) =>
     req<DiscountCode>(`/api/discounts/${id}`),
   createDiscount: (tenant: string, body: any) =>
@@ -382,8 +485,8 @@ export const api = {
     req<DiscountStats>(`/api/discounts/stats`),
 
   // ---- Inventory ----
-  listInventory: (tenant: string, filter?: string) =>
-    req<{ items: InventoryItem[] }>(`/api/inventory${filter ? `?filter=${filter}` : ""}`),
+  listInventory: (tenant: string, params?: PageParams) =>
+    req<{ items: InventoryItem[]; total: number }>(`/api/inventory${pageQuery(params)}`),
   inventoryStats: (tenant: string) =>
     req<InventoryStats>(`/api/inventory/stats`),
   adjustStock: (tenant: string, body: any, idempotencyKey?: string) =>
@@ -401,7 +504,8 @@ export const api = {
   },
 
   // ---- Users ----
-  listUsers: (tenant: string) => req<{ items: User[] }>(`/api/users`),
+  listUsers: (tenant: string, params?: PageParams) =>
+    req<{ items: User[]; total: number }>(`/api/users${pageQuery(params)}`),
   userStats: (tenant: string) => req<UserStats>(`/api/users/stats`),
   getUser: (tenant: string, id: string) => req<User>(`/api/users/${id}`),
   createStaff: (tenant: string, body: any, idempotencyKey?: string) =>
@@ -450,8 +554,8 @@ export const api = {
   },
 
   // ---- Tax Classes ----
-  listTaxClasses: (tenant: string) =>
-    req<{ items: TaxClass[] }>(`/api/tax/classes`),
+  listTaxClasses: (tenant: string, params?: PageParams) =>
+    req<{ items: TaxClass[]; total: number }>(`/api/tax/classes${pageQuery(params)}`),
   createTaxClass: (tenant: string, body: Partial<TaxClass>) =>
     req<TaxClass>(`/api/tax/classes`, { method: "POST", body: JSON.stringify(body) }),
   updateTaxClass: (tenant: string, id: string, body: Partial<TaxClass>) =>
@@ -460,8 +564,8 @@ export const api = {
     req<{ deleted: boolean }>(`/api/tax/classes/${id}`, { method: "DELETE" }),
 
   // ---- Tax Zones ----
-  listTaxZones: (tenant: string) =>
-    req<{ items: TaxZone[] }>(`/api/tax/zones`),
+  listTaxZones: (tenant: string, params?: PageParams) =>
+    req<{ items: TaxZone[]; total: number }>(`/api/tax/zones${pageQuery(params)}`),
   createTaxZone: (tenant: string, body: Partial<TaxZone>) =>
     req<TaxZone>(`/api/tax/zones`, { method: "POST", body: JSON.stringify(body) }),
   updateTaxZone: (tenant: string, id: string, body: Partial<TaxZone>) =>
@@ -470,8 +574,8 @@ export const api = {
     req<{ deleted: boolean }>(`/api/tax/zones/${id}`, { method: "DELETE" }),
 
   // ---- Tax Rates ----
-  listTaxRates: (tenant: string) =>
-    req<{ items: TaxRate[] }>(`/api/tax/rates`),
+  listTaxRates: (tenant: string, params?: PageParams) =>
+    req<{ items: TaxRate[]; total: number }>(`/api/tax/rates${pageQuery(params)}`),
   createTaxRate: (tenant: string, body: Partial<TaxRate>) =>
     req<TaxRate>(`/api/tax/rates`, { method: "POST", body: JSON.stringify(body) }),
   updateTaxRate: (tenant: string, id: string, body: Partial<TaxRate>) =>
@@ -480,8 +584,8 @@ export const api = {
     req<{ deleted: boolean }>(`/api/tax/rates/${id}`, { method: "DELETE" }),
 
   // ---- Shipping Methods ----
-  listShippingMethods: (tenant: string) =>
-    req<{ items: ShippingMethod[] }>(`/api/shipping/methods`),
+  listShippingMethods: (tenant: string, params?: PageParams) =>
+    req<{ items: ShippingMethod[]; total: number }>(`/api/shipping/methods${pageQuery(params)}`),
   createShippingMethod: (tenant: string, body: Partial<ShippingMethod>) =>
     req<ShippingMethod>(`/api/shipping/methods`, { method: "POST", body: JSON.stringify(body) }),
   updateShippingMethod: (tenant: string, id: string, body: Partial<ShippingMethod>) =>
@@ -490,8 +594,8 @@ export const api = {
     req<{ deleted: boolean }>(`/api/shipping/methods/${id}`, { method: "DELETE" }),
 
   // ---- Shipping Zones ----
-  listShippingZones: (tenant: string) =>
-    req<{ items: ShippingZone[] }>(`/api/shipping/zones`),
+  listShippingZones: (tenant: string, params?: PageParams) =>
+    req<{ items: ShippingZone[]; total: number }>(`/api/shipping/zones${pageQuery(params)}`),
   createShippingZone: (tenant: string, body: Partial<ShippingZone>) =>
     req<ShippingZone>(`/api/shipping/zones`, { method: "POST", body: JSON.stringify(body) }),
   updateShippingZone: (tenant: string, id: string, body: Partial<ShippingZone>) =>
@@ -500,8 +604,8 @@ export const api = {
     req<{ deleted: boolean }>(`/api/shipping/zones/${id}`, { method: "DELETE" }),
 
   // ---- Shipping Rates ----
-  listShippingRates: (tenant: string) =>
-    req<{ items: ShippingRate[] }>(`/api/shipping/rates`),
+  listShippingRates: (tenant: string, params?: PageParams) =>
+    req<{ items: ShippingRate[]; total: number }>(`/api/shipping/rates${pageQuery(params)}`),
   createShippingRate: (tenant: string, body: Partial<ShippingRate>) =>
     req<ShippingRate>(`/api/shipping/rates`, { method: "POST", body: JSON.stringify(body) }),
   updateShippingRate: (tenant: string, id: string, body: Partial<ShippingRate>) =>
@@ -522,6 +626,14 @@ export const api = {
     req<ProviderTestResult>(`/api/shipping/providers/${id}/test`, { method: "POST" }),
 
   // ---- Shipments ----
+  listOrderHandoffs: (tenant: string, orderId: string) =>
+    req<{ items: OrderHandoff[] }>(`/api/orders/admin/${orderId}/handoffs`),
+  createOrderHandoff: (tenant: string, orderId: string, body: { to_branch_id?: string; item_ids?: string[]; note?: string }) =>
+    req<OrderHandoff>(`/api/orders/admin/${orderId}/handoffs`, { method: "POST", body: JSON.stringify(body) }),
+  listIncomingHandoffs: (tenant: string) =>
+    req<{ items: OrderHandoff[] }>(`/api/handoffs`),
+  respondToHandoff: (tenant: string, id: string, action: "accept" | "reject" | "cancel") =>
+    req<{ updated: boolean; status: string }>(`/api/handoffs/${id}/respond`, { method: "POST", body: JSON.stringify({ action }) }),
   listOrderShipments: (tenant: string, orderId: string) =>
     req<{ items: Shipment[] }>(`/api/shipping/orders/${orderId}/shipments`),
   createOrderShipment: (tenant: string, orderId: string, providerCode: string, estimatedDelivery?: string, idempotencyKey?: string) =>
@@ -635,8 +747,8 @@ export const api = {
     }),
 
   // ---- Notifications ----
-  listNotificationEvents: (tenant: string) =>
-    req<{ items: NotificationEvent[] }>(`/api/notifications/events`).then((r) => r.items),
+  listNotificationEvents: (tenant: string, params?: PageParams) =>
+    req<{ items: NotificationEvent[]; total: number }>(`/api/notifications/events${pageQuery(params)}`),
   createNotificationEvent: (tenant: string, body: NotificationEventReq) =>
     req<NotificationEvent>(`/api/notifications/events`, { method: "POST", body: JSON.stringify(body) }),
   updateNotificationEvent: (tenant: string, id: string, body: NotificationEventReq) =>
@@ -644,8 +756,8 @@ export const api = {
   deleteNotificationEvent: (tenant: string, id: string) =>
     req<{ ok: boolean }>(`/api/notifications/events/${id}`, { method: "DELETE" }),
 
-  listNotificationTemplates: (tenant: string, eventId?: string) =>
-    req<{ items: NotificationTemplate[] }>(`/api/notifications/templates${eventId ? `?event_id=${eventId}` : ""}`).then((r) => r.items),
+  listNotificationTemplates: (tenant: string, eventId?: string, params?: PageParams) =>
+    req<{ items: NotificationTemplate[]; total: number }>(`/api/notifications/templates${pageQuery({ event_id: eventId, ...params })}`),
   getNotificationTemplate: (tenant: string, id: string) =>
     req<NotificationTemplate>(`/api/notifications/templates/${id}`),
   createNotificationTemplate: (tenant: string, body: NotificationTemplateReq) =>
@@ -664,8 +776,8 @@ export const api = {
     req<NotificationLogsResponse>(`/api/notifications/logs?limit=${limit}&offset=${offset}`),
 
   // ===== Store Pages (Page Builder) =====
-  listPages: (tenant: string) =>
-    req<{ items: StorePage[] }>(`/api/pages`),
+  listPages: (tenant: string, params?: PageParams) =>
+    req<{ items: StorePage[]; total: number }>(`/api/pages${pageQuery(params)}`),
   getPage: (tenant: string, id: string) =>
     req<StorePage>(`/api/pages/${id}`),
   createPage: (tenant: string, body: StorePageRequest) =>

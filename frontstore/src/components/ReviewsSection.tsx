@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchReviews, createReview } from "@/lib/api";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { fetchReviews } from "@/lib/api";
 import { InlineLoader } from "@/components/Loaders";
 import type { Review } from "@/types";
 
@@ -77,113 +77,6 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-function ReviewForm({ productId }: { productId: string }) {
-  const qc = useQueryClient();
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [authorName, setAuthorName] = useState("");
-  const [showForm, setShowForm] = useState(false);
-
-  const mut = useMutation({
-    mutationFn: () => createReview(productId, { rating, title, body, author_name: authorName }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews", productId] });
-      setRating(0); setTitle(""); setBody(""); setAuthorName(""); setShowForm(false);
-    },
-  });
-
-  if (!showForm) {
-    return (
-      <button
-        onClick={() => setShowForm(true)}
-        className="border border-gray-300 rounded-xl px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-      >
-        Write a Review
-      </button>
-    );
-  }
-
-  return (
-    <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
-      <h4 className="font-semibold text-gray-900">Write a Review</h4>
-      {mut.isError && (
-        <div className="bg-rose-50 text-rose-600 text-sm p-3 rounded-lg">
-          Failed to submit review. Please try again.
-        </div>
-      )}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              onMouseEnter={() => setHoverRating(star)}
-              onMouseLeave={() => setHoverRating(0)}
-              onClick={() => setRating(star)}
-              className="p-1"
-              aria-label={`Rate ${star} stars`}
-            >
-              <svg
-                className={`w-7 h-7 transition ${(hoverRating || rating) >= star ? "text-amber-400 fill-current" : "text-gray-200 fill-current hover:text-amber-200"}`}
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name (optional)</label>
-        <input
-          type="text"
-          value={authorName}
-          onChange={(e) => setAuthorName(e.target.value)}
-          placeholder="Your name"
-          className="w-full border rounded-xl px-4 py-2.5 text-sm focus:input-brand-focus"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Summarize your review"
-          className="w-full border rounded-xl px-4 py-2.5 text-sm focus:input-brand-focus"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Review</label>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Tell us what you think about this product"
-          rows={4}
-          className="w-full border rounded-xl px-4 py-2.5 text-sm focus:input-brand-focus resize-none"
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => mut.mutate()}
-          disabled={rating === 0 || mut.isPending}
-          className="bg-brand text-white font-medium px-5 py-2 rounded-lg hover:bg-brand-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {mut.isPending ? "Submitting…" : "Submit Review"}
-        </button>
-        <button
-          onClick={() => setShowForm(false)}
-          className="text-gray-500 font-medium px-4 py-2.5 hover:text-gray-700"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function ReviewsSection({ productId }: { productId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["reviews", productId],
@@ -228,16 +121,13 @@ export function ReviewsSection({ productId }: { productId: string }) {
         </div>
       </div>
 
-      {/* Write review form */}
-      <ReviewForm productId={productId} />
-
       {/* Reviews list */}
       {isLoading ? (
         <InlineLoader label="Loading reviews" />
       ) : reviews.length === 0 ? (
         <div className="text-center py-10 text-gray-400">
           <p className="text-lg font-medium">No reviews yet</p>
-          <p className="text-sm mt-1">Be the first to review this product</p>
+          <p className="text-sm mt-1">Reviews are shared by verified customers after delivery</p>
         </div>
       ) : (
         <div className="divide-y">
@@ -246,6 +136,12 @@ export function ReviewsSection({ productId }: { productId: string }) {
           ))}
         </div>
       )}
+
+      {/* Review submissions happen from delivered orders */}
+      <p className="text-xs text-gray-400 border-t pt-4">
+        Purchased this product? You can review it from your{" "}
+        <Link href="/orders" className="text-brand hover:underline">delivered orders</Link>.
+      </p>
     </div>
   );
 }

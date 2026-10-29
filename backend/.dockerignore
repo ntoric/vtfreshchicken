@@ -1,0 +1,8 @@
+bin/
+tmp/
+uploads/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store

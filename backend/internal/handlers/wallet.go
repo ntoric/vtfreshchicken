@@ -284,10 +284,11 @@ func (h *WalletHandler) AdminListAllTransactions(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
 	f := services.WalletTxnFilter{
-		Type:   c.Query("type"),
-		Source: c.Query("source"),
-		Search: c.Query("search"),
-		Dr:     services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
+		Type:     c.Query("type"),
+		Source:   c.Query("source"),
+		Search:   c.Query("search"),
+		BranchID: branchFilter(c),
+		Dr:       services.DateRangeFilter{From: c.Query("from"), To: c.Query("to")},
 	}
 
 	txns, total, err := h.store.ListAllWalletTransactionsFiltered(c.Request.Context(), tid, f, limit, offset)
@@ -309,7 +310,7 @@ func (h *WalletHandler) AdminListAllTransactions(c *gin.Context) {
 // AdminStats returns aggregate wallet stats for the tenant.
 func (h *WalletHandler) AdminStats(c *gin.Context) {
 	tid := tenantID(c)
-	stats, err := h.store.WalletStats(c.Request.Context(), tid)
+	stats, err := h.store.WalletStats(c.Request.Context(), tid, branchFilter(c))
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

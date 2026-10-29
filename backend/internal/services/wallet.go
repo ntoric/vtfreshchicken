@@ -236,10 +236,11 @@ func (s *Store) ListWalletTransactions(ctx context.Context, tenantID, userID uui
 // ListAllWalletTransactions returns paginated wallet transactions across all users in a tenant (admin view).
 // WalletTxnFilter holds optional filters for listing wallet transactions.
 type WalletTxnFilter struct {
-	Type   string
-	Source string
-	Search string
-	Dr     DateRangeFilter
+	Type     string
+	Source   string
+	Search   string
+	BranchID *uuid.UUID // restrict to transactions of customers who ordered from this branch
+	Dr       DateRangeFilter
 }
 
 func (s *Store) ListAllWalletTransactions(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.WalletTransaction, int, error) {
@@ -267,6 +268,11 @@ func (s *Store) ListAllWalletTransactionsFiltered(ctx context.Context, tenantID 
 	if f.Search != "" {
 		where += fmt.Sprintf(" AND (COALESCE(wt.description,'') ILIKE $%d OR wt.reference ILIKE $%d OR wt.id::text ILIKE $%d)", argIdx, argIdx, argIdx)
 		args = append(args, "%"+f.Search+"%")
+		argIdx++
+	}
+	if f.BranchID != nil {
+		where += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM orders bo WHERE bo.user_id=wt.user_id AND bo.branch_id=$%d)", argIdx)
+		args = append(args, *f.BranchID)
 		argIdx++
 	}
 	drClause, args, argIdx := dateRangeClause("wt.created_at", f.Dr, args, argIdx)
@@ -303,19 +309,30 @@ func (s *Store) ListAllWalletTransactionsFiltered(ctx context.Context, tenantID 
 }
 
 // WalletStats returns aggregate wallet stats for a tenant (admin dashboard).
-func (s *Store) WalletStats(ctx context.Context, tenantID uuid.UUID) (map[string]interface{}, error) {
+// When branchID is set, only wallets/transactions of customers who ordered
+// from that branch are counted.
+func (s *Store) WalletStats(ctx context.Context, tenantID uuid.UUID, branchID *uuid.UUID) (map[string]interface{}, error) {
 	var walletCount int
 	var totalBalance float64
 	var totalTopups float64
 	var totalPurchases float64
 
+	args := []interface{}{tenantID}
+	cwClause := ""
+	wtClause := ""
+	if branchID != nil {
+		args = append(args, *branchID)
+		cwClause = " AND EXISTS (SELECT 1 FROM orders bo WHERE bo.user_id=customer_wallets.user_id AND bo.branch_id=$2)"
+		wtClause = " AND EXISTS (SELECT 1 FROM orders bo WHERE bo.user_id=wallet_transactions.user_id AND bo.branch_id=$2)"
+	}
+
 	err := s.Pool.QueryRow(ctx,
-		`SELECT
-			(SELECT COUNT(*) FROM customer_wallets WHERE tenant_id=$1),
-			COALESCE((SELECT SUM(balance) FROM customer_wallets WHERE tenant_id=$1), 0),
-			COALESCE((SELECT SUM(amount) FROM wallet_transactions WHERE tenant_id=$1 AND type='credit' AND source='topup'), 0),
-			COALESCE((SELECT SUM(amount) FROM wallet_transactions WHERE tenant_id=$1 AND type='debit' AND source='purchase'), 0)
-		`, tenantID).Scan(&walletCount, &totalBalance, &totalTopups, &totalPurchases)
+		fmt.Sprintf(`SELECT
+			(SELECT COUNT(*) FROM customer_wallets WHERE tenant_id=$1%[1]s),
+			COALESCE((SELECT SUM(balance) FROM customer_wallets WHERE tenant_id=$1%[1]s), 0),
+			COALESCE((SELECT SUM(amount) FROM wallet_transactions WHERE tenant_id=$1 AND type='credit' AND source='topup'%[2]s), 0),
+			COALESCE((SELECT SUM(amount) FROM wallet_transactions WHERE tenant_id=$1 AND type='debit' AND source='purchase'%[2]s), 0)
+		`, cwClause, wtClause), args...).Scan(&walletCount, &totalBalance, &totalTopups, &totalPurchases)
 	if err != nil {
 		return nil, err
 	}

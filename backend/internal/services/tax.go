@@ -14,22 +14,35 @@ import (
 // ---------------- Tax Classes ----------------
 
 func (s *Store) ListTaxClasses(ctx context.Context, tenantID uuid.UUID) ([]models.TaxClass, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListTaxClassesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListTaxClassesPaged returns a page of tax classes plus the total count.
+// limit <= 0 returns all rows.
+func (s *Store) ListTaxClassesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxClass, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM tax_classes WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT id, tenant_id, name, COALESCE(description,''), is_default, is_active, created_at, updated_at
-		 FROM tax_classes WHERE tenant_id=$1 ORDER BY is_default DESC, name ASC`, tenantID)
+		 FROM tax_classes WHERE tenant_id=$1 ORDER BY is_default DESC, name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.TaxClass
 	for rows.Next() {
 		var tc models.TaxClass
 		if err := rows.Scan(&tc.ID, &tc.TenantID, &tc.Name, &tc.Description, &tc.IsDefault, &tc.IsActive, &tc.CreatedAt, &tc.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, tc)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) GetTaxClass(ctx context.Context, tenantID, classID uuid.UUID) (*models.TaxClass, error) {
@@ -73,23 +86,36 @@ func (s *Store) DeleteTaxClass(ctx context.Context, tenantID, classID uuid.UUID)
 // ---------------- Tax Zones ----------------
 
 func (s *Store) ListTaxZones(ctx context.Context, tenantID uuid.UUID) ([]models.TaxZone, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListTaxZonesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListTaxZonesPaged returns a page of tax zones plus the total count.
+// limit <= 0 returns all rows.
+func (s *Store) ListTaxZonesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxZone, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM tax_zones WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT id, tenant_id, name, COALESCE(country_code,''), COALESCE(state_code,''),
 		        COALESCE(city,''), COALESCE(postal_code_pattern,''), is_active, created_at, updated_at
-		 FROM tax_zones WHERE tenant_id=$1 ORDER BY name ASC`, tenantID)
+		 FROM tax_zones WHERE tenant_id=$1 ORDER BY name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.TaxZone
 	for rows.Next() {
 		var tz models.TaxZone
 		if err := rows.Scan(&tz.ID, &tz.TenantID, &tz.Name, &tz.CountryCode, &tz.StateCode, &tz.City, &tz.PostalCodePattern, &tz.IsActive, &tz.CreatedAt, &tz.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, tz)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) CreateTaxZone(ctx context.Context, tz *models.TaxZone) error {
@@ -117,7 +143,18 @@ func (s *Store) DeleteTaxZone(ctx context.Context, tenantID, zoneID uuid.UUID) e
 // ---------------- Tax Rates ----------------
 
 func (s *Store) ListTaxRates(ctx context.Context, tenantID uuid.UUID) ([]models.TaxRate, error) {
-	rows, err := s.Pool.Query(ctx,
+	items, _, err := s.ListTaxRatesPaged(ctx, tenantID, 0, 0)
+	return items, err
+}
+
+// ListTaxRatesPaged returns a page of tax rates plus the total count.
+// limit <= 0 returns all rows.
+func (s *Store) ListTaxRatesPaged(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.TaxRate, int, error) {
+	var total int
+	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM tax_rates WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	q, args := pageClause(
 		`SELECT tr.id, tr.tenant_id, tr.tax_class_id, tr.tax_zone_id, tr.name, tr.rate, tr.compound,
 		        tr.priority, tr.is_active, tr.effective_from, tr.effective_to, tr.created_at, tr.updated_at,
 		        tc.name, tz.name
@@ -125,9 +162,11 @@ func (s *Store) ListTaxRates(ctx context.Context, tenantID uuid.UUID) ([]models.
 		 JOIN tax_classes tc ON tc.id = tr.tax_class_id
 		 JOIN tax_zones tz ON tz.id = tr.tax_zone_id
 		 WHERE tr.tenant_id=$1
-		 ORDER BY tr.priority ASC, tr.name ASC`, tenantID)
+		 ORDER BY tr.priority ASC, tr.name ASC`,
+		[]interface{}{tenantID}, limit, offset)
+	rows, err := s.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var out []models.TaxRate
@@ -136,11 +175,11 @@ func (s *Store) ListTaxRates(ctx context.Context, tenantID uuid.UUID) ([]models.
 		if err := rows.Scan(&tr.ID, &tr.TenantID, &tr.TaxClassID, &tr.TaxZoneID, &tr.Name, &tr.Rate, &tr.Compound,
 			&tr.Priority, &tr.IsActive, &tr.EffectiveFrom, &tr.EffectiveTo, &tr.CreatedAt, &tr.UpdatedAt,
 			&tr.TaxClassName, &tr.TaxZoneName); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, tr)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *Store) CreateTaxRate(ctx context.Context, tr *models.TaxRate) error {

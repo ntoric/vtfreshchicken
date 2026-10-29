@@ -4,10 +4,17 @@ import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Star, ImagePlus, Trash2, Loader2 } from "lucide-react";
 import { createReview, uploadReviewImages, type UploadedImage } from "@/lib/api";
-import type { PurchasedProduct } from "@/types";
+
+/** Minimal product shape needed to submit a review — PurchasedProduct and
+ * OrderItem both satisfy it. */
+export interface ReviewableProduct {
+  product_id: string;
+  name: string;
+  image_url?: string;
+}
 
 interface ReviewFormModalProps {
-  product: PurchasedProduct;
+  product: ReviewableProduct;
   brandColor: string;
   onClose: () => void;
   onSuccess: () => void;

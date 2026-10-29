@@ -282,6 +282,7 @@ export interface Attribute {
   is_filterable: boolean;
   is_variant: boolean;
   is_batch: boolean;
+  is_internal: boolean;
   options?: AttributeOption[];
 }
 
@@ -388,6 +389,16 @@ export interface Offer {
   is_active: boolean;
 }
 
+// ServiceZone is one concentric delivery ring of a branch's service area.
+// charge_type "free" | "flat" | "per_km" — charge is the flat amount or the
+// per-km rate (per_km applies to the distance beyond the previous ring).
+export interface ServiceZone {
+  radius_km: number;
+  charge_type: "free" | "flat" | "per_km";
+  charge: number;
+  label?: string;
+}
+
 // Branch is a physical outlet with its own delivery service area.
 export interface Branch {
   id: UUID;
@@ -403,15 +414,18 @@ export interface Branch {
   center_lat: number;
   center_lng: number;
   radius_km: number;
+  service_zones?: ServiceZone[];
   areas: string[];
   is_active: boolean;
   is_default?: boolean;
 }
 
-// One eligible branch for a delivery point, with its distance from it.
+// One eligible branch for a delivery point, with its distance from it and the
+// zone-based delivery charge that applies there (when zones are configured).
 export interface BranchMatch {
   branch: Branch;
   distance_km?: number;
+  delivery_charge?: number;
 }
 
 // Response of GET /api/delivery/check — branch is the nearest eligible match
@@ -433,6 +447,9 @@ export interface BootstrapResponse {
   offers?: Offer[];
   shipping_methods?: ShippingMethod[];
   discounts_enabled?: boolean;
+  // Store module feature flags (Developer → Modules & Features): code → enabled.
+  // An absent code is treated as enabled.
+  modules?: Record<string, boolean>;
 }
 
 export interface CartItem {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { useBranch } from "@/lib/branch";
 import { useCurrency } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
@@ -30,7 +31,8 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export function ProductEdit() {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
+  const { branch: scopeBranch } = useBranch();
   const { currency, currencies } = useCurrency();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -42,9 +44,13 @@ export function ProductEdit() {
   const attrsQ = useQuery({ queryKey: ["attributes", tenant], queryFn: () => api.listAttributes(tenant) });
   const vendorsQ = useQuery({ queryKey: ["vendors", tenant], queryFn: () => api.listVendors(tenant) });
   const taxClassesQ = useQuery({ queryKey: ["tax-classes", tenant], queryFn: () => api.listTaxClasses(tenant) });
+  const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
+  // Branch-bound staff can't reassign products — the backend forces their branch.
+  const branchLocked = !!user?.branch_id;
 
   const [form, setForm] = useState<Partial<Product>>({
     slug: "", name: "", description: "", sku: "", status: "draft",
+    branch_id: scopeBranch?.id || undefined,
     base_price: 0, currency_code: "", is_featured: false, stock: 0, image_url: "",
     category_id: "", variants: [], attributes: [], images: [],
     track_inventory: true, requires_shipping: true,
@@ -253,7 +259,7 @@ export function ProductEdit() {
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition whitespace-nowrap ${
               activeTab === t.key
                 ? "border-brand text-brand"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent text-neutral-500 hover:text-neutral-700"
             }`}
           >
             {t.label}
@@ -266,7 +272,7 @@ export function ProductEdit() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl border p-6 space-y-4">
-              <h3 className="font-semibold text-slate-900">Basic Info</h3>
+              <h3 className="font-semibold text-neutral-900">Basic Info</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Name">
                   <input value={form.name || ""} onChange={(e) => set("name", e.target.value)} className={inputCls} />
@@ -319,7 +325,7 @@ export function ProductEdit() {
 
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border p-6 space-y-4">
-              <h3 className="font-semibold text-slate-900">Organization</h3>
+              <h3 className="font-semibold text-neutral-900">Organization</h3>
               <Field label="Category">
                 <select
                   value={form.category_id || ""}
@@ -328,6 +334,17 @@ export function ProductEdit() {
                 >
                   <option value="">None</option>
                   {catsQ.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Branch">
+                <select
+                  value={form.branch_id || ""}
+                  onChange={(e) => set("branch_id", e.target.value || undefined)}
+                  className={inputCls}
+                  disabled={branchLocked}
+                >
+                  <option value="">All branches (store-wide)</option>
+                  {(branchesQ.data?.items ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </Field>
               <Field label="Status">
@@ -362,7 +379,7 @@ export function ProductEdit() {
         <div className="space-y-6">
           {/* Primary Image */}
           <div className="bg-white rounded-2xl border p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900">Primary Image</h3>
+            <h3 className="font-semibold text-neutral-900">Primary Image</h3>
             <div className="flex items-start gap-3">
               {form.image_url && (
                 <div className="relative group flex-shrink-0">
@@ -389,7 +406,7 @@ export function ProductEdit() {
                     />
                   </label>
                   <div className="flex-1 flex items-center gap-2 border rounded-lg px-3 py-2">
-                    <LinkIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <LinkIcon className="w-4 h-4 text-neutral-400 flex-shrink-0" />
                     <input
                       value={form.image_url || ""}
                       onChange={(e) => set("image_url", e.target.value)}
@@ -413,7 +430,7 @@ export function ProductEdit() {
           {/* Image Gallery */}
           <div className="bg-white rounded-2xl border p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-900">Image Gallery</h3>
+              <h3 className="font-semibold text-neutral-900">Image Gallery</h3>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-lg text-sm font-medium cursor-pointer hover:opacity-90 transition">
                   <Upload className="w-4 h-4" />
@@ -429,8 +446,8 @@ export function ProductEdit() {
                 <button onClick={addImage} className="text-sm text-brand font-medium hover:underline">+ Add by URL</button>
               </div>
             </div>
-            <p className="text-xs text-slate-400">Upload multiple images or paste URLs. The primary image above is shown as the main thumbnail.</p>
-            {images.length === 0 && <p className="text-sm text-slate-400">No gallery images.</p>}
+            <p className="text-xs text-neutral-400">Upload multiple images or paste URLs. The primary image above is shown as the main thumbnail.</p>
+            {images.length === 0 && <p className="text-sm text-neutral-400">No gallery images.</p>}
             {images.map((img, i) => (
               <div key={i} className="flex items-start gap-3 border rounded-xl p-3">
                 {img.url ? (
@@ -445,8 +462,8 @@ export function ProductEdit() {
                     </button>
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center flex-shrink-0">
-                    <Upload className="w-5 h-5 text-slate-300" />
+                  <div className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-200 flex items-center justify-center flex-shrink-0">
+                    <Upload className="w-5 h-5 text-neutral-300" />
                   </div>
                 )}
                 <div className="flex-1 grid grid-cols-2 gap-2">
@@ -475,14 +492,14 @@ export function ProductEdit() {
       {activeTab === "variants" && (
         <div className="bg-white rounded-2xl border p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Variants</h3>
+            <h3 className="font-semibold text-neutral-900">Variants</h3>
             <button onClick={addVariant} className="text-sm text-brand font-medium hover:underline">+ Add variant</button>
           </div>
-          {variants.length === 0 && <p className="text-sm text-slate-400">No variants. The product base price will be used.</p>}
+          {variants.length === 0 && <p className="text-sm text-neutral-400">No variants. The product base price will be used.</p>}
           {variants.map((v, i) => (
             <div key={i} className="border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-600">Variant {i + 1}</span>
+                <span className="text-sm font-medium text-neutral-600">Variant {i + 1}</span>
                 <div className="flex items-center gap-3">
                   <Toggle
                     checked={v.is_active}
@@ -502,7 +519,7 @@ export function ProductEdit() {
 
               {/* Variant Image — Upload + URL */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Variant Image</label>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Variant Image</label>
                 <div className="flex items-start gap-3">
                   {v.image_url ? (
                     <div className="relative group flex-shrink-0">
@@ -516,8 +533,8 @@ export function ProductEdit() {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center flex-shrink-0">
-                      <Upload className="w-5 h-5 text-slate-300" />
+                    <div className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-200 flex items-center justify-center flex-shrink-0">
+                      <Upload className="w-5 h-5 text-neutral-300" />
                     </div>
                   )}
                   <div className="flex-1 space-y-2">
@@ -532,7 +549,7 @@ export function ProductEdit() {
                         />
                       </label>
                       <div className="flex-1 flex items-center gap-2 border rounded-lg px-3 py-2">
-                        <LinkIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <LinkIcon className="w-4 h-4 text-neutral-400 flex-shrink-0" />
                         <input
                           value={v.image_url || ""}
                           onChange={(e) => updateVariant(i, { image_url: e.target.value })}
@@ -586,14 +603,14 @@ export function ProductEdit() {
       {activeTab === "attributes" && (
         <div className="bg-white rounded-2xl border p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Product Attributes</h3>
+            <h3 className="font-semibold text-neutral-900">Product Attributes</h3>
             <button onClick={addProductAttr} className="text-sm text-brand font-medium hover:underline">+ Add attribute</button>
           </div>
-          <p className="text-xs text-slate-400">Non-variant attributes like brand, material, weight, etc.</p>
+          <p className="text-xs text-neutral-400">Non-variant attributes like brand, material, weight, etc.</p>
           {nonVariantAttrs.length === 0 && (
-            <p className="text-sm text-slate-400">No non-variant attributes defined. Create attributes in the Attributes page first.</p>
+            <p className="text-sm text-neutral-400">No non-variant attributes defined. Create attributes in the Attributes page first.</p>
           )}
-          {productAttrs.length === 0 && nonVariantAttrs.length > 0 && <p className="text-sm text-slate-400">No product attributes set.</p>}
+          {productAttrs.length === 0 && nonVariantAttrs.length > 0 && <p className="text-sm text-neutral-400">No product attributes set.</p>}
           {productAttrs.map((pa, i) => {
             const attr = nonVariantAttrs.find(a => a.id === pa.attribute_id);
             return (
@@ -657,9 +674,9 @@ export function ProductEdit() {
       {activeTab === "shipping" && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900">Shipping Settings</h3>
+            <h3 className="font-semibold text-neutral-900">Shipping Settings</h3>
             {!form.requires_shipping && (
-              <p className="text-sm text-slate-400">Shipping is disabled for this product (set "Requires Shipping" to "Yes" in the General tab to enable).</p>
+              <p className="text-sm text-neutral-400">Shipping is disabled for this product (set "Requires Shipping" to "Yes" in the General tab to enable).</p>
             )}
             {form.requires_shipping && (
               <>
@@ -691,7 +708,7 @@ export function ProductEdit() {
           </div>
 
           <div className="bg-white rounded-2xl border p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900">Tax Class</h3>
+            <h3 className="font-semibold text-neutral-900">Tax Class</h3>
             <Field label="Tax Class">
               <select
                 value={form.tax_class_id || ""}
@@ -713,18 +730,18 @@ export function ProductEdit() {
       {/* ===== Returns tab ===== */}
       {activeTab === "returns" && (
         <div className="bg-white rounded-2xl border p-6 space-y-4">
-          <h3 className="font-semibold text-slate-900">Return & Refund Configuration</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="font-semibold text-neutral-900">Return & Refund Configuration</h3>
+          <p className="text-xs text-neutral-500">
             Control which return types are available for this product and override the store-default validity periods. Leave period fields blank to use store defaults. Toggle a type off to disable it entirely for this product.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-900">Returns</span>
+                <span className="text-sm font-medium text-neutral-900">Returns</span>
                 <select
                   value={form.return_enabled === null ? "default" : form.return_enabled ? "enabled" : "disabled"}
                   onChange={(e) => set("return_enabled", e.target.value === "default" ? null : e.target.value === "enabled")}
-                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="default">Store default</option>
                   <option value="enabled">Enabled</option>
@@ -746,13 +763,13 @@ export function ProductEdit() {
                 />
               </Field>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-900">Refunds</span>
+                <span className="text-sm font-medium text-neutral-900">Refunds</span>
                 <select
                   value={form.refund_enabled === null ? "default" : form.refund_enabled ? "enabled" : "disabled"}
                   onChange={(e) => set("refund_enabled", e.target.value === "default" ? null : e.target.value === "enabled")}
-                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="default">Store default</option>
                   <option value="enabled">Enabled</option>
@@ -774,13 +791,13 @@ export function ProductEdit() {
                 />
               </Field>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-900">Replacements</span>
+                <span className="text-sm font-medium text-neutral-900">Replacements</span>
                 <select
                   value={form.replacement_enabled === null ? "default" : form.replacement_enabled ? "enabled" : "disabled"}
                   onChange={(e) => set("replacement_enabled", e.target.value === "default" ? null : e.target.value === "enabled")}
-                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="default">Store default</option>
                   <option value="enabled">Enabled</option>
@@ -809,8 +826,8 @@ export function ProductEdit() {
       {/* ===== SEO tab ===== */}
       {activeTab === "seo" && (
         <div className="bg-white rounded-2xl border p-6 space-y-4">
-          <h3 className="font-semibold text-slate-900">SEO Settings</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="font-semibold text-neutral-900">SEO Settings</h3>
+          <p className="text-xs text-neutral-500">
             Override the meta title, meta description, and Open Graph image for this product. Leave blank to fall back to the product name, description, and primary image.
           </p>
           <div className="space-y-4">
@@ -874,7 +891,7 @@ const inputCls = "w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex-1">
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-neutral-600 mb-1">{label}</label>
       {children}
     </div>
   );

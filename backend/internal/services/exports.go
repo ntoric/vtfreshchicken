@@ -331,15 +331,15 @@ var ExportRegistry = map[string]ExportType{
 		Name:        "Discount Codes",
 		Description: "All discount codes with usage and validity",
 		Headers:     []string{"ID", "Code", "Description", "Type", "Value", "Min Subtotal", "Max Uses", "Used Count", "Active", "Starts At", "Ends At"},
-		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string) (int, error) {
-			items, err := s.ListDiscountCodes(ctx, tid)
+		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string) (int, error) {
+			items, err := s.ListDiscountCodesScoped(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return 0, err
 			}
 			return len(items), nil
 		},
-		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string, limit, offset int) ([][]string, error) {
-			items, err := s.ListDiscountCodes(ctx, tid)
+		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string, limit, offset int) ([][]string, error) {
+			items, err := s.ListDiscountCodesScoped(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return nil, err
 			}
@@ -371,15 +371,15 @@ var ExportRegistry = map[string]ExportType{
 		Name:        "Offers",
 		Description: "All promotional offers with type and validity",
 		Headers:     []string{"ID", "Name", "Description", "Type", "Value", "Active", "Starts At", "Ends At"},
-		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string) (int, error) {
-			items, err := s.ListOffers(ctx, tid)
+		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string) (int, error) {
+			items, err := s.ListOffersScoped(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return 0, err
 			}
 			return len(items), nil
 		},
-		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string, limit, offset int) ([][]string, error) {
-			items, err := s.ListOffers(ctx, tid)
+		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string, limit, offset int) ([][]string, error) {
+			items, err := s.ListOffersScoped(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return nil, err
 			}
@@ -406,15 +406,15 @@ var ExportRegistry = map[string]ExportType{
 		Name:        "Users & Staff",
 		Description: "All tenant users with roles and status",
 		Headers:     []string{"ID", "Email", "Full Name", "Role", "Active", "Phone", "Created At", "Last Login"},
-		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string) (int, error) {
-			items, err := s.ListTenantUsers(ctx, tid, nil)
+		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string) (int, error) {
+			items, err := s.ListTenantUsers(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return 0, err
 			}
 			return len(items), nil
 		},
-		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string, limit, offset int) ([][]string, error) {
-			items, err := s.ListTenantUsers(ctx, tid, nil)
+		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string, limit, offset int) ([][]string, error) {
+			items, err := s.ListTenantUsers(ctx, tid, exportBranchID(f))
 			if err != nil {
 				return nil, err
 			}
@@ -441,15 +441,15 @@ var ExportRegistry = map[string]ExportType{
 		Name:        "Inventory",
 		Description: "Current stock levels for all products and variants",
 		Headers:     []string{"Product", "Slug", "SKU", "Variant", "Stock", "Low Stock Threshold", "Track Inventory", "Low Stock", "Out of Stock"},
-		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string) (int, error) {
-			items, err := s.ListInventory(ctx, tid, "")
+		CountFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string) (int, error) {
+			items, err := listInventoryForExport(ctx, s, tid, f)
 			if err != nil {
 				return 0, err
 			}
 			return len(items), nil
 		},
-		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, _ map[string]string, limit, offset int) ([][]string, error) {
-			items, err := s.ListInventory(ctx, tid, "")
+		BatchFn: func(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string, limit, offset int) ([][]string, error) {
+			items, err := listInventoryForExport(ctx, s, tid, f)
 			if err != nil {
 				return nil, err
 			}
@@ -474,6 +474,15 @@ var ExportRegistry = map[string]ExportType{
 	},
 }
 
+// listInventoryForExport returns branch-scoped inventory rows when the export
+// filters carry a branch_id, otherwise the shared store-level inventory.
+func listInventoryForExport(ctx context.Context, s *Store, tid uuid.UUID, f map[string]string) ([]models.InventoryItem, error) {
+	if bid := exportBranchID(f); bid != nil {
+		return s.ListBranchInventory(ctx, tid, *bid, "")
+	}
+	return s.ListInventory(ctx, tid, "")
+}
+
 // ListExportTypes returns the keys of all registered export types.
 func ListExportTypes() []string {
 	keys := make([]string, 0, len(ExportRegistry))
@@ -485,11 +494,23 @@ func ListExportTypes() []string {
 
 // ---------------- Filter builders ----------------
 
+// exportBranchID parses the optional "branch_id" filter that scopes an export
+// job to a single branch.
+func exportBranchID(f map[string]string) *uuid.UUID {
+	if v := f["branch_id"]; v != "" {
+		if id, err := uuid.Parse(v); err == nil {
+			return &id
+		}
+	}
+	return nil
+}
+
 func buildOrderFilter(f map[string]string) OrderListFilter {
 	return OrderListFilter{
-		Status: f["status"],
-		Search: f["search"],
-		Dr:     DateRangeFilter{From: f["from"], To: f["to"]},
+		Status:   f["status"],
+		Search:   f["search"],
+		BranchID: exportBranchID(f),
+		Dr:       DateRangeFilter{From: f["from"], To: f["to"]},
 	}
 }
 
@@ -498,6 +519,7 @@ func buildProductFilter(tid uuid.UUID, f map[string]string) ProductFilter {
 		TenantID:   tid,
 		Status:     f["status"],
 		IncludeAll: true,
+		BranchID:   exportBranchID(f),
 	}
 	if s := f["search"]; s != "" {
 		pf.Search = &s
@@ -506,7 +528,7 @@ func buildProductFilter(tid uuid.UUID, f map[string]string) ProductFilter {
 }
 
 func buildCustomerFilter(tid uuid.UUID, f map[string]string) CustomerFilter {
-	cf := CustomerFilter{TenantID: tid}
+	cf := CustomerFilter{TenantID: tid, BranchID: exportBranchID(f)}
 	if s := f["search"]; s != "" {
 		cf.Search = &s
 	}
@@ -519,17 +541,19 @@ func buildCustomerFilter(tid uuid.UUID, f map[string]string) CustomerFilter {
 
 func buildPaymentTxnFilter(f map[string]string) PaymentTxnFilter {
 	return PaymentTxnFilter{
-		Status:  f["status"],
-		Gateway: f["gateway"],
-		Type:    f["type"],
-		Search:  f["search"],
-		Dr:      DateRangeFilter{From: f["from"], To: f["to"]},
+		Status:   f["status"],
+		Gateway:  f["gateway"],
+		Type:     f["type"],
+		Search:   f["search"],
+		BranchID: exportBranchID(f),
+		Dr:       DateRangeFilter{From: f["from"], To: f["to"]},
 	}
 }
 
 func buildStockMovementFilter(f map[string]string) StockMovementFilter {
 	return StockMovementFilter{
 		MovementType: f["movement_type"],
+		BranchID:     exportBranchID(f),
 		Search:       f["search"],
 		Dr:           DateRangeFilter{From: f["from"], To: f["to"]},
 	}
@@ -537,19 +561,21 @@ func buildStockMovementFilter(f map[string]string) StockMovementFilter {
 
 func buildWalletTxnFilter(f map[string]string) WalletTxnFilter {
 	return WalletTxnFilter{
-		Type:   f["type"],
-		Source: f["source"],
-		Search: f["search"],
-		Dr:     DateRangeFilter{From: f["from"], To: f["to"]},
+		Type:     f["type"],
+		Source:   f["source"],
+		Search:   f["search"],
+		BranchID: exportBranchID(f),
+		Dr:       DateRangeFilter{From: f["from"], To: f["to"]},
 	}
 }
 
 func buildReturnFilter(f map[string]string) ReturnListFilter {
 	return ReturnListFilter{
-		Status: f["status"],
-		Type:   f["type"],
-		Search: f["search"],
-		Dr:     DateRangeFilter{From: f["from"], To: f["to"]},
+		Status:   f["status"],
+		Type:     f["type"],
+		Search:   f["search"],
+		BranchID: exportBranchID(f),
+		Dr:       DateRangeFilter{From: f["from"], To: f["to"]},
 	}
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense, useRef, useEffect } from "react";
+import { useState, Suspense, useRef, useEffect, useMemo } from "react";
 import { ArrowLeft, Sprout, Drumstick, Snowflake, Wheat, Truck, ShieldCheck } from "lucide-react";
 import { fetchBootstrap, fetchProducts } from "@/lib/api";
 import { Header } from "@/components/Header";
@@ -16,6 +16,7 @@ import { ViewToggle, type ViewMode } from "@/components/ViewToggle";
 import { getCurrencySymbol } from "@/lib/format";
 import type { Product } from "@/types";
 import { useCurrencyLang } from "@/lib/currency-lang";
+import { useLocation } from "@/lib/location";
 
 const PAGE_SIZE = 12;
 
@@ -26,6 +27,17 @@ function StorefrontContent() {
   const search = searchParams.get("search") || undefined;
 
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
+  const { area, lat, lng, coveringBranches, branchesForArea, serviceable } = useLocation();
+  // Every branch that can serve the selected location — products from all of
+  // them are listed (shared products deduplicate server-side by row, branch
+  // exclusives appear for each covering branch).
+  const branchIds = useMemo(() => {
+    if (!serviceable) return undefined;
+    let ids: string[] = [];
+    if (lat != null && lng != null) ids = coveringBranches(lat, lng).map((b) => b.id);
+    if (!ids.length && area) ids = branchesForArea(area).map((b) => b.id);
+    return ids.length ? ids.join(",") : undefined;
+  }, [serviceable, lat, lng, area, coveringBranches, branchesForArea]);
   const [attrs, setAttrs] = useState<Record<string, string[]>>({});
   const [minPrice, setMinPrice] = useState<number | undefined>();
   const [maxPrice, setMaxPrice] = useState<number | undefined>();
@@ -47,7 +59,7 @@ function StorefrontContent() {
   });
 
   const productsQ = useInfiniteQuery({
-    queryKey: ["products", category, search, currency, lang, attrs, minPrice, maxPrice],
+    queryKey: ["products", category, search, currency, lang, attrs, minPrice, maxPrice, branchIds],
     queryFn: ({ pageParam = 0 }) =>
       fetchProducts({
         category,
@@ -56,6 +68,7 @@ function StorefrontContent() {
         attrs,
         min_price: minPrice,
         max_price: maxPrice,
+        branch_id: branchIds,
         limit: PAGE_SIZE,
         offset: pageParam,
       }, lang),
