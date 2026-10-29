@@ -787,6 +787,15 @@ export const api = {
   deletePage: (tenant: string, id: string) =>
     req<void>(`/api/pages/${id}`, { method: "DELETE" }),
 
+  // ===== Contact Submissions =====
+  // status: "unread" | "read" ("" = all)
+  listContactSubmissions: (tenant: string, params?: PageParams) =>
+    req<{ items: import("@/types").ContactSubmission[]; total: number }>(`/api/contact/submissions${pageQuery(params)}`),
+  markContactSubmissionRead: (tenant: string, id: string) =>
+    req<{ message: string }>(`/api/contact/submissions/${id}/read`, { method: "PUT", body: JSON.stringify({}) }),
+  deleteContactSubmission: (tenant: string, id: string) =>
+    req<void>(`/api/contact/submissions/${id}`, { method: "DELETE" }),
+
   // ===== Bulk Export =====
   listExportTypes: (tenant: string) =>
     req<{ types: ExportTypeMeta[] }>(`/api/exports/types`).then((r) => r.types),

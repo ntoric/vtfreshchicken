@@ -162,7 +162,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="xl:hidden p-2 -ml-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
+            className="xl:hidden p-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5 text-gray-700" strokeWidth={1.8} />
@@ -281,8 +281,8 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
             </form>
           </div>
 
-          {/* Right-side controls */}
-          <div className={`flex items-center gap-1 sm:gap-2 ${searchOpen ? "md:ml-auto" : ""}`}>
+          {/* Right-side controls — leftmost on mobile, rightmost on desktop */}
+          <div className="flex items-center gap-1 sm:gap-2 order-first -ml-2 xl:order-none xl:ml-0">
             {/* Search icon — mobile */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}

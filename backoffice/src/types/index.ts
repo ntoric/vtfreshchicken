@@ -1673,3 +1673,16 @@ export interface Branch {
   created_at?: string;
   updated_at?: string;
 }
+
+// ContactSubmission is a message sent through the storefront contact form.
+export interface ContactSubmission {
+  id: UUID;
+  tenant_id: UUID;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}

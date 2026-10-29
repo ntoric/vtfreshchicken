@@ -30,6 +30,7 @@ import { Payments } from "@/pages/Payments";
 import { Notifications } from "@/pages/Notifications";
 import { Pages } from "@/pages/Pages";
 import { PageBuilder } from "@/pages/PageBuilder";
+import { ContactSubmissions } from "@/pages/ContactSubmissions";
 import { Reports, ReportDetail } from "@/pages/Reports";
 import { Exports } from "@/pages/Exports";
 import { Branches } from "@/pages/Branches";
@@ -79,6 +80,7 @@ const pageRoutes = (
     <Route path="notifications" element={<Page><Notifications /></Page>} />
     <Route path="pages" element={<Page><ModuleGate module="page_builder"><Pages /></ModuleGate></Page>} />
     <Route path="pages/:id/edit" element={<Page><ModuleGate module="page_builder"><PageBuilder /></ModuleGate></Page>} />
+    <Route path="contact-submissions" element={<Page><ContactSubmissions /></Page>} />
     <Route path="users" element={<Page><Users /></Page>} />
     <Route path="permissions" element={<Page><Permissions /></Page>} />
     <Route path="customers" element={<Page><Customers /></Page>} />

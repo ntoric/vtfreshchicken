@@ -5021,19 +5021,22 @@ func (s *Store) CreateContactSubmission(ctx context.Context, tenantID uuid.UUID,
 	return &sub, nil
 }
 
-func (s *Store) ListContactSubmissions(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]ContactSubmission, int, error) {
+func (s *Store) ListContactSubmissions(ctx context.Context, tenantID uuid.UUID, status string, limit, offset int) ([]ContactSubmission, int, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
 	var total int
-	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM contact_submissions WHERE tenant_id=$1`, tenantID).Scan(&total); err != nil {
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM contact_submissions WHERE tenant_id=$1
+		AND ($2='' OR ($2='unread' AND NOT is_read) OR ($2='read' AND is_read))`, tenantID, status).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.Pool.Query(ctx, `
 		SELECT id, tenant_id, name, email, phone, subject, message, is_read, created_at
 		FROM contact_submissions WHERE tenant_id=$1
+		AND ($4='' OR ($4='unread' AND NOT is_read) OR ($4='read' AND is_read))
 		ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-		tenantID, limit, offset)
+		tenantID, limit, offset, status)
 	if err != nil {
 		return nil, 0, err
 	}

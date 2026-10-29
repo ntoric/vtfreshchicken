@@ -99,7 +99,8 @@ func (h *ContactHandler) ListSubmissions(c *gin.Context) {
 	tid := tenantID(c)
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	items, total, err := h.store.ListContactSubmissions(c.Request.Context(), tid, limit, offset)
+	status := c.DefaultQuery("status", "")
+	items, total, err := h.store.ListContactSubmissions(c.Request.Context(), tid, status, limit, offset)
 	if err != nil {
 		errResponse(c, http.StatusInternalServerError, err.Error())
 		return

@@ -80,6 +80,38 @@ export async function fetchBootstrap(): Promise<BootstrapResponse> {
   return fetchJson<BootstrapResponse>(`${API}/bootstrap`, { revalidate: 60 });
 }
 
+// Public store info (contact details, address) shown on the contact page.
+export interface StoreInfo {
+  tenant: {
+    id: string;
+    name: string;
+    contact_email?: string;
+    contact_phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+  };
+}
+
+export async function fetchStoreInfo(): Promise<StoreInfo> {
+  return fetchJson<StoreInfo>(`${API}/info`, { revalidate: 300 });
+}
+
+export interface ContactFormInput {
+  name: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+}
+
+export async function submitContactForm(body: ContactFormInput): Promise<{ message: string }> {
+  return fetchJson<{ message: string }>(`${API}/contact`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export interface ProductQuery {
   category?: string;
   search?: string;

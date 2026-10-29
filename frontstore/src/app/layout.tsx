@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { unstable_noStore as noStore } from "next/cache";
 import { Poppins, Fraunces } from "next/font/google";
 import "./globals.css";
 
@@ -98,6 +99,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     bootstrap = await fetchBootstrap();
   } catch (err) {
     console.error("[RootLayout] fetchBootstrap failed:", err);
+    // Opt out of static generation so this error page is never baked into
+    // the build (backend is unreachable during `next build` inside Docker).
+    // A dynamic fallback is rendered per-request until the backend is back.
+    noStore();
     // notFound() is not allowed in the root layout — render a minimal fallback.
     return (
       <html lang="en">
