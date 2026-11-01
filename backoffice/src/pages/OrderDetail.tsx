@@ -40,6 +40,7 @@ export function OrderDetail() {
   const { isEnabled: moduleEnabled } = useModules();
   const returnsModuleOn = moduleEnabled("returns");
   const shippingModuleOn = moduleEnabled("shipping");
+  const taxModuleOn = moduleEnabled("tax");
 
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
@@ -394,7 +395,7 @@ export function OrderDetail() {
                   <th className="px-5 py-2.5 font-medium">Product</th>
                   <th className="px-5 py-2.5 font-medium text-center">Qty</th>
                   <th className="px-5 py-2.5 font-medium text-right">Unit Price</th>
-                  <th className="px-5 py-2.5 font-medium text-right">Tax</th>
+                  {taxModuleOn && <th className="px-5 py-2.5 font-medium text-right">Tax</th>}
                   <th className="px-5 py-2.5 font-medium text-right">Shipping</th>
                   <th className="px-5 py-2.5 font-medium text-right">Line Total</th>
                 </tr>
@@ -421,6 +422,7 @@ export function OrderDetail() {
                     <td className="px-5 py-3 text-right text-neutral-600">
                       {formatMoney(item.unit_price, order.currency_code)}
                     </td>
+                    {taxModuleOn && (
                     <td className="px-5 py-3 text-right text-neutral-500 text-xs">
                       {item.tax_amount && item.tax_amount > 0 ? (
                         <span>{formatMoney(item.tax_amount, order.currency_code)}
@@ -428,6 +430,7 @@ export function OrderDetail() {
                         </span>
                       ) : "—"}
                     </td>
+                    )}
                     <td className="px-5 py-3 text-right text-neutral-500 text-xs">
                       {item.shipping_method ? (
                         <div>
@@ -449,35 +452,37 @@ export function OrderDetail() {
               </tbody>
               <tfoot className="bg-neutral-50">
                 <tr>
-                  <td colSpan={5} className="px-5 py-2 text-right text-neutral-500 text-xs">Subtotal</td>
+                  <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-2 text-right text-neutral-500 text-xs">Subtotal</td>
                   <td className="px-5 py-2 text-right font-medium">{formatMoney(order.subtotal, order.currency_code)}</td>
                 </tr>
                 {order.discount_total > 0 && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-2 text-right text-neutral-500 text-xs">Discount</td>
+                    <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-2 text-right text-neutral-500 text-xs">Discount</td>
                     <td className="px-5 py-2 text-right text-emerald-600">−{formatMoney(order.discount_total, order.currency_code)}</td>
                   </tr>
                 )}
                 <tr>
-                  <td colSpan={5} className="px-5 py-2 text-right text-neutral-500 text-xs">Shipping ({order.shipping_method || "standard"})</td>
+                  <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-2 text-right text-neutral-500 text-xs">Shipping ({order.shipping_method || "standard"})</td>
                   <td className="px-5 py-2 text-right font-medium">{formatMoney(order.shipping_total, order.currency_code)}</td>
                 </tr>
-                {order.tax_breakdown && order.tax_breakdown.length > 0 ? (
+                {taxModuleOn && order.tax_breakdown && order.tax_breakdown.length > 0 ? (
                   order.tax_breakdown.map((b, i) => (
                     <tr key={i}>
-                      <td colSpan={5} className="px-5 py-1 text-right text-neutral-400 text-xs">
+                      <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-1 text-right text-neutral-400 text-xs">
                         Tax — {b.tax_class_name} ({b.rate_name}, {b.rate}%{b.compound ? ", compound" : ""})
                       </td>
                       <td className="px-5 py-1 text-right text-neutral-500 text-xs">{formatMoney(b.tax_amount, order.currency_code)}</td>
                     </tr>
                   ))
                 ) : null}
+                {taxModuleOn && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-2 text-right text-neutral-500 text-xs">Tax Total</td>
+                  <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-2 text-right text-neutral-500 text-xs">Tax Total</td>
                   <td className="px-5 py-2 text-right font-medium">{formatMoney(order.tax_total, order.currency_code)}</td>
                 </tr>
+                )}
                 <tr className="border-t-2">
-                  <td colSpan={5} className="px-5 py-3 text-right font-bold text-neutral-800">Grand Total</td>
+                  <td colSpan={taxModuleOn ? 5 : 4} className="px-5 py-3 text-right font-bold text-neutral-800">Grand Total</td>
                   <td className="px-5 py-3 text-right font-bold text-lg text-brand">
                     {formatMoney(order.grand_total, order.currency_code)}
                   </td>
@@ -728,7 +733,7 @@ export function OrderDetail() {
                 <dd className="text-neutral-700 font-mono text-xs">{order.tracking_number || "—"}</dd>
               </div>
               <div>
-                <dt className="text-neutral-400 text-xs">Shipped At</dt>
+                <dt className="text-neutral-400 text-xs">On the way since</dt>
                 <dd className="text-neutral-700">{fmtDate(order.shipped_at)}</dd>
               </div>
               <div>
@@ -933,10 +938,10 @@ export function OrderDetail() {
             )}
           </div>
 
-          {/* Shipping Address */}
+          {/* Delivery Address */}
           {shipping && (
             <div className="bg-white rounded-2xl border p-5">
-              <h3 className="font-semibold text-neutral-800 mb-3">Shipping Address</h3>
+              <h3 className="font-semibold text-neutral-800 mb-3">Delivery Address</h3>
               <address className="text-sm text-neutral-600 not-italic space-y-0.5">
                 {shipping.first_name && <p className="font-medium text-neutral-700">{shipping.first_name} {shipping.last_name}</p>}
                 <p>{shipping.line1}</p>

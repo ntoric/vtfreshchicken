@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCurrency } from "@/lib/currency";
+import { useModules } from "@/lib/modules";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
@@ -24,6 +25,7 @@ interface ReportMeta {
   description: string;
   icon: LucideIcon;
   color: string;
+  module?: string;
 }
 
 const REPORTS: ReportMeta[] = [
@@ -32,26 +34,27 @@ const REPORTS: ReportMeta[] = [
   { key: "products", title: "Products Report", description: "Product catalog overview and inventory", icon: Package, color: "bg-red-50 text-red-600" },
   { key: "sales", title: "Sales Report", description: "Revenue, order trends, top products", icon: TrendingUp, color: "bg-amber-50 text-amber-600" },
   { key: "customers", title: "Customers Report", description: "Customer stats, acquisition, spend", icon: Users, color: "bg-pink-50 text-pink-600" },
-  { key: "taxes", title: "Taxes Report", description: "Tax classes, zones, and rates", icon: Receipt, color: "bg-cyan-50 text-cyan-600" },
-  { key: "shipping", title: "Shipping Report", description: "Methods, zones, and rates", icon: Truck, color: "bg-orange-50 text-orange-600" },
+  { key: "taxes", title: "Taxes Report", description: "Tax classes, zones, and rates", icon: Receipt, color: "bg-cyan-50 text-cyan-600", module: "tax" },
+  { key: "shipping", title: "Shipping Report", description: "Methods, zones, and rates", icon: Truck, color: "bg-orange-50 text-orange-600", module: "shipping" },
   { key: "inventory", title: "Inventory Report", description: "Stock levels, low stock, stock value", icon: Boxes, color: "bg-teal-50 text-teal-600" },
   { key: "stock", title: "Stock Movements", description: "Stock movement history and reasons", icon: ArrowLeftRight, color: "bg-lime-50 text-lime-600" },
   { key: "users", title: "Users & Staff Report", description: "User roles, active/inactive counts", icon: UserCog, color: "bg-neutral-50 text-neutral-600" },
   { key: "wallet", title: "Wallet Report", description: "Wallet balances, topups, purchases", icon: Wallet, color: "bg-violet-50 text-violet-600" },
   { key: "transactions", title: "Transactions Report", description: "Payment transactions across gateways", icon: Transactions, color: "bg-rose-50 text-rose-600" },
-  { key: "discounts", title: "Discounts Report", description: "Discount codes, redemptions, savings", icon: Percent, color: "bg-fuchsia-50 text-fuchsia-600" },
-  { key: "offers", title: "Offers Report", description: "Active offers and targeting", icon: Tag, color: "bg-sky-50 text-sky-600" },
+  { key: "discounts", title: "Discounts Report", description: "Discount codes, redemptions, savings", icon: Percent, color: "bg-fuchsia-50 text-fuchsia-600", module: "discounts" },
+  { key: "offers", title: "Offers Report", description: "Active offers and targeting", icon: Tag, color: "bg-sky-50 text-sky-600", module: "promotions" },
   { key: "addresses", title: "Addresses Report", description: "Customer addresses overview", icon: MapPin, color: "bg-green-50 text-green-600" },
 ];
 
 // ===== Landing page =====
 export function Reports() {
   const navigate = useNavigate();
+  const { isEnabled: moduleEnabled } = useModules();
   return (
     <div>
       <PageHeader title="Reports" subtitle="Browse and export detailed reports across your store" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {REPORTS.map((r) => {
+        {REPORTS.filter((r) => !r.module || moduleEnabled(r.module)).map((r) => {
           const Icon = r.icon;
           return (
             <button
@@ -94,8 +97,9 @@ export function ReportDetail() {
   const meta = REPORTS.find((r) => r.key === type);
   const [exportOpen, setExportOpen] = useState(false);
   const exportType = type ? EXPORT_TYPE_MAP[type] : undefined;
+  const { isEnabled: moduleEnabled } = useModules();
 
-  if (!meta) {
+  if (!meta || (meta.module && !moduleEnabled(meta.module))) {
     return (
       <div>
         <PageHeader title="Report not found" />

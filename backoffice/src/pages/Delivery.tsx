@@ -183,7 +183,7 @@ function DeliveryCard({
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-semibold text-neutral-800">#{o.id.slice(0, 8)}</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${cfg.bg} ${cfg.color}`}>
-              {o.status === "shipped" ? "Out for delivery" : cfg.label}
+              {cfg.label}
             </span>
           </div>
           <p className="text-[11px] text-neutral-400 mt-0.5">

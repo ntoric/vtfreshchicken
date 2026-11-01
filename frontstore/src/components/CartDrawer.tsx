@@ -10,9 +10,11 @@ import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatPrice } from "@/lib/format";
 import type { Currency } from "@/types";
 import { thumbUrl } from "@/lib/images";
+import { useModuleEnabled } from "@/lib/bootstrap";
 
 export function CartDrawer({ currency }: { currency?: Currency }) {
   const { cart, isOpen, closeCart, updateItem, removeItem, isLoading } = useCart();
+  const taxModuleOn = useModuleEnabled("tax");
   const router = useRouter();
   const confirmDlg = useConfirmState();
 
@@ -116,7 +118,7 @@ export function CartDrawer({ currency }: { currency?: Currency }) {
                 <span className="text-gray-600">Subtotal</span>
                 <span className="text-xl font-bold text-gray-900">{formatPrice(subtotal, currency)}</span>
               </div>
-              <p className="text-xs text-gray-400">Shipping and taxes calculated at checkout.</p>
+              <p className="text-xs text-gray-400">{taxModuleOn ? "Shipping and taxes calculated at checkout." : "Shipping calculated at checkout."}</p>
               <div className="flex gap-3">
                 <Link
                   href={`/cart`}

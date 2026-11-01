@@ -5,6 +5,7 @@ import type { Currency } from "@/types";
 import type { Order } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { thumbUrl } from "@/lib/images";
+import { useModuleEnabled } from "@/lib/bootstrap";
 
 interface OrderSummaryProps {
   order: Order;
@@ -14,6 +15,7 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({ order, currencyObj, transactionId, paymentMethod }: OrderSummaryProps) {
+  const taxModuleOn = useModuleEnabled("tax");
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -57,7 +59,7 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
             </svg>
-            Shipping Address
+            Delivery Address
           </h3>
           <div className="text-sm text-gray-600 space-y-0.5">
             <p className="font-medium text-gray-900">
@@ -93,7 +95,7 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
                 <p className="font-medium text-gray-900">{item.name}</p>
                 <p className="text-xs text-gray-500">
                   Quantity: {item.quantity} × {formatPrice(item.unit_price, currencyObj)}
-                  {item.tax_amount != null && item.tax_amount > 0 && (
+                  {taxModuleOn && item.tax_amount != null && item.tax_amount > 0 && (
                     <span className="text-gray-400"> · Tax: {formatPrice(item.tax_amount, currencyObj)}{item.tax_rate ? ` (${item.tax_rate.toFixed(2)}%)` : ""}</span>
                   )}
                 </p>
@@ -131,7 +133,7 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
               {order.shipping_total === 0 ? <span className="text-emerald-600">FREE</span> : formatPrice(order.shipping_total, currencyObj)}
             </span>
           </div>
-          {order.tax_breakdown && order.tax_breakdown.length > 0 ? (
+          {taxModuleOn && order.tax_breakdown && order.tax_breakdown.length > 0 ? (
             order.tax_breakdown.map((b, i) => (
               <div key={i} className="flex justify-between text-xs text-gray-400">
                 <span>Tax — {b.tax_class_name} ({b.rate_name}, {b.rate}%{b.compound ? ", compound" : ""})</span>
@@ -139,10 +141,12 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
               </div>
             ))
           ) : null}
-          <div className="flex justify-between">
-            <span className="text-gray-600">Tax</span>
-            <span className="font-medium">{formatPrice(order.tax_total, currencyObj)}</span>
-          </div>
+          {taxModuleOn && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tax</span>
+              <span className="font-medium">{formatPrice(order.tax_total, currencyObj)}</span>
+            </div>
+          )}
           <div className="border-t pt-3 flex justify-between items-baseline">
             <span className="font-bold text-gray-900">Total</span>
             <span className="text-2xl font-bold text-gray-900">{formatPrice(order.grand_total, currencyObj)}</span>

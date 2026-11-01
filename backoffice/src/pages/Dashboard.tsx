@@ -260,7 +260,7 @@ export function Dashboard() {
     {
       icon: Receipt,
       label: "Orders to fulfil",
-      hint: "Paid, not yet shipped",
+      hint: "Paid, not yet on the way",
       count: (statusCounts["paid"] ?? 0) + (statusCounts["processing"] ?? 0),
       to: `${prefix}/orders?status=paid`,
       color: "bg-blue-50 text-blue-600",

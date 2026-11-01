@@ -783,7 +783,7 @@ export const ORDER_STATUS_LABELS: Record<string, { label: string; color: string;
   paid: { label: "Paid", color: "text-emerald-700", bg: "bg-emerald-100" },
   processing: { label: "Processing", color: "text-blue-700", bg: "bg-blue-100" },
   ready: { label: "Ready", color: "text-indigo-700", bg: "bg-indigo-100" },
-  shipped: { label: "Shipped", color: "text-red-700", bg: "bg-red-100" },
+  shipped: { label: "On the way", color: "text-red-700", bg: "bg-red-100" },
   delivered: { label: "Delivered", color: "text-emerald-700", bg: "bg-emerald-100" },
   fulfilled: { label: "Fulfilled", color: "text-cyan-700", bg: "bg-cyan-100" },
   cancelled: { label: "Cancelled", color: "text-rose-700", bg: "bg-rose-100" },

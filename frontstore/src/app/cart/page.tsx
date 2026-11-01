@@ -189,10 +189,12 @@ export default function CartPage({ params }: { params: {} }) {
                     <span className="text-gray-600">Shipping</span>
                     <span className="text-gray-400">Calculated at checkout</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="text-gray-400">Calculated at checkout</span>
-                  </div>
+                  {bootstrapQ.data?.modules?.tax !== false && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tax</span>
+                      <span className="text-gray-400">Calculated at checkout</span>
+                    </div>
+                  )}
                 </div>
                 <div className="border-t pt-4 flex justify-between items-baseline">
                   <span className="font-semibold text-gray-900">Total</span>

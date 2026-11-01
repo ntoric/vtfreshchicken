@@ -167,7 +167,7 @@ function PendingContent() {
             </div>
             <div className="flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-gray-700 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">2</span>
-              <p>Your order will be shipped within 1-2 business days.</p>
+              <p>Your order will be on its way within 1-2 business days.</p>
             </div>
             <div className="flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-gray-700 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">3</span>

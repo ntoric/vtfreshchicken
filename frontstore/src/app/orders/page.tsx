@@ -28,7 +28,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   processing: { label: "Processing", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Settings },
   ready: { label: "Ready for Delivery", color: "#4f46e5", bg: "bg-indigo-50", border: "border-indigo-200", icon: Package },
   failed: { label: "Failed", color: "#dc2626", bg: "bg-rose-50", border: "border-rose-200", icon: XCircle },
-  shipped: { label: "Shipped", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
+  shipped: { label: "On the way", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
   delivered: { label: "Delivered", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
   fulfilled: { label: "Fulfilled", color: "#0891b2", bg: "bg-cyan-50", border: "border-cyan-200", icon: CheckCircle },
   cancelled: { label: "Cancelled", color: "#6b7280", bg: "bg-gray-50", border: "border-gray-200", icon: XCircle },

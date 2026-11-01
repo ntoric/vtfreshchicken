@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useBranch } from "@/lib/branch";
 import { useCurrency } from "@/lib/currency";
+import { useModules } from "@/lib/modules";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { ProductEditSkeleton, Spinner } from "@/components/Skeletons";
@@ -34,6 +35,8 @@ export function ProductEdit() {
   const { tenant, user } = useAuth();
   const { branch: scopeBranch } = useBranch();
   const { currency, currencies } = useCurrency();
+  const { isEnabled: moduleEnabled } = useModules();
+  const taxModuleOn = moduleEnabled("tax");
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -43,7 +46,7 @@ export function ProductEdit() {
   const catsQ = useQuery({ queryKey: ["categories", tenant], queryFn: () => api.listCategories(tenant) });
   const attrsQ = useQuery({ queryKey: ["attributes", tenant], queryFn: () => api.listAttributes(tenant) });
   const vendorsQ = useQuery({ queryKey: ["vendors", tenant], queryFn: () => api.listVendors(tenant) });
-  const taxClassesQ = useQuery({ queryKey: ["tax-classes", tenant], queryFn: () => api.listTaxClasses(tenant) });
+  const taxClassesQ = useQuery({ queryKey: ["tax-classes", tenant], queryFn: () => api.listTaxClasses(tenant), enabled: taxModuleOn });
   const branchesQ = useQuery({ queryKey: ["branches", tenant], queryFn: () => api.listBranches(tenant) });
   // Branch-bound staff can't reassign products — the backend forces their branch.
   const branchLocked = !!user?.branch_id;
@@ -707,6 +710,7 @@ export function ProductEdit() {
             )}
           </div>
 
+          {taxModuleOn && (
           <div className="bg-white rounded-2xl border p-6 space-y-4">
             <h3 className="font-semibold text-neutral-900">Tax Class</h3>
             <Field label="Tax Class">
@@ -724,6 +728,7 @@ export function ProductEdit() {
               </select>
             </Field>
           </div>
+          )}
         </div>
       )}
 

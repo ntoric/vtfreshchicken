@@ -48,5 +48,10 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 60s;
+        # Large responses (the ~2.5 MB backoffice bundle) overflow the in-memory
+        # proxy buffers; if nginx can't write its temp file (perms on
+        # /var/lib/nginx/proxy or a full disk) it truncates the body at ~64 KB,
+        # which Cloudflare surfaces as ERR_HTTP2_PROTOCOL_ERROR. Never spill to disk.
+        proxy_max_temp_file_size 0;
     }
 }

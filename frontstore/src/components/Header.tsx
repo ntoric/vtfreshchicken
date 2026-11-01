@@ -131,24 +131,6 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
   return (
     <LazyMotion features={domAnimation} strict>
     <>
-      {/* Announcement bar — scrolls away */}
-      <div
-        className="text-center text-xs font-medium py-2 px-4 text-white transition-all duration-300"
-        style={{ backgroundColor: brandColor }}
-      >
-        {appearance === "organic" ? (
-          <>
-            <span className="hidden sm:inline">Fresh cuts. Thoughtful choices. Meals to look forward to.</span>
-            <span className="sm:hidden">Good food starts with good chicken.</span>
-          </>
-        ) : (
-          <>
-            <span className="hidden sm:inline">✦ Free delivery on orders over ₹4,000 — Farm-fresh chicken, delivered chilled ✦</span>
-            <span className="sm:hidden">✦ Free delivery over ₹4,000 ✦</span>
-          </>
-        )}
-      </div>
-
       {/* Main navbar — sticky */}
       <header className="sticky top-0 z-40 pt-safe">
       <div
@@ -162,7 +144,7 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="xl:hidden p-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
+            className="xl:hidden order-last -ml-1 sm:-ml-3 -mr-2 p-2 rounded-xl hover:bg-stone-100 flex-shrink-0 transition-colors"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5 text-gray-700" strokeWidth={1.8} />
@@ -281,8 +263,8 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
             </form>
           </div>
 
-          {/* Right-side controls — leftmost on mobile, rightmost on desktop */}
-          <div className="flex items-center gap-1 sm:gap-2 order-first -ml-2 xl:order-none xl:ml-0">
+          {/* Right-side controls — pushed right on mobile; desktop search bar already sits ml-auto */}
+          <div className="flex items-center gap-0.5 sm:gap-2 ml-auto xl:ml-0">
             {/* Search icon — mobile */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}

@@ -4,6 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import type { Order, Currency, TenantSettings } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { useToast } from "@/components/Toast";
+import { useModuleEnabled } from "@/lib/bootstrap";
 
 interface InvoiceGeneratorProps {
   order: Order;
@@ -26,7 +27,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   paid: { label: "PAID", color: "#10b981" },
   pending: { label: "PENDING", color: "#f59e0b" },
   failed: { label: "FAILED", color: "#ef4444" },
-  shipped: { label: "SHIPPED", color: "#3b82f6" },
+  shipped: { label: "ON THE WAY", color: "#3b82f6" },
   delivered: { label: "DELIVERED", color: "#10b981" },
   cancelled: { label: "CANCELLED", color: "#6b7280" },
 };
@@ -42,6 +43,7 @@ export function InvoiceGenerator({
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const toast = useToast();
+  const taxModuleOn = useModuleEnabled("tax");
 
   const handleDownload = useCallback(() => {
     setIsGenerating(true);
@@ -54,6 +56,7 @@ export function InvoiceGenerator({
       tenantName,
       transactionId,
       paymentMethod,
+      taxModuleOn,
     });
 
     const printWindow = window.open("", "_blank", "width=800,height=900");
@@ -73,7 +76,7 @@ export function InvoiceGenerator({
         setIsGenerating(false);
       }, 300);
     };
-  }, [order, currencyObj, settings, tenantName, transactionId, paymentMethod]);
+  }, [order, currencyObj, settings, tenantName, transactionId, paymentMethod, taxModuleOn]);
 
   const orderNumber = order.id.slice(0, 8).toUpperCase();
   const orderDate = new Date(order.created_at).toLocaleDateString("en-US", {
@@ -122,8 +125,9 @@ function buildInvoiceHTML(opts: {
   tenantName?: string;
   transactionId?: string;
   paymentMethod?: string;
+  taxModuleOn?: boolean;
 }): string {
-  const { order, currencyObj, settings, tenantName, transactionId, paymentMethod } = opts;
+  const { order, currencyObj, settings, tenantName, transactionId, paymentMethod, taxModuleOn = true } = opts;
   const brandColor = settings?.brand_color || "#4f46e5";
   const storeName = tenantName || settings?.logo_url || "TruCommerce";
   const orderNumber = order.id.slice(0, 8).toUpperCase();
@@ -270,7 +274,7 @@ function buildInvoiceHTML(opts: {
       <!-- Addresses -->
       <div class="addresses">
         ${addressBlock(billingAddr, "Billing Address")}
-        ${addressBlock(shippingAddr, "Shipping Address")}
+        ${addressBlock(shippingAddr, "Delivery Address")}
       </div>
 
       <!-- Items table -->
@@ -300,10 +304,7 @@ function buildInvoiceHTML(opts: {
           <span>Shipping</span>
           <span>${order.shipping_total === 0 ? "FREE" : fmt(order.shipping_total)}</span>
         </div>
-        <div class="row">
-          <span>Tax</span>
-          <span>${fmt(order.tax_total)}</span>
-        </div>
+        ${taxModuleOn ? `<div class="row"><span>Tax</span><span>${fmt(order.tax_total)}</span></div>` : ""}
         <div class="row grand">
           <span>Total</span>
           <span>${fmt(order.grand_total)}</span>

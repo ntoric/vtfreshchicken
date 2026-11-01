@@ -352,7 +352,7 @@ export function ShopBannerCarousel({ banners, brandName }: { banners: ShopBanner
 
       {n > 1 && (
         <>
-          <div className="flex justify-center gap-1.5 mt-3">
+          <div className="flex justify-center mt-3">
             {slides.map((b, i) => (
               <button
                 key={b.id}
@@ -360,8 +360,12 @@ export function ShopBannerCarousel({ banners, brandName }: { banners: ShopBanner
                 onClick={() => go(i)}
                 aria-label={`Go to banner ${i + 1}`}
                 aria-current={i === index}
-                className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-brand" : "w-1.5 bg-stone-300 hover:bg-stone-400"}`}
-              />
+                className="group/dot flex items-center justify-center w-7 h-7"
+              >
+                <span
+                  className={`h-1.5 rounded-full transition-all ${i === index ? "w-5 bg-brand" : "w-1.5 bg-stone-300 group-hover/dot:bg-stone-400"}`}
+                />
+              </button>
             ))}
           </div>
         </>

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Droplets, Leaf, Snowflake, ShieldCheck } from "lucide-react";
 import { fetchBootstrap, fetchProduct } from "@/lib/api";
 import { Header } from "@/components/Header";
 import { ProductGallery } from "@/components/ProductGallery";
@@ -212,7 +212,7 @@ export default function ProductDetailPage({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
       <Header
        
         bootstrap={bootstrap}
@@ -445,18 +445,22 @@ export default function ProductDetailPage({
               </div>
             )}
 
-            {/* Quantity + add to cart + wishlist */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
-              <div className="flex items-center border rounded-xl self-start">
+            {/* Quantity + add to cart + wishlist — sticky bottom bar on mobile, inline on sm+ */}
+            <div
+              className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t border-stone-200 bg-white/95 backdrop-blur-md px-3 pt-3 shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:static sm:z-auto sm:gap-3 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:px-0 sm:pt-4 sm:pb-0 sm:shadow-none"
+            >
+              <div className="flex items-center border rounded-xl flex-shrink-0 h-12 bg-white">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="px-3 py-2 text-gray-500 hover:text-gray-900"
+                  className="px-3 h-full text-gray-500 hover:text-gray-900"
+                  aria-label="Decrease quantity"
                 >−</button>
-                <span className="px-4 py-2 font-medium">{qty}</span>
+                <span className="px-2 sm:px-4 min-w-[2rem] text-center font-medium">{qty}</span>
                 <button
                   onClick={() => setQty((q) => Math.min(maxStock, q + 1))}
                   disabled={qty >= maxStock}
-                  className="px-3 py-2 text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 h-full text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Increase quantity"
                 >+</button>
               </div>
               <button
@@ -467,7 +471,7 @@ export default function ProductDetailPage({
                   cart?.addItem(p.id, selectedVariant?.id, qty, unitPrice, currency);
                 }}
                 disabled={!inStock || (hasVariants && !selectedVariant)}
-                className="flex-1 bg-brand text-white font-semibold py-2.5 rounded-lg hover:bg-brand-dark transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 min-w-0 h-12 truncate px-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {!inStock
                   ? "Out of Stock"
@@ -477,7 +481,7 @@ export default function ProductDetailPage({
               </button>
               <button
                 onClick={() => wishlist?.toggleItem(product.id, selectedVariant?.id)}
-                className={`flex items-center justify-center w-12 h-12 rounded-xl border-2 transition self-start sm:self-auto ${
+                className={`flex items-center justify-center w-12 h-12 flex-shrink-0 rounded-xl border-2 bg-white transition ${
                   wishlist?.isInWishlist(product.id)
                     ? "border-rose-500 bg-rose-50 text-rose-500"
                     : "border-gray-200 text-gray-400 hover:border-rose-300 hover:text-rose-400"
@@ -491,19 +495,24 @@ export default function ProductDetailPage({
             </div>
 
             {/* Trust badges — driven by store/product configuration */}
-            <div className="flex flex-wrap items-start justify-center gap-x-8 gap-y-3 pt-4 border-t">
-              <div className="flex flex-col items-center text-center gap-1">
-                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-                <span className="text-xs text-gray-500">Secure Payment</span>
-              </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 border-t">
+              {([
+                [Droplets, "Purely Washed"],
+                [Leaf, "No Added Hormones"],
+                [Snowflake, "Cold-chain Kept"],
+                [ShieldCheck, "Hygiene First"],
+              ] as const).map(([Icon, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" strokeWidth={1.8} />
+                  <span className="text-xs text-gray-500 whitespace-nowrap">{label}</span>
+                </div>
+              ))}
               {requiresShipping && shippingModuleOn && (shipsFree || freeThresholdMethod) && (
-                <div className="flex flex-col items-center text-center gap-1">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
                   </svg>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
                     {shipsFree
                       ? "Free Shipping"
                       : `Free over ${formatPrice(freeThresholdMethod!.free_shipping_threshold!, getCurrencySymbol(bootstrap.currencies || [], freeThresholdMethod!.currency_code) ?? currencyObj)}`}
@@ -511,11 +520,11 @@ export default function ProductDetailPage({
                 </div>
               )}
               {(returnAllowed || refundAllowed || replacementAllowed) && (
-                <div className="flex flex-col items-center text-center gap-1">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3-3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 8.62 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
                   </svg>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
                     {returnAllowed
                       ? `${returnDays}-Day Returns`
                       : refundAllowed
@@ -530,7 +539,7 @@ export default function ProductDetailPage({
 
         {/* Tabbed details section */}
         <div className="mt-8 sm:mt-12 border-t pt-6 sm:pt-8">
-          <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+          <div className="grid grid-cols-2 gap-1 border-b sm:flex sm:overflow-x-auto no-scrollbar">
             {([
               ["description", "Description"],
               ["specs", "Specifications"],
@@ -540,7 +549,7 @@ export default function ProductDetailPage({
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                className={`px-2 sm:px-5 py-3 text-sm text-center font-medium border-b-2 transition whitespace-nowrap ${
                   activeTab === key
                     ? "border-brand text-brand"
                     : "border-transparent text-gray-500 hover:text-gray-700"

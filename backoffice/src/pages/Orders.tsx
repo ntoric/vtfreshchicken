@@ -17,7 +17,7 @@ const STATUS_TABS = [
   { key: "paid", label: "Paid" },
   { key: "processing", label: "Processing" },
   { key: "ready", label: "Ready" },
-  { key: "shipped", label: "Shipped" },
+  { key: "shipped", label: "On the way" },
   { key: "delivered", label: "Delivered" },
   { key: "fulfilled", label: "Fulfilled" },
   { key: "cancelled", label: "Cancelled" },

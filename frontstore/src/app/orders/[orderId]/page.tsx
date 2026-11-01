@@ -49,7 +49,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   processing: { label: "Processing", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Settings },
   ready: { label: "Ready for Delivery", color: "#4f46e5", bg: "bg-indigo-50", border: "border-indigo-200", icon: Package },
   failed: { label: "Failed", color: "#dc2626", bg: "bg-rose-50", border: "border-rose-200", icon: XCircle },
-  shipped: { label: "Shipped", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
+  shipped: { label: "On the way", color: "#2563eb", bg: "bg-blue-50", border: "border-blue-200", icon: Package },
   delivered: { label: "Delivered", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
   fulfilled: { label: "Fulfilled", color: "#0891b2", bg: "bg-cyan-50", border: "border-cyan-200", icon: CheckCircle },
   cancelled: { label: "Cancelled", color: "#6b7280", bg: "bg-gray-50", border: "border-gray-200", icon: XCircle },
@@ -325,7 +325,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
                 ? [
                     { key: "placed", label: "Order Placed", icon: FileText, active: true },
                     { key: "packed", label: "Packed", icon: Package, active: ["paid", "processing", "ready", "shipped", "delivered", "fulfilled"].includes(order.status) },
-                    { key: "shipped", label: "Shipped", icon: Truck, active: ["shipped", "delivered", "fulfilled"].includes(order.status) },
+                    { key: "shipped", label: "On the way", icon: Truck, active: ["shipped", "delivered", "fulfilled"].includes(order.status) },
                     { key: "paid", label: "Payment Received", icon: CreditCard, active: ["delivered", "fulfilled"].includes(order.status) },
                     { key: "delivered", label: "Delivered", icon: Home, active: ["delivered", "fulfilled"].includes(order.status) },
                   ]
@@ -333,7 +333,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
                     { key: "placed", label: "Order Placed", icon: FileText, active: true },
                     { key: "paid", label: "Payment Confirmed", icon: CreditCard, active: ["paid", "processing", "ready", "shipped", "delivered"].includes(order.status) },
                     { key: "processing", label: "Processing", icon: Settings, active: ["processing", "ready", "shipped", "delivered"].includes(order.status) },
-                    { key: "shipped", label: "Shipped", icon: Package, active: ["shipped", "delivered"].includes(order.status) },
+                    { key: "shipped", label: "On the way", icon: Package, active: ["shipped", "delivered"].includes(order.status) },
                     { key: "delivered", label: "Delivered", icon: Home, active: ["delivered", "fulfilled"].includes(order.status) },
                     { key: "fulfilled", label: "Fulfilled", icon: CheckCircle, active: order.status === "fulfilled" },
                   ]
@@ -373,7 +373,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
               </div>
               {order.shipped_at && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Shipped On</p>
+                  <p className="text-xs text-gray-400 mb-1">On the way since</p>
                   <p className="font-medium text-gray-800">{new Date(order.shipped_at).toLocaleString()}</p>
                 </div>
               )}
