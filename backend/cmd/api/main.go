@@ -167,6 +167,7 @@ func main() {
 	contactH := handlers.NewContactHandler(store, emailH)
 	branchH := handlers.NewBranchHandler(store)
 	modulesH := handlers.NewModulesHandler(store)
+	landingH := handlers.NewLandingHandler(store)
 	deliveryH := handlers.NewDeliveryHandler(store)
 
 	r := gin.New()
@@ -546,6 +547,8 @@ func main() {
 			devOnly.Use(middleware.RequireRole(models.RoleSuperAdmin))
 			{
 				devOnly.PUT("/modules/:code", modulesH.Update)
+				devOnly.GET("/landing", landingH.Get)
+				devOnly.PUT("/landing", landingH.Update)
 			}
 
 			// Permission management (business_admin + superadmin only)

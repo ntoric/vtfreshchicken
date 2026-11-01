@@ -136,6 +136,7 @@ export interface TenantSettings {
   brand_color: string;
   logo_url: string;
   landing_page_enabled: boolean;
+  landing_variant?: LandingVariant;
   landing_page_content?: LandingPageContent;
   anonymous_checkout?: boolean;
   returns_enabled?: boolean;
@@ -1129,6 +1130,14 @@ export interface PaymentGatewayConfig {
 }
 
 // Store module / feature flag managed under Developer → Modules & Features.
+// Storefront homepage design (Developer → Landing Page).
+export type LandingVariant = "classic" | "minimal";
+
+export interface LandingSettings {
+  landing_variant: LandingVariant;
+  options: LandingVariant[];
+}
+
 export interface StoreModule {
   id: UUID;
   tenant_id: UUID;

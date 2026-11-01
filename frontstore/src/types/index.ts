@@ -8,6 +8,8 @@ export interface Tenant {
   is_active: boolean;
 }
 
+export type LandingVariant = "classic" | "minimal";
+
 export interface TenantSettings {
   tenant_id: UUID;
   default_currency_id?: UUID;
@@ -17,6 +19,8 @@ export interface TenantSettings {
   logo_url: string;
   landing_page_enabled: boolean;
   landing_page_content?: LandingPageContent;
+  // Homepage design, set by superadmin under Backoffice → Developer → Landing Page.
+  landing_variant?: LandingVariant;
   anonymous_checkout?: boolean;
   returns_enabled?: boolean;
   return_period_days?: number;

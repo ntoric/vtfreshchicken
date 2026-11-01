@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { LandingHome } from "@/components/LandingHome";
+import { Suspense } from "react";
+import { HomeVariant } from "@/components/landing/HomeVariant";
+import { LandingSkeleton } from "@/components/landing/LandingSkeleton";
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +23,14 @@ export const metadata: Metadata = {
   },
 };
 
+// The homepage design is chosen server-side (Backoffice → Developer → Landing
+// Page). The page itself never suspends: a lightweight skeleton streams
+// immediately and the active design replaces it once resolved — and the
+// route-wide spinner in app/loading.tsx is never shown for "/".
 export default function Home() {
-  return <LandingHome />;
+  return (
+    <Suspense fallback={<LandingSkeleton />}>
+      <HomeVariant />
+    </Suspense>
+  );
 }

@@ -149,6 +149,9 @@ type TenantSettings struct {
 	LogoURL             string `json:"logo_url"`
 	LandingPageEnabled  bool   `json:"landing_page_enabled"`
 	LandingPageContent  *LandingPageContent `json:"landing_page_content,omitempty"`
+	// Homepage design ("classic" | "minimal"). Superadmin-only; set via
+	// PUT /api/developer/landing — not writable through PUT /api/settings.
+	LandingVariant      string `json:"landing_variant"`
 	// Tax settings
 	TaxInclusive        bool   `json:"tax_inclusive"`
 	TaxShipping         bool   `json:"tax_shipping"`

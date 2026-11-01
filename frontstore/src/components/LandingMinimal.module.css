@@ -1,0 +1,36 @@
+.page {
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.page a:focus-visible,
+.page button:focus-visible {
+  outline: 2px solid var(--brand-color);
+  outline-offset: 3px;
+}
+
+.skipLink {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 100;
+  background: #171717;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: top 0.2s;
+}
+.skipLink:focus {
+  top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

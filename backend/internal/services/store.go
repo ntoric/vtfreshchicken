@@ -299,12 +299,14 @@ func (s *Store) GetTenantSettings(ctx context.Context, tenantID uuid.UUID) (*mod
 		`SELECT default_currency_id, default_language, supported_languages, brand_color, COALESCE(logo_url, ''),
 		        landing_page_enabled, landing_page_content, tax_inclusive, tax_shipping, default_tax_class_id,
 		        anonymous_checkout, returns_enabled, return_period_days, refund_period_days, replacement_period_days,
-		        meta_title, meta_description, og_image, site_url, social_links, service_area
+		        meta_title, meta_description, og_image, site_url, social_links, service_area,
+		        landing_variant
 		 FROM tenant_settings WHERE tenant_id=$1`, tenantID).
 		Scan(&curID, &ts.DefaultLanguage, &ts.SupportedLanguages, &ts.BrandColor, &ts.LogoURL,
 			&ts.LandingPageEnabled, &landingContent, &ts.TaxInclusive, &ts.TaxShipping, &ts.DefaultTaxClassID,
 			&ts.AnonymousCheckout, &ts.ReturnsEnabled, &ts.ReturnPeriodDays, &ts.RefundPeriodDays, &ts.ReplacementPeriodDays,
-			&ts.MetaTitle, &ts.MetaDescription, &ts.OGImage, &ts.SiteURL, &ts.SocialLinks, &serviceArea)
+			&ts.MetaTitle, &ts.MetaDescription, &ts.OGImage, &ts.SiteURL, &ts.SocialLinks, &serviceArea,
+			&ts.LandingVariant)
 	if err != nil {
 		return nil, err
 	}

@@ -66,6 +66,8 @@ import type {
   WalletTransaction,
   WalletTransactionListResponse,
   StoreModule,
+  LandingSettings,
+  LandingVariant,
   StorePage,
   StorePageRequest,
   ExportJob,
@@ -249,6 +251,14 @@ export const api = {
     req<StoreModule>(`/api/developer/modules/${code}`, {
       method: "PUT",
       body: JSON.stringify({ is_enabled: isEnabled }),
+    }),
+
+  // ---- Landing page (superadmin, Developer → Landing Page) ----
+  getLandingSettings: () => req<LandingSettings>(`/api/developer/landing`),
+  updateLandingVariant: (variant: LandingVariant) =>
+    req<LandingSettings>(`/api/developer/landing`, {
+      method: "PUT",
+      body: JSON.stringify({ landing_variant: variant }),
     }),
 
   // ---- Branches ----

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,7 +9,7 @@ import { TableSkeleton } from "@/components/Skeletons";
 import { Toggle } from "@/components/Toggle";
 import { useToast } from "@/components/Toast";
 import { MODULES_QUERY_KEY } from "@/lib/modules";
-import type { PaymentGatewayConfig, StoreModule } from "@/types";
+import type { LandingVariant, PaymentGatewayConfig, StoreModule } from "@/types";
 
 // The backend returns this sentinel for stored secret values. Sending it back
 // on update preserves the stored secret instead of overwriting it.
@@ -96,7 +96,7 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
   const enabledIds = new Set((methodsQ.data?.methods ?? []).map((m) => m.id));
 
   return (
-    <div className="max-w-4xl">
+    <div>
       <PageHeader title="Developer Settings" subtitle="Platform-level configuration — visible to superadmin only" />
 
       {/* Environment */}
@@ -168,6 +168,9 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
         )}
       </div>
 
+      {/* Landing page */}
+      <LandingPageSettings />
+
       {/* Payment methods */}
       <div className="bg-white rounded-2xl border p-6">
         <h3 className="font-semibold text-neutral-900">Payment Methods</h3>
@@ -204,6 +207,149 @@ function DeveloperSettings({ tenant }: { tenant: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const LANDING_OPTIONS: { value: LandingVariant; label: string; description: string }[] = [
+  {
+    value: "classic",
+    label: "Classic",
+    description: "Editorial, story-led homepage with rich sections, testimonials and brand storytelling.",
+  },
+  {
+    value: "minimal",
+    label: "Minimal",
+    description: "Clean and simple — hero, key promises, the range, popular products and a compact footer.",
+  },
+];
+
+function LandingPageSettings() {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  const landingQ = useQuery({
+    queryKey: ["dev-landing"],
+    queryFn: () => api.getLandingSettings(),
+  });
+  const landingMut = useMutation({
+    mutationFn: (v: LandingVariant) => api.updateLandingVariant(v),
+    onSuccess: (res) => {
+      qc.setQueryData(["dev-landing"], res);
+      const label = LANDING_OPTIONS.find((o) => o.value === res.landing_variant)?.label ?? res.landing_variant;
+      toast.success(`${label} landing page activated`, "The storefront picks this up within about a minute.");
+    },
+    onError: (e) => toast.error("Update failed", (e as Error).message),
+  });
+
+  const current = landingQ.data?.landing_variant;
+
+  return (
+    <div className="bg-white rounded-2xl border p-6 mb-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-neutral-900">Landing Page</h3>
+          <p className="text-sm text-neutral-500 mt-0.5 mb-4">
+            Choose which homepage design the storefront shows at <code className="font-mono text-xs">/</code>.
+          </p>
+        </div>
+        <a
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 border rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 shrink-0"
+        >
+          View storefront <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </div>
+
+      {landingQ.isLoading && <TableSkeleton cols={2} rows={2} />}
+      {landingQ.isError && (
+        <p className="text-sm text-rose-600">Couldn&apos;t load landing page settings: {(landingQ.error as Error).message}</p>
+      )}
+
+      {landingQ.data && (
+        <div role="radiogroup" aria-label="Landing page design" className="grid sm:grid-cols-2 gap-4">
+          {LANDING_OPTIONS.map((o) => {
+            const active = current === o.value;
+            const pending = landingMut.isPending && landingMut.variables === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={landingMut.isPending}
+                onClick={() => !active && landingMut.mutate(o.value)}
+                className={`text-left rounded-xl border-2 p-3 transition-colors disabled:cursor-wait ${
+                  active ? "border-brand bg-brand/5" : "border-neutral-200 hover:border-neutral-300"
+                }`}
+              >
+                <LandingPreview variant={o.value} />
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="font-medium text-neutral-800">{o.label}</span>
+                  <code className="text-[11px] font-mono text-neutral-400">{o.value}</code>
+                  <span className="ml-auto">
+                    {pending ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+                    ) : active ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-brand text-white">
+                        <Check className="w-3 h-3" /> Active
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1">{o.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tiny wireframe thumbnails so the options are recognisable at a glance.
+function LandingPreview({ variant }: { variant: LandingVariant }) {
+  if (variant === "minimal") {
+    return (
+      <div aria-hidden className="h-28 rounded-lg bg-white border p-2.5 flex flex-col gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 space-y-1.5">
+            <div className="h-2 w-3/4 rounded bg-neutral-800" />
+            <div className="h-1.5 w-1/2 rounded bg-neutral-300" />
+            <div className="h-2.5 w-10 rounded-full bg-brand mt-2" />
+          </div>
+          <div className="w-16 h-12 rounded-md bg-neutral-200" />
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 mt-auto">
+          <div className="h-6 rounded bg-neutral-100" />
+          <div className="h-6 rounded bg-neutral-100" />
+          <div className="h-6 rounded bg-neutral-100" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div aria-hidden className="h-28 rounded-lg bg-[#faf7f1] border p-2.5 flex flex-col gap-1.5 overflow-hidden">
+      <div className="flex gap-2 items-center">
+        <div className="flex-1 space-y-1.5">
+          <div className="h-1 w-10 rounded bg-brand" />
+          <div className="h-2.5 w-full rounded bg-neutral-800" />
+          <div className="h-2.5 w-2/3 rounded bg-brand/70" />
+          <div className="flex gap-1">
+            <div className="h-2.5 w-8 rounded-full bg-brand" />
+            <div className="h-2.5 w-8 rounded-full border border-neutral-300" />
+          </div>
+        </div>
+        <div className="w-14 h-14 rounded-t-full rounded-b-md bg-neutral-300 rotate-3" />
+      </div>
+      <div className="flex gap-1 mt-auto">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-3 flex-1 rounded-full bg-neutral-200" />
+        ))}
+      </div>
+      <div className="h-4 rounded bg-neutral-900" />
     </div>
   );
 }
