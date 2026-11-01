@@ -152,7 +152,7 @@ export function HeroBanner({ storeName }: { storeName: string }) {
 
 /* ---------------------------------- Art ---------------------------------- */
 
-function Dot({ className = "" }: { className?: string }) {
+export function Dot({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" className={className} aria-hidden>
       <circle cx="10" cy="10" r="9" fill={RED} />
@@ -161,7 +161,7 @@ function Dot({ className = "" }: { className?: string }) {
   );
 }
 
-function Tomato({ className = "" }: { className?: string }) {
+export function Tomato({ className = "" }: { className?: string }) {
   const chambers = [0, 60, 120, 180, 240, 300];
   return (
     <svg viewBox="0 0 120 120" className={`pointer-events-none drop-shadow-sm ${className}`} aria-hidden>
@@ -182,7 +182,7 @@ function Tomato({ className = "" }: { className?: string }) {
   );
 }
 
-function Leaves({ className = "" }: { className?: string }) {
+export function Leaves({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 160 120" className={`pointer-events-none ${className}`} aria-hidden>
       <g>
@@ -201,7 +201,7 @@ function Leaves({ className = "" }: { className?: string }) {
   );
 }
 
-function BrushStroke({ className = "" }: { className?: string }) {
+export function BrushStroke({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 400 80" preserveAspectRatio="none" className={className} aria-hidden>
       <path

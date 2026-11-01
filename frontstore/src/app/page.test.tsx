@@ -6,6 +6,7 @@ import { HomeVariant, resolveLandingVariant } from "@/components/landing/HomeVar
 import { LandingSkeleton } from "@/components/landing/LandingSkeleton";
 import { LandingHome } from "@/components/LandingHome";
 import { LandingMinimal } from "@/components/LandingMinimal";
+import { LandingMalayalam } from "@/components/LandingMalayalam";
 import type { BootstrapResponse } from "@/types";
 import { BootstrapProvider } from "@/lib/bootstrap";
 
@@ -23,6 +24,11 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 const renderHome = () => renderWithClient(<LandingHome />);
+
+// next/font only works under the Next compiler; stub every Google font loader.
+vi.mock("next/font/google", () =>
+  new Proxy({}, { get: () => () => ({ className: "", style: { fontFamily: "" } }) })
+);
 
 vi.mock("next/image", () => ({
   default: ({ alt, fill, priority, ...props }: { alt: string; fill?: boolean; priority?: boolean; [k: string]: unknown }) => {
@@ -230,6 +236,7 @@ describe("Home variant selection", () => {
 
   it("resolves the configured variant, defaulting to classic", () => {
     expect(resolveLandingVariant(bootstrapWith("minimal"))).toBe("minimal");
+    expect(resolveLandingVariant(bootstrapWith("malayalam"))).toBe("malayalam");
     expect(resolveLandingVariant(bootstrapWith("classic"))).toBe("classic");
     expect(resolveLandingVariant(bootstrapWith(undefined))).toBe("classic");
     expect(resolveLandingVariant(bootstrapWith("unknown"))).toBe("classic");
@@ -244,5 +251,58 @@ describe("Home variant selection", () => {
   it("the page streams a skeleton first via Suspense", () => {
     const el = Home();
     expect(el.props.fallback.type).toBe(LandingSkeleton);
+  });
+});
+
+describe("Malayalam landing page", () => {
+  const renderMl = () => renderWithClient(<LandingMalayalam />);
+
+  it("marks the page as Malayalam and renders a single Malayalam h1", () => {
+    const { container } = renderMl();
+    expect(container.querySelector('[lang="ml"]')).not.toBeNull();
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent).toContain("ചിക്കൻ");
+  });
+
+  it("primary CTAs link to /shop", async () => {
+    renderMl();
+    expect(screen.getByRole("link", { name: /ഇപ്പോൾ ഓർഡർ ചെയ്യൂ/ })).toHaveAttribute("href", "/shop");
+    expect(await screen.findByRole("link", { name: /ഷോപ്പിംഗ് തുടങ്ങൂ/ })).toHaveAttribute("href", "/shop");
+  });
+
+  it("range tiles link to shop searches", () => {
+    renderMl();
+    const hrefs = screen.getAllByRole("link").map((l) => l.getAttribute("href"));
+    expect(hrefs).toEqual(expect.arrayContaining(["/shop?search=fresh", "/shop?search=frozen", "/shop?search=chicken"]));
+  });
+
+  it("lazily renders the lower sections and a Malayalam footer", async () => {
+    const { container } = renderMl();
+    for (const name of [/ലളിതമായ മൂന്ന് ഘട്ടങ്ങളിൽ/, /ഞങ്ങളുടെ ഉപഭോക്താക്കൾ പറയുന്നത്/, /അറിഞ്ഞിരിക്കേണ്ടവ/]) {
+      expect(await screen.findByRole("heading", { level: 2, name })).toBeInTheDocument();
+    }
+    expect(container.querySelectorAll("details > summary").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText(/എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം/)).toBeInTheDocument();
+    expect(screen.queryByText(/All rights reserved/)).toBeNull();
+  });
+
+  it("shows branch areas with a Malayalam +N chip", async () => {
+    const areas = Array.from({ length: 10 }, (_, i) => `Area ${i + 1}`);
+    const bootstrap = {
+      settings: {},
+      currencies: [],
+      languages: [],
+      categories: [],
+      attributes: [],
+      branches: [{ id: "b1", name: "Kacheripadi Branch", city: "Malappuram", areas, is_active: true }],
+    } as unknown as BootstrapResponse;
+    renderWithClient(
+      <BootstrapProvider bootstrap={bootstrap}>
+        <LandingMalayalam />
+      </BootstrapProvider>
+    );
+    expect(await screen.findByRole("heading", { name: /ഞങ്ങൾ ഡെലിവർ ചെയ്യുന്ന സ്ഥലങ്ങൾ/ })).toBeInTheDocument();
+    expect(screen.getByText("+2 കൂടി")).toBeInTheDocument();
   });
 });

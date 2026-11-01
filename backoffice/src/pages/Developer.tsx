@@ -227,6 +227,11 @@ const LANDING_OPTIONS: { value: LandingVariant; label: string; description: stri
     label: "Minimal",
     description: "Clean and simple — hero, key promises, the range, popular products and a compact footer.",
   },
+  {
+    value: "malayalam",
+    label: "Malayalam (മലയാളം)",
+    description: "The clean, simple layout with all homepage copy in Malayalam, set in Malayalam typefaces.",
+  },
 ];
 
 function LandingPageSettings() {
@@ -274,7 +279,7 @@ function LandingPageSettings() {
       )}
 
       {landingQ.data && (
-        <div role="radiogroup" aria-label="Landing page design" className="grid sm:grid-cols-2 gap-4">
+        <div role="radiogroup" aria-label="Landing page design" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {LANDING_OPTIONS.map((o) => {
             const active = current === o.value;
             const pending = landingMut.isPending && landingMut.variables === o.value;
@@ -316,6 +321,25 @@ function LandingPageSettings() {
 
 // Tiny wireframe thumbnails so the options are recognisable at a glance.
 function LandingPreview({ variant }: { variant: LandingVariant }) {
+  if (variant === "malayalam") {
+    return (
+      <div aria-hidden className="h-28 rounded-lg bg-white border p-2.5 flex flex-col gap-2 overflow-hidden">
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 space-y-1">
+            <div className="text-[11px] leading-none font-semibold text-brand">ഫ്രഷ്</div>
+            <div className="text-sm leading-tight font-bold text-neutral-800">പ്രീമിയം ചിക്കൻ</div>
+            <div className="h-2.5 w-12 rounded-full bg-brand mt-1.5" />
+          </div>
+          <div className="w-14 h-12 rounded-full bg-neutral-200" />
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 mt-auto">
+          <div className="h-6 rounded bg-neutral-100" />
+          <div className="h-6 rounded bg-neutral-100" />
+          <div className="h-6 rounded bg-neutral-100" />
+        </div>
+      </div>
+    );
+  }
   if (variant === "minimal") {
     return (
       <div aria-hidden className="h-28 rounded-lg bg-white border p-2.5 flex flex-col gap-2">

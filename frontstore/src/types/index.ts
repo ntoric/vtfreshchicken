@@ -8,7 +8,7 @@ export interface Tenant {
   is_active: boolean;
 }
 
-export type LandingVariant = "classic" | "minimal";
+export type LandingVariant = "classic" | "minimal" | "malayalam";
 
 export type ShopBannerTheme = "crimson" | "plum" | "forest" | "charcoal" | "saffron";
 

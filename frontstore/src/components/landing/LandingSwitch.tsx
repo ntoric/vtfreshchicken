@@ -14,6 +14,12 @@ const LandingMinimal = dynamic(() => import("@/components/LandingMinimal").then(
   loading: () => <LandingSkeleton />,
 });
 
+const LandingMalayalam = dynamic(() => import("@/components/LandingMalayalam").then((m) => m.LandingMalayalam), {
+  loading: () => <LandingSkeleton />,
+});
+
 export function LandingSwitch({ variant }: { variant: LandingVariant }) {
-  return variant === "minimal" ? <LandingMinimal /> : <LandingHome />;
+  if (variant === "minimal") return <LandingMinimal />;
+  if (variant === "malayalam") return <LandingMalayalam />;
+  return <LandingHome />;
 }

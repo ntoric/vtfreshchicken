@@ -1131,7 +1131,7 @@ export interface PaymentGatewayConfig {
 
 // Store module / feature flag managed under Developer → Modules & Features.
 // Storefront homepage design (Developer → Landing Page).
-export type LandingVariant = "classic" | "minimal";
+export type LandingVariant = "classic" | "minimal" | "malayalam";
 
 // Shop page banner carousel (Content → Shop Banners).
 export type ShopBannerTheme = "crimson" | "plum" | "forest" | "charcoal" | "saffron";

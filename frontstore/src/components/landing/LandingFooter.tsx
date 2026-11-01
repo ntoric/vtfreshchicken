@@ -19,30 +19,61 @@ import type { BootstrapResponse } from "@/types";
 const NOISE_BG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E\")";
 
-const standards = [
-  { icon: Droplets, title: "Purely washed", copy: "Cleaned in filtered water" },
-  { icon: Leaf, title: "No added hormones", copy: "Honest, clearly labelled" },
-  {
-    icon: ThermometerSnowflake,
-    title: "Cold-chain kept",
-    copy: "Chilled store to door",
-  },
-  { icon: ShieldCheck, title: "Hygiene first", copy: "Machine-cut & sealed" },
-];
+const STANDARD_ICONS = [Droplets, Leaf, ThermometerSnowflake, ShieldCheck];
+const HELP_HREFS = ["/orders", "/account/dashboard", "/wishlist", "/contact"];
+const COMPANY_HREFS = ["/about", "/privacy-policy", "/cookie-policy", "/terms"];
 
-const help = [
-  { label: "Track an order", href: "/orders" },
-  { label: "My account", href: "/account/dashboard" },
-  { label: "Wishlist", href: "/wishlist" },
-  { label: "Contact us", href: "/contact" },
-];
+/**
+ * Every user-facing string in the footer. Defaults to English; localized
+ * landing pages (e.g. LandingMalayalam) pass their own. `standards`, `help`
+ * and `company` are positional — they map onto the icon/href lists above.
+ */
+export interface LandingFooterCopy {
+  signatureEyebrow: string;
+  signatureLine1: string;
+  signatureLine2: string;
+  signatureBody: string;
+  shopCta: string;
+  contactCta: string;
+  standards: { title: string; copy: string }[];
+  about: string;
+  shopTitle: string;
+  allProducts: string;
+  helpTitle: string;
+  help: string[];
+  companyTitle: string;
+  company: string[];
+  rights: string;
+  tagline: string;
+  backToTop: string;
+}
 
-const company = [
-  { label: "About us", href: "/about" },
-  { label: "Privacy policy", href: "/privacy-policy" },
-  { label: "Cookie policy", href: "/cookie-policy" },
-  { label: "Terms of service", href: "/terms" },
-];
+export const LANDING_FOOTER_COPY_EN: LandingFooterCopy = {
+  signatureEyebrow: "From our kitchen to yours",
+  signatureLine1: "Honest chicken,",
+  signatureLine2: "cut this morning.",
+  signatureBody:
+    "Purely washed, machine-cut and packed in insulated, food-safe chill packs — delivered to your door the day it's prepared.",
+  shopCta: "Shop fresh cuts",
+  contactCta: "Get in touch",
+  standards: [
+    { title: "Purely washed", copy: "Cleaned in filtered water" },
+    { title: "No added hormones", copy: "Honest, clearly labelled" },
+    { title: "Cold-chain kept", copy: "Chilled store to door" },
+    { title: "Hygiene first", copy: "Machine-cut & sealed" },
+  ],
+  about:
+    "Premium fresh and frozen chicken, prepared with care and delivered chilled across our service area.",
+  shopTitle: "Shop",
+  allProducts: "All products",
+  helpTitle: "Help",
+  help: ["Track an order", "My account", "Wishlist", "Contact us"],
+  companyTitle: "Company",
+  company: ["About us", "Privacy policy", "Cookie policy", "Terms of service"],
+  rights: "All rights reserved.",
+  tagline: "Prepared fresh · Delivered chilled",
+  backToTop: "Back to top",
+};
 
 /** Readable label for a social URL, e.g. https://instagram.com/x → "Instagram". */
 function socialLabel(url: string): string {
@@ -95,13 +126,19 @@ export function LandingFooter({
   storeName,
   shopHref = "/shop",
   signature = true,
+  copy = LANDING_FOOTER_COPY_EN,
 }: {
   bootstrap: BootstrapResponse | null | undefined;
   storeName: string;
   shopHref?: string;
   /** Show the headline + CTA band. Turn off when the page already ends with a CTA. */
   signature?: boolean;
+  /** Footer strings; English by default. */
+  copy?: LandingFooterCopy;
 }) {
+  const standards = copy.standards.map((s, i) => ({ ...s, icon: STANDARD_ICONS[i] ?? ShieldCheck }));
+  const help = copy.help.map((label, i) => ({ label, href: HELP_HREFS[i] }));
+  const company = copy.company.map((label, i) => ({ label, href: COMPANY_HREFS[i] }));
   const year = new Date().getFullYear();
   const categories = (bootstrap?.categories || [])
     .filter((c) => !c.parent_id && c.is_active)
@@ -149,25 +186,24 @@ export function LandingFooter({
           <div className="grid items-end gap-8 border-b border-white/[0.07] py-14 sm:py-20 lg:grid-cols-[1.35fr_1fr]">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand">
-                From our kitchen to yours
+                {copy.signatureEyebrow}
               </p>
               <h2 className="mt-4 font-display text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Honest chicken,
+                {copy.signatureLine1}
                 <br />
-                <span className="italic text-stone-300">cut this morning.</span>
+                <span className="italic text-stone-300">{copy.signatureLine2}</span>
               </h2>
             </div>
             <div className="lg:justify-self-end lg:text-right">
               <p className="max-w-sm text-sm leading-relaxed text-stone-400 lg:ml-auto">
-                Purely washed, machine-cut and packed in insulated, food-safe
-                chill packs — delivered to your door the day it&apos;s prepared.
+                {copy.signatureBody}
               </p>
               <div className="mt-6 flex flex-wrap gap-3 lg:justify-end">
                 <Link
                   href={shopHref}
                   className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-12px_var(--brand-color)] transition-all hover:-translate-y-0.5 hover:bg-brand-dark"
                 >
-                  Shop fresh cuts
+                  {copy.shopCta}
                   <ArrowRight
                     className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                     aria-hidden
@@ -177,7 +213,7 @@ export function LandingFooter({
                   href="/contact"
                   className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/5"
                 >
-                  Get in touch
+                  {copy.contactCta}
                 </Link>
               </div>
             </div>
@@ -220,8 +256,7 @@ export function LandingFooter({
           <div className="col-span-2 lg:col-span-1">
             <BrandLogo inverse storeName={storeName} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed">
-              Premium fresh and frozen chicken, prepared with care and delivered
-              chilled across our service area.
+              {copy.about}
             </p>
 
             {hasContact && (
@@ -290,11 +325,11 @@ export function LandingFooter({
             )}
           </div>
 
-          <nav aria-label="Shop">
-            <ColumnTitle>Shop</ColumnTitle>
+          <nav aria-label={copy.shopTitle}>
+            <ColumnTitle>{copy.shopTitle}</ColumnTitle>
             <ul className="mt-5 space-y-3 text-sm">
               <li>
-                <FooterLink href={shopHref}>All products</FooterLink>
+                <FooterLink href={shopHref}>{copy.allProducts}</FooterLink>
               </li>
               {categories.map((cat) => (
                 <li key={cat.id}>
@@ -306,8 +341,8 @@ export function LandingFooter({
             </ul>
           </nav>
 
-          <nav aria-label="Help">
-            <ColumnTitle>Help</ColumnTitle>
+          <nav aria-label={copy.helpTitle}>
+            <ColumnTitle>{copy.helpTitle}</ColumnTitle>
             <ul className="mt-5 space-y-3 text-sm">
               {help.map((l) => (
                 <li key={l.label}>
@@ -317,8 +352,8 @@ export function LandingFooter({
             </ul>
           </nav>
 
-          <nav aria-label="Company">
-            <ColumnTitle>Company</ColumnTitle>
+          <nav aria-label={copy.companyTitle}>
+            <ColumnTitle>{copy.companyTitle}</ColumnTitle>
             <ul className="mt-5 space-y-3 text-sm">
               {company.map((l) => (
                 <li key={l.label}>
@@ -352,18 +387,18 @@ export function LandingFooter({
       <div className="relative border-t border-white/[0.07] bg-black/20">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-5 sm:flex-row sm:items-center lg:px-8">
           <p className="text-xs text-stone-500">
-            © {year} {storeName}. All rights reserved.
+            © {year} {storeName}. {copy.rights}
           </p>
           <div className="flex items-center gap-5 text-xs">
             <span className="hidden text-stone-600 sm:inline">
-              Prepared fresh · Delivered chilled
+              {copy.tagline}
             </span>
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="group inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-stone-400 transition-colors hover:border-white/30 hover:text-white"
             >
-              Back to top
+              {copy.backToTop}
               <ArrowUp
                 className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5"
                 aria-hidden
