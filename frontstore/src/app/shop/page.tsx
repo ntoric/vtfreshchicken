@@ -47,11 +47,19 @@ function StorefrontContent() {
 
   // Persist view mode preference in localStorage
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("productViewMode") : null;
-    if (saved === "grid" || saved === "list") setViewMode(saved);
+    try {
+      const saved = localStorage.getItem("productViewMode");
+      if (saved === "grid" || saved === "list") setViewMode(saved);
+    } catch {
+      // storage unavailable
+    }
   }, []);
   useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem("productViewMode", viewMode);
+    try {
+      localStorage.setItem("productViewMode", viewMode);
+    } catch {
+      // storage unavailable
+    }
   }, [viewMode]);
 
   const bootstrapQ = useQuery({

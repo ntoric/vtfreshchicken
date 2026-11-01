@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Plus, Snowflake, Star, ThermometerSnowflake } from "lucide-react";
+import { Heart, ShoppingBasket, Snowflake, Star, ThermometerSnowflake, Zap } from "lucide-react";
 import type { Product, Currency, Variant } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -15,8 +15,6 @@ interface ProductCardProps {
   product: Product;
   currency?: Currency;
 }
-
-const MAX_SIZE_CHIPS = 3;
 
 function attrValue(product: Product, slug: string): string | undefined {
   const a = product.attributes?.find((x) => x.attribute_slug === slug);
@@ -66,7 +64,6 @@ export function ProductCard({ product, currency }: ProductCardProps) {
   const isChilled = storage ? /chill/i.test(storage) : false;
   const packSize = !hasVariants ? attrValue(product, "pack-size") : undefined;
 
-  const extraSizes = Math.max(0, variants.length - MAX_SIZE_CHIPS);
   const href = `/products/${product.slug}`;
 
   const badge = outOfStock
@@ -150,8 +147,8 @@ export function ProductCard({ product, currency }: ProductCardProps) {
         </h3>
 
         {hasVariants ? (
-          <div className="relative z-10 mt-2.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`${product.name} size`}>
-            {variants.slice(0, MAX_SIZE_CHIPS).map((v) => {
+          <div className="relative z-10 mt-2.5 flex gap-1.5 overflow-x-auto no-scrollbar" role="radiogroup" aria-label={`${product.name} size`}>
+            {variants.map((v) => {
               const active = v.id === selectedId;
               const unavailable = v.stock <= 0;
               return (
@@ -162,7 +159,7 @@ export function ProductCard({ product, currency }: ProductCardProps) {
                   aria-checked={active}
                   disabled={unavailable}
                   onClick={() => setSelectedId(v.id)}
-                  className={`rounded-lg border px-2 py-1 text-[11px] sm:text-xs font-medium leading-none transition-colors ${
+                  className={`flex-shrink-0 rounded-lg border px-2 py-1 text-xs font-medium leading-none transition-colors ${
                     active
                       ? "border-neutral-900 bg-neutral-900 text-white"
                       : unavailable
@@ -174,55 +171,62 @@ export function ProductCard({ product, currency }: ProductCardProps) {
                 </button>
               );
             })}
-            {extraSizes > 0 && (
-              <Link
-                href={href}
-                className="rounded-lg px-1.5 py-1 text-[11px] sm:text-xs font-medium leading-none text-neutral-500 hover:text-neutral-900"
-              >
-                +{extraSizes} more
-              </Link>
-            )}
           </div>
         ) : (
           packSize && <p className="mt-2 text-xs text-neutral-500">{packSize} pack</p>
         )}
 
-        <div className="mt-auto pt-3 flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            {hasDiscount && (
-              <p className="text-[11px] sm:text-xs text-neutral-400 line-through leading-none mb-1">
-                {formatPrice(listPrice, currency)}
+        <div className="mt-auto pt-3">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              {hasDiscount && (
+                <p className="text-[11px] sm:text-xs text-neutral-400 line-through leading-none mb-1">
+                  {formatPrice(listPrice, currency)}
+                </p>
+              )}
+              <p className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 leading-none">
+                {formatPrice(price, currency)}
               </p>
-            )}
-            <p className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 leading-none">
-              {formatPrice(price, currency)}
-            </p>
-            {lowStock && !selectedOut && (
-              <p className="mt-1 text-[11px] font-medium text-amber-700 leading-none">Only {stock} left</p>
-            )}
+              {lowStock && !selectedOut && (
+                <p className="mt-1 text-[11px] font-medium text-amber-700 leading-none">Only {stock} left</p>
+              )}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (!selectedOut) cart?.addItem(product.id, selected?.id, 1, price, currency?.code);
-            }}
-            disabled={selectedOut}
-            aria-label={selectedOut ? "Sold out" : `Add ${product.name}${selected ? ` (${selected.name})` : ""} to cart`}
-            className={`relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full px-3 sm:px-3.5 h-9 text-xs sm:text-sm font-semibold transition-colors ${
-              selectedOut
-                ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                : "bg-brand text-white hover:bg-brand-dark"
-            }`}
-          >
+          <div className="relative z-10 mt-2.5 flex gap-1.5">
             {selectedOut ? (
-              "Sold out"
+              <button
+                type="button"
+                disabled
+                aria-label="Sold out"
+                className="flex-1 h-9 rounded-full bg-neutral-100 text-neutral-400 text-xs sm:text-sm font-semibold cursor-not-allowed"
+              >
+                Sold out
+              </button>
             ) : (
               <>
-                <Plus className="w-4 h-4" strokeWidth={2.5} aria-hidden /> Add
+                <button
+                  type="button"
+                  onClick={() => cart?.addItem(product.id, selected?.id, 1, price, currency?.code)}
+                  aria-label={`Add ${product.name}${selected ? ` (${selected.name})` : ""} to basket`}
+                  className="peer group/add flex-none w-9 sm:flex-1 sm:w-auto inline-flex items-center justify-center gap-1 rounded-full px-0 sm:px-2 h-9 text-xs sm:text-sm font-semibold bg-neutral-900 text-white hover:bg-neutral-700 transition-all"
+                >
+                  <ShoppingBasket className="w-4 h-4 flex-shrink-0" strokeWidth={2.2} aria-hidden />
+                  <span className="hidden sm:inline sm:group-hover/add:hidden">Add</span>
+                  <span className="hidden sm:group-hover/add:inline whitespace-nowrap">Add to Basket</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cart?.buyNow(product.id, selected?.id, 1, price, currency?.code)}
+                  aria-label={`Buy ${product.name}${selected ? ` (${selected.name})` : ""} now`}
+                  className="flex-1 sm:peer-hover:flex-none sm:peer-hover:w-9 sm:peer-hover:[&_.buy-txt]:hidden sm:peer-hover:[&_.buy-ico]:inline-block inline-flex items-center justify-center rounded-full px-2 h-9 text-xs sm:text-sm font-semibold bg-brand text-white hover:bg-brand-dark transition-all"
+                >
+                  <Zap className="buy-ico hidden w-4 h-4 flex-shrink-0" strokeWidth={2.2} aria-hidden />
+                  <span className="buy-txt">Buy</span>
+                </button>
               </>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </article>

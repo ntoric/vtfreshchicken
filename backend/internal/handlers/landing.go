@@ -29,7 +29,7 @@ func (h *LandingHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"landing_variant": v, "options": services.LandingVariants})
 }
 
-// Update sets the active variant. Body: {"landing_variant": "classic"|"minimal"|"malayalam"}.
+// Update sets the active variant. Body: {"landing_variant": "classic"|"minimal"|"malayalam"|"simple"}.
 func (h *LandingHandler) Update(c *gin.Context) {
 	var req struct {
 		LandingVariant string `json:"landing_variant" binding:"required"`

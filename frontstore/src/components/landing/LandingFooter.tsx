@@ -385,7 +385,7 @@ export function LandingFooter({
 
       {/* ── Bottom bar ── */}
       <div className="relative border-t border-white/[0.07] bg-black/20">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-5 sm:flex-row sm:items-center lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-center sm:flex-row sm:items-center sm:text-left lg:px-8">
           <p className="text-xs text-stone-500">
             © {year} {storeName}. {copy.rights}
           </p>

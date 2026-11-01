@@ -66,6 +66,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Static pages (top-level routes backed by the page builder)
     const staticPages: Array<{ path: string; priority: number }> = [
       { path: "/about", priority: 0.5 },
+      ...((bootstrap.branches ?? []).length > 0
+        ? [{ path: "/branches", priority: 0.5 }]
+        : []),
       { path: "/contact", priority: 0.5 },
       { path: "/privacy-policy", priority: 0.3 },
       { path: "/terms", priority: 0.3 },

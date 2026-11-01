@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Star, ShoppingCart } from "lucide-react";
+import { Star, ShoppingBasket } from "lucide-react";
 import type { Product, Currency } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -122,23 +122,41 @@ export function ProductListItem({ product, currency }: ProductListItemProps) {
               </span>
             )}
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!outOfStock) cart?.addItem(product.id, undefined, 1, price, currency?.code);
-            }}
-            disabled={outOfStock}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-              outOfStock
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-brand text-white hover:bg-brand-dark"
-            }`}
-            aria-label="Add to cart"
-          >
-            <ShoppingCart className="w-4 h-4" strokeWidth={2} />
-            <span className="hidden sm:inline">Add to cart</span>
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!outOfStock) cart?.addItem(product.id, undefined, 1, price, currency?.code);
+              }}
+              disabled={outOfStock}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                outOfStock
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-neutral-900 text-white hover:bg-neutral-700"
+              }`}
+              aria-label="Add to basket"
+            >
+              <ShoppingBasket className="w-4 h-4" strokeWidth={2} />
+              <span className="hidden sm:inline">Add to Basket</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!outOfStock) cart?.buyNow(product.id, undefined, 1, price, currency?.code);
+              }}
+              disabled={outOfStock}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                outOfStock
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-brand text-white hover:bg-brand-dark"
+              }`}
+              aria-label="Buy now"
+            >
+              Buy Now
+            </button>
+          </div>
         </div>
       </div>
     </Link>

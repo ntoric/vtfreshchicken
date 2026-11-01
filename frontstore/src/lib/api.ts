@@ -23,19 +23,43 @@ const USER_KEY = "tc_customer_user";
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    // Storage unavailable (privacy-restricted browser, in-app webview) — treat as logged out.
+    return null;
+  }
 }
 export function setAuthToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // ignore storage errors
+  }
 }
 export function clearAuthToken() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // ignore storage errors
+  }
 }
 export function getStoredCustomer(): { id: string; email: string; full_name: string; role: string } | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(USER_KEY);
-  return raw ? JSON.parse(raw) : null;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function persistCustomer(user: unknown) {
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // ignore storage errors
+  }
 }
 
 function authHeaders(): Record<string, string> {
@@ -415,7 +439,7 @@ export async function customerLogin(email: string, password: string) {
   }
   const data = await res.json();
   setAuthToken(data.access_token);
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  persistCustomer(data.user);
   return data;
 }
 
@@ -434,7 +458,7 @@ export async function customerRegister(email: string, password: string, fullName
   }
   const data = await res.json();
   setAuthToken(data.access_token);
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  persistCustomer(data.user);
   return data;
 }
 
@@ -462,7 +486,7 @@ export async function customerRegisterFromOrder(
   }
   const data = await res.json();
   setAuthToken(data.access_token);
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  persistCustomer(data.user);
   return data;
 }
 

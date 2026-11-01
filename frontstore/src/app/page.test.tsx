@@ -7,6 +7,7 @@ import { LandingSkeleton } from "@/components/landing/LandingSkeleton";
 import { LandingHome } from "@/components/LandingHome";
 import { LandingMinimal } from "@/components/LandingMinimal";
 import { LandingMalayalam } from "@/components/LandingMalayalam";
+import { LandingSimple } from "@/components/LandingSimple";
 import type { BootstrapResponse } from "@/types";
 import { BootstrapProvider } from "@/lib/bootstrap";
 
@@ -158,6 +159,30 @@ describe("Minimal landing page", () => {
   });
 });
 
+describe("Simple landing page", () => {
+  const renderSimple = () => renderWithClient(<LandingSimple />);
+
+  it("renders a single chicken-focused h1", () => {
+    renderSimple();
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent).toMatch(/chicken/i);
+  });
+
+  it("links to /shop from the intro and product section", () => {
+    renderSimple();
+    const hrefs = screen.getAllByRole("link").map((l) => l.getAttribute("href"));
+    expect(hrefs.filter((h) => h === "/shop").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("link", { name: /shop now/i })).toHaveAttribute("href", "/shop");
+    expect(screen.getByRole("link", { name: /shop all/i })).toHaveAttribute("href", "/shop");
+  });
+
+  it("shows the product grid loading state while bootstrap is absent", () => {
+    renderSimple();
+    expect(screen.getByRole("heading", { level: 2, name: /our products/i })).toBeInTheDocument();
+  });
+});
+
 describe("Minimal landing page — content sections", () => {
   it("keeps the lower half as a skeleton until it is scrolled near", () => {
     // An observer that never reports an intersection = user hasn't scrolled.
@@ -237,6 +262,7 @@ describe("Home variant selection", () => {
   it("resolves the configured variant, defaulting to classic", () => {
     expect(resolveLandingVariant(bootstrapWith("minimal"))).toBe("minimal");
     expect(resolveLandingVariant(bootstrapWith("malayalam"))).toBe("malayalam");
+    expect(resolveLandingVariant(bootstrapWith("simple"))).toBe("simple");
     expect(resolveLandingVariant(bootstrapWith("classic"))).toBe("classic");
     expect(resolveLandingVariant(bootstrapWith(undefined))).toBe("classic");
     expect(resolveLandingVariant(bootstrapWith("unknown"))).toBe("classic");

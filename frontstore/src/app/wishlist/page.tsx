@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShoppingBasket } from "lucide-react";
 import { fetchBootstrap } from "@/lib/api";
 import { Header } from "@/components/Header";
 import { WishlistSkeleton } from "@/components/Loaders";
@@ -98,9 +98,18 @@ export default function WishlistPage({ params }: { params: {} }) {
                   <div className="flex items-center gap-2 mt-3 sm:mt-4">
                     <button
                       onClick={() => cart?.addItem(item.product_id, item.variant_id || undefined, 1, item.base_price || undefined, currency)}
-                      className="flex-1 bg-brand text-white text-xs sm:text-sm font-medium py-2 rounded-lg hover:bg-brand-dark transition"
+                      className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 bg-brand text-white text-xs sm:text-sm font-medium py-2 px-2 rounded-lg hover:bg-brand-dark transition"
+                      aria-label="Add to basket"
                     >
-                      Add to Cart
+                      <ShoppingBasket className="w-4 h-4 flex-shrink-0" strokeWidth={2} aria-hidden />
+                      <span className="hidden md:inline truncate">Add to Basket</span>
+                    </button>
+                    <button
+                      onClick={() => cart?.buyNow(item.product_id, item.variant_id || undefined, 1, item.base_price || undefined, currency)}
+                      className="flex-1 min-w-0 bg-amber-500 text-white text-xs sm:text-sm font-medium py-2 px-2 rounded-lg hover:bg-amber-600 transition"
+                      aria-label="Buy now"
+                    >
+                      Buy
                     </button>
                     <button
                       onClick={() => wishlist?.removeItem(item.id)}

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, Droplets, Leaf, Snowflake, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Droplets, Leaf, Snowflake, ShieldCheck, ShoppingBasket } from "lucide-react";
 import { fetchBootstrap, fetchProduct } from "@/lib/api";
 import { Header } from "@/components/Header";
 import { ProductGallery } from "@/components/ProductGallery";
@@ -447,7 +447,7 @@ export default function ProductDetailPage({
 
             {/* Quantity + add to cart + wishlist — sticky bottom bar on mobile, inline on sm+ */}
             <div
-              className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t border-stone-200 bg-white/95 backdrop-blur-md px-3 pt-3 shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:static sm:z-auto sm:gap-3 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:px-0 sm:pt-4 sm:pb-0 sm:shadow-none"
+              className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-3 pt-3 shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:static sm:z-auto sm:gap-3 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:backdrop-saturate-none sm:px-0 sm:pt-4 sm:pb-0 sm:shadow-none"
             >
               <div className="flex items-center border rounded-xl flex-shrink-0 h-12 bg-white">
                 <button
@@ -471,13 +471,36 @@ export default function ProductDetailPage({
                   cart?.addItem(p.id, selectedVariant?.id, qty, unitPrice, currency);
                 }}
                 disabled={!inStock || (hasVariants && !selectedVariant)}
-                className="flex-1 min-w-0 h-12 truncate px-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-12 w-12 sm:w-auto sm:flex-1 min-w-0 items-center justify-center gap-2 flex-shrink-0 px-0 sm:px-4 bg-stone-900 text-white font-semibold rounded-xl hover:bg-stone-800 sm:bg-brand sm:hover:bg-brand-dark transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={
+                  !inStock
+                    ? "Out of stock"
+                    : hasVariants && !selectedVariant
+                      ? "Select options"
+                      : "Add to basket"
+                }
               >
-                {!inStock
-                  ? "Out of Stock"
-                  : hasVariants && !selectedVariant
-                    ? "Select Options"
-                    : "Add to Cart"}
+                <ShoppingBasket className="w-5 h-5 flex-shrink-0" aria-hidden />
+                <span className="hidden sm:inline truncate">
+                  {!inStock
+                    ? "Out of Stock"
+                    : hasVariants && !selectedVariant
+                      ? "Select Options"
+                      : "Add to Basket"}
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  const p = productQ.data?.product;
+                  if (!p) return;
+                  const unitPrice = selectedVariant?.price ?? p.effective_price ?? p.base_price;
+                  cart?.buyNow(p.id, selectedVariant?.id, qty, unitPrice, currency);
+                }}
+                disabled={!inStock || (hasVariants && !selectedVariant)}
+                className="flex-1 min-w-0 h-12 truncate px-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-dark sm:bg-amber-500 sm:hover:bg-amber-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Buy now"
+              >
+                Buy Now
               </button>
               <button
                 onClick={() => wishlist?.toggleItem(product.id, selectedVariant?.id)}
@@ -514,7 +537,7 @@ export default function ProductDetailPage({
                   </svg>
                   <span className="text-xs text-gray-500 whitespace-nowrap">
                     {shipsFree
-                      ? "Free Shipping"
+                      ? "Free Delivery"
                       : `Free over ${formatPrice(freeThresholdMethod!.free_shipping_threshold!, getCurrencySymbol(bootstrap.currencies || [], freeThresholdMethod!.currency_code) ?? currencyObj)}`}
                   </span>
                 </div>
@@ -692,10 +715,10 @@ export default function ProductDetailPage({
                       <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-6m6 0V10.5m-6 8.25V10.5m6 0H9.75M16.5 6.75h-3.75v3.75h3.75V6.75Z" />
                       </svg>
-                      Shipping Information
+                      Delivery Information
                     </h3>
                     {!requiresShipping ? (
-                      <p className="text-sm text-gray-600">This product does not require shipping.</p>
+                      <p className="text-sm text-gray-600">This product does not require delivery.</p>
                     ) : shippingMethods.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {shippingMethods.map((m) => {
@@ -728,7 +751,7 @@ export default function ProductDetailPage({
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-600">Shipping options are calculated at checkout.</p>
+                      <p className="text-sm text-gray-600">Delivery options are calculated at checkout.</p>
                     )}
                   </div>
                 )}
@@ -820,9 +843,9 @@ export default function ProductDetailPage({
                   <div className="space-y-3">
                     {[
                       { q: "Is this product true to size?", a: "Yes, our products are designed to fit true to size. If you are between sizes, we recommend sizing up for a more comfortable fit." },
-                      { q: "How long does shipping take?", a: "Standard shipping takes 3-5 business days. Express shipping (1-2 business days) is available at checkout for an additional fee." },
+                      { q: "How long does delivery take?", a: "Standard delivery takes 3-5 business days. Express delivery (1-2 business days) is available at checkout for an additional fee." },
                       { q: "Can I return this product?", a: "Absolutely. We offer a 30-day return policy. Items must be in original condition with tags attached for a full refund." },
-                      { q: "Do you ship internationally?", a: "Yes, we ship to most countries. International shipping typically takes 7-14 business days depending on your location." },
+                      { q: "Do you deliver internationally?", a: "Yes, we deliver to most countries. International delivery typically takes 7-14 business days depending on your location." },
                     ].map((faq, i) => (
                       <details key={i} className="group bg-gray-50 rounded-xl overflow-hidden">
                         <summary className="flex items-center justify-between px-4 py-3 cursor-pointer font-medium text-gray-900 text-sm list-none">

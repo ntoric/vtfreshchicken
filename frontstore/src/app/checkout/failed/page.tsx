@@ -39,7 +39,7 @@ function FailedContent() {
         />
       )}
 
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto px-4 pt-12 pb-28 lg:pb-12">
         {/* Failed banner */}
         <div className="text-center mb-8 animate-fade-in-up">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-rose-100 mb-4 relative">
@@ -116,8 +116,8 @@ function FailedContent() {
           </ul>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Actions — desktop inline; mobile uses the sticky bottom bar */}
+        <div className="hidden lg:flex flex-col sm:flex-row gap-3">
           <Link
             href={`/checkout`}
             className="flex-1 bg-rose-600 text-white font-semibold py-2.5 rounded-lg text-center hover:bg-rose-700 transition shadow-md flex items-center justify-center gap-2"
@@ -136,6 +136,24 @@ function FailedContent() {
             </svg>
             Back to Cart
           </Link>
+        </div>
+
+        {/* Mobile actions — sticky bottom bar */}
+        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)]">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <Link
+              href={`/cart`}
+              className="shrink-0 px-4 py-3 rounded-xl border border-stone-300 bg-white/60 font-semibold text-gray-700 hover:bg-white transition text-sm whitespace-nowrap"
+            >
+              Back to Cart
+            </Link>
+            <Link
+              href={`/checkout`}
+              className="flex-1 bg-rose-600 text-white font-semibold py-3 rounded-xl text-center hover:bg-rose-700 transition shadow-md"
+            >
+              Try Again
+            </Link>
+          </div>
         </div>
 
         {/* Contact support */}

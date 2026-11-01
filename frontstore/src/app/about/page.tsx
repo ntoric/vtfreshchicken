@@ -162,8 +162,8 @@ export default function AboutPage({ params }: { params: {} }) {
                 The {store} promise
               </p>
             </div>
-            {/* Floating chips */}
-            <div className="absolute -bottom-5 left-6 right-6 flex flex-wrap gap-2 justify-center">
+            {/* Floating chips — inline on mobile so they don't overlap the next section */}
+            <div className="mt-4 flex flex-wrap gap-2 justify-center sm:absolute sm:-bottom-5 sm:left-6 sm:right-6 sm:mt-0">
               {["Purely washed", "Cold-chain kept", "No hormones"].map((chip) => (
                 <span
                   key={chip}

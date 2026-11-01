@@ -12,6 +12,7 @@ interface CartCtx {
   cart: CartResponse | null;
   isLoading: boolean;
   addItem: (productId: string, variantId?: string, quantity?: number, unitPrice?: number, currency?: string) => void;
+  buyNow: (productId: string, variantId?: string, quantity?: number, unitPrice?: number, currency?: string) => void;
   updateItem: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
   clear: () => void;
@@ -40,17 +41,25 @@ export function CartProvider({ currency, children }: { currency: string; childre
     qc.invalidateQueries({ queryKey: ["cart-count"] });
   }, [qc, currency]);
 
+  const addToCartApi = (vars: { productId: string; variantId?: string; quantity: number; unitPrice?: number; currency?: string }) =>
+    apiAddToCart({
+      product_id: vars.productId,
+      variant_id: vars.variantId,
+      quantity: vars.quantity,
+      unit_price: vars.unitPrice,
+      currency: vars.currency || currency,
+    });
+
   const addMut = useMutation({
-    mutationFn: (vars: { productId: string; variantId?: string; quantity: number; unitPrice?: number; currency?: string }) =>
-      apiAddToCart({
-        product_id: vars.productId,
-        variant_id: vars.variantId,
-        quantity: vars.quantity,
-        unit_price: vars.unitPrice,
-        currency: vars.currency || currency,
-      }),
-    onSuccess: () => { invalidate(); setIsOpen(true); toast.success("Added to cart", "Item has been added to your cart."); },
-    onError: (err) => { console.error("[Cart] addItem error:", err); toast.error("Failed to add", err.message || "Could not add item to cart."); },
+    mutationFn: addToCartApi,
+    onSuccess: () => { invalidate(); setIsOpen(true); toast.success("Added to basket", "Item has been added to your basket."); },
+    onError: (err) => { console.error("[Cart] addItem error:", err); toast.error("Failed to add", err.message || "Could not add item to basket."); },
+  });
+
+  const buyMut = useMutation({
+    mutationFn: addToCartApi,
+    onSuccess: () => { invalidate(); setIsOpen(false); router.push("/checkout"); },
+    onError: (err) => { console.error("[Cart] buyNow error:", err); toast.error("Checkout failed", err.message || "Could not add item to basket."); },
   });
 
   const updateMut = useMutation({
@@ -76,19 +85,20 @@ export function CartProvider({ currency, children }: { currency: string; childre
   useEffect(() => {
     function onReplay(e: Event) {
       const detail = (e as CustomEvent<PendingAction>).detail;
-      if (detail?.type === "add_to_cart") {
-        addMut.mutate({
+      if (detail?.type === "add_to_cart" || detail?.type === "buy_now") {
+        const vars = {
           productId: detail.payload.productId as string,
           variantId: detail.payload.variantId as string | undefined,
           quantity: detail.payload.quantity as number,
           unitPrice: detail.payload.unitPrice as number | undefined,
           currency: detail.payload.currency as string | undefined,
-        });
+        };
+        (detail.type === "buy_now" ? buyMut : addMut).mutate(vars);
       }
     }
     window.addEventListener("tc-replay-pending", onReplay);
     return () => window.removeEventListener("tc-replay-pending", onReplay);
-  }, [addMut]);
+  }, [addMut, buyMut]);
 
   // Gate addItem behind auth — redirect to login if unauthenticated AND anonymous checkout is disabled
   const addItem = useCallback(
@@ -108,6 +118,24 @@ export function CartProvider({ currency, children }: { currency: string; childre
     [isAuthenticated, allowAnonymous, setPendingAction, router, addMut],
   );
 
+  // Buy Now — same gating as addItem, but goes straight to checkout on success.
+  const buyNow = useCallback(
+    (productId: string, variantId?: string, quantity = 1, unitPrice?: number, cur?: string) => {
+      if (!isAuthenticated && !allowAnonymous) {
+        const action: PendingAction = {
+          type: "buy_now",
+          payload: { productId, variantId, quantity, unitPrice, currency: cur },
+          returnPath: window.location.pathname,
+        };
+        setPendingAction(action);
+        router.push(`/account/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+      buyMut.mutate({ productId, variantId, quantity, unitPrice, currency: cur });
+    },
+    [isAuthenticated, allowAnonymous, setPendingAction, router, buyMut],
+  );
+
   const itemCount = cartQ.data?.cart.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   return (
@@ -115,6 +143,7 @@ export function CartProvider({ currency, children }: { currency: string; childre
       cart: cartQ.data ?? null,
       isLoading: cartQ.isLoading,
       addItem,
+      buyNow,
       updateItem: (itemId, quantity) => updateMut.mutate({ itemId, quantity }),
       removeItem: (itemId) => removeMut.mutate(itemId),
       clear: () => clearMut.mutate(),

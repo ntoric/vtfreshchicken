@@ -263,7 +263,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
     <div className="min-h-screen">
       <Header bootstrap={bootstrap} currency={currency} setCurrency={setCurrency} lang={lang} setLang={setLang} />
 
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-6 pb-28 sm:pt-8 lg:pb-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto no-scrollbar">
           <Link href={``} className="hover:text-brand whitespace-nowrap">Home</Link>
@@ -296,15 +296,17 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
                 {statusConfig.label}
               </span>
             </div>
-            {/* Invoice download */}
-            <InvoiceGenerator
-              order={order}
-              currencyObj={currencyObj}
-              settings={bootstrap.settings}
-              tenantName={tenantName}
-              transactionId={transactionId}
-              paymentMethod={paymentMethod}
-            />
+            {/* Invoice download — on mobile this lives in the sticky bottom bar */}
+            <div className="hidden lg:block">
+              <InvoiceGenerator
+                order={order}
+                currencyObj={currencyObj}
+                settings={bootstrap.settings}
+                tenantName={tenantName}
+                transactionId={transactionId}
+                paymentMethod={paymentMethod}
+              />
+            </div>
           </div>
         </div>
 
@@ -361,7 +363,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
         {/* Tracking info */}
         {order.tracking_number && (
           <div className="bg-white rounded-2xl border p-4 sm:p-6 mb-6">
-            <h3 className="font-bold text-gray-900 mb-4">Shipping Tracking</h3>
+            <h3 className="font-bold text-gray-900 mb-4">Delivery Tracking</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-400 mb-1">Carrier</p>
@@ -908,8 +910,8 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+        {/* Actions — desktop inline; mobile uses the sticky bottom bar */}
+        <div className="hidden lg:flex flex-col sm:flex-row gap-3 mt-6">
           <Link
             href={``}
             className="flex-1 bg-brand text-white font-semibold py-2.5 rounded-lg text-center hover:bg-brand-dark transition flex items-center justify-center gap-2"
@@ -928,6 +930,28 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
             </svg>
             Print Order
           </button>
+        </div>
+
+        {/* Mobile actions — sticky bottom bar */}
+        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)]">
+          <div className="max-w-4xl mx-auto flex items-center gap-3">
+            <Link
+              href={``}
+              className="shrink-0 px-4 py-3 rounded-xl border border-stone-300 bg-white/60 font-semibold text-gray-700 hover:bg-white transition text-sm whitespace-nowrap"
+            >
+              Continue Shopping
+            </Link>
+            <div className="flex-1 [&_button]:w-full">
+              <InvoiceGenerator
+                order={order}
+                currencyObj={currencyObj}
+                settings={bootstrap.settings}
+                tenantName={tenantName}
+                transactionId={transactionId}
+                paymentMethod={paymentMethod}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Help section */}

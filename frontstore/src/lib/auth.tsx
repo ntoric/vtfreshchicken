@@ -16,7 +16,7 @@ import type { CustomerUser } from "@/types";
 // A pending action that should be replayed after the customer authenticates.
 // e.g. add-to-cart, add-to-wishlist.
 export interface PendingAction {
-  type: "add_to_cart" | "add_to_wishlist";
+  type: "add_to_cart" | "add_to_wishlist" | "buy_now";
   // Serialized arguments needed to replay the action.
   payload: Record<string, unknown>;
   // Where to navigate back after replaying.

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShoppingBasket } from "lucide-react";
 import { useWishlist } from "@/lib/wishlist";
 import { useCart } from "@/lib/cart";
 import { InlineLoader } from "@/components/Loaders";
@@ -65,10 +65,17 @@ export function WishlistDrawer({ currency }: { currency?: Currency }) {
                         onClick={() => cart?.addItem(item.product_id, undefined, 1, item.base_price, currency?.code)}
                         className="text-xs font-medium text-brand hover:underline flex items-center gap-1"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Add to cart
+                        <ShoppingBasket className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
+                        Add to basket
+                      </button>
+                      <button
+                        onClick={() => {
+                          closeWishlist();
+                          cart?.buyNow(item.product_id, undefined, 1, item.base_price, currency?.code);
+                        }}
+                        className="text-xs font-medium text-amber-600 hover:underline"
+                      >
+                        Buy now
                       </button>
                       <button
                         onClick={() => removeItem(item.id)}

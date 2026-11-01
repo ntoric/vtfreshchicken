@@ -74,6 +74,9 @@ export default function CheckoutPage({ params }: { params: {} }) {
   const [discountCode, setDiscountCode] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [notes, setNotes] = useState("");
+  // Mobile two-step checkout: 1 = delivery details, 2 = payment. On lg+ all
+  // sections render on one page and this state is ignored.
+  const [step, setStep] = useState<1 | 2>(1);
   const [error, setError] = useState("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   // Local address book for anonymous checkouts (localStorage-backed)
@@ -350,13 +353,13 @@ export default function CheckoutPage({ params }: { params: {} }) {
   const taxBreakdown = taxQ.data?.breakdown ?? [];
   const total = subtotal - discountAmount + shippingCost + deliveryFee + tax;
 
-  // Auto-select first available payment method
+  // Auto-select first available payment method (COD sorted first — see below)
   useEffect(() => {
     const all = methodsQ.data?.methods ?? [];
     // Wallet payment requires an authenticated customer account; hide it for
     // anonymous/guest checkout so the wallet form (which calls the auth-only
     // wallet API) is never shown to unauthenticated users.
-    const visible = isAuthenticated ? all : all.filter((m) => m.id !== "wallet");
+    const visible = sortPaymentMethods(isAuthenticated ? all : all.filter((m) => m.id !== "wallet"));
     if (!selectedMethod && visible.length) {
       setSelectedMethod(visible[0].id);
     }
@@ -381,10 +384,14 @@ export default function CheckoutPage({ params }: { params: {} }) {
     mutationFn: (req: CheckoutRequest) => placeOrder(req, idemKeyRef.current || undefined),
     onSuccess: (res) => {
       idemKeyRef.current = "";
-      sessionStorage.removeItem(DRAFT_KEY);
-      sessionStorage.removeItem(LEGACY_CTX_KEY);
-      // Store the full order response for the status page to read
-      sessionStorage.setItem(ORDER_CTX_KEY, JSON.stringify(res));
+      try {
+        sessionStorage.removeItem(DRAFT_KEY);
+        sessionStorage.removeItem(LEGACY_CTX_KEY);
+        // Store the full order response for the status page to read
+        sessionStorage.setItem(ORDER_CTX_KEY, JSON.stringify(res));
+      } catch {
+        // storage unavailable
+      }
       // Immediately remove cart queries from cache so the UI shows an empty cart
       // without waiting for a refetch (the backend has already cleared the cart).
       qc.removeQueries({ queryKey: ["cart"] });
@@ -401,7 +408,11 @@ export default function CheckoutPage({ params }: { params: {} }) {
       setError(err.message);
       // Redirect to the failed page with the error message
       // Store the error in sessionStorage since query params have length limits
-      sessionStorage.setItem("tc_payment_error", err.message);
+      try {
+        sessionStorage.setItem("tc_payment_error", err.message);
+      } catch {
+        // storage unavailable
+      }
       router.push(`/checkout/failed?error=${encodeURIComponent(err.message.slice(0, 200))}`);
       // Refetch test transactions so the failed attempt shows up in the log
       if (isTestMode) {
@@ -429,11 +440,10 @@ export default function CheckoutPage({ params }: { params: {} }) {
     testTxsQ.refetch();
   }, [testTxsQ]);
 
-  function validateCheckout(skipPayment = false): boolean {
-    setError("");
-    // Delivery address doubles as the billing address
-    if (!address.first_name || !address.last_name) return setError("Please enter your first and last name"), false;
-    if (!address.email) return setError("Email is required"), false;
+  // Delivery address doubles as the billing address — step 1 on mobile.
+  function validateAddressStep(): boolean {
+    if (!`${address.first_name ?? ""} ${address.last_name ?? ""}`.trim()) return setError("Please enter your full name"), false;
+    if (!address.phone?.trim()) return setError("Phone number is required"), false;
     if (hasShippableItems) {
       if (!deliveryArea) {
         openPicker();
@@ -444,11 +454,31 @@ export default function CheckoutPage({ params }: { params: {} }) {
       }
       if (!address.line1) return setError("Delivery street address is required"), false;
     }
+    return true;
+  }
+
+  function validateCheckout(skipPayment = false): boolean {
+    setError("");
+    if (!validateAddressStep()) return false;
     if (!selectedMethod) return setError("Please select a payment method."), false;
     if (skipPayment) return true;
     if (!paymentDetails) return setError("Please complete the payment details for the selected method."), false;
     return true;
   }
+
+  const handleNextStep = () => {
+    setError("");
+    if (!validateAddressStep()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setStep(2);
+  };
+
+  // Bring each mobile step into view when it changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const handlePlaceOrder = useCallback(() => {
     if (!validateCheckout()) {
@@ -541,9 +571,9 @@ export default function CheckoutPage({ params }: { params: {} }) {
   }
 
   // Wallet payment requires an authenticated customer account; hide it for
-  // anonymous/guest checkout.
-  const availableMethods = (methodsQ.data?.methods ?? []).filter(
-    (m) => isAuthenticated || m.id !== "wallet",
+  // anonymous/guest checkout. COD is listed first and is the default pick.
+  const availableMethods = sortPaymentMethods(
+    (methodsQ.data?.methods ?? []).filter((m) => isAuthenticated || m.id !== "wallet"),
   );
   const selectedGateway = selectedMethod ? getGateway(selectedMethod) : null;
   const SelectedForm = selectedGateway?.Component;
@@ -554,7 +584,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
     <div className="min-h-screen">
       <Header bootstrap={bootstrap} currency={currency} setCurrency={setCurrency} lang={lang} setLang={setLang} />
 
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-6 pb-28 sm:pt-8 lg:pb-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto no-scrollbar">
           <Link href={``} className="hover:text-brand whitespace-nowrap">Home</Link>
@@ -565,6 +595,21 @@ export default function CheckoutPage({ params }: { params: {} }) {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 sm:mb-6">Checkout</h1>
+
+        {/* Mobile step indicator */}
+        <div className="lg:hidden flex items-center gap-3 mb-5 text-xs font-semibold">
+          <span className={`flex items-center gap-1.5 ${step === 1 ? "text-brand" : "text-emerald-600"}`}>
+            <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] ${step === 1 ? "bg-brand text-white" : "bg-emerald-500 text-white"}`}>
+              {step === 1 ? "1" : <Check className="w-3 h-3" strokeWidth={3} />}
+            </span>
+            Delivery
+          </span>
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className={`flex items-center gap-1.5 ${step === 2 ? "text-brand" : "text-gray-400"}`}>
+            <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] ${step === 2 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>2</span>
+            Payment
+          </span>
+        </div>
 
         {anyTestModeMethod && <TestModeBanner />}
 
@@ -580,8 +625,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
           {/* Main content — delivery address, delivery method, payment */}
           <div className="space-y-6">
-            {/* Delivery Address (also used as billing address) */}
-            <div className="bg-white rounded-2xl border p-4 sm:p-6 space-y-5">
+            {/* Delivery Address (also used as billing address) — step 1 on mobile */}
+            <div className={`bg-white rounded-2xl border p-4 sm:p-6 space-y-5 ${step === 2 ? "hidden lg:block" : ""}`}>
               <div>
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                   <svg className="w-5 h-5 text-brand flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -751,28 +796,33 @@ export default function CheckoutPage({ params }: { params: {} }) {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="First Name *">
-                  <input value={address.first_name} onChange={(e) => setAddress({ ...address, first_name: e.target.value })} className={inputCls} placeholder="John" />
-                </FormField>
-                <FormField label="Last Name *">
-                  <input value={address.last_name} onChange={(e) => setAddress({ ...address, last_name: e.target.value })} className={inputCls} placeholder="Doe" />
-                </FormField>
-              </div>
-              <FormField label="Email *">
-                <input type="email" value={address.email} onChange={(e) => setAddress({ ...address, email: e.target.value })} className={inputCls} placeholder="john@example.com" />
+              <FormField label="Full Name *">
+                <input
+                  value={address.first_name || address.last_name ? `${address.first_name ?? ""} ${address.last_name ?? ""}` : ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const i = v.indexOf(" ");
+                    setAddress({
+                      ...address,
+                      first_name: i === -1 ? v : v.slice(0, i),
+                      last_name: i === -1 ? "" : v.slice(i + 1),
+                    });
+                  }}
+                  className={inputCls}
+                  placeholder="John Doe"
+                />
               </FormField>
               <FormField label="Street Address *">
                 <input value={address.line1} onChange={(e) => setAddress({ ...address, line1: e.target.value })} className={inputCls} placeholder="House name / no., street, landmark" />
               </FormField>
-              <FormField label="Phone">
-                <input value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} className={inputCls} placeholder="+91 98XXXXXX00" />
+              <FormField label="Phone *">
+                <input type="tel" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} className={inputCls} placeholder="+91 98XXXXXX00" />
               </FormField>
             </div>
 
-            {/* Delivery Method (only when items need shipping and the shipping module is enabled) */}
+            {/* Delivery Method (only when items need shipping and the shipping module is enabled) — step 1 on mobile */}
             {hasShippableItems && shippingModuleOn ? (
-              <div className="bg-white rounded-2xl border p-4 sm:p-6 space-y-5">
+              <div className={`bg-white rounded-2xl border p-4 sm:p-6 space-y-5 ${step === 2 ? "hidden lg:block" : ""}`}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                     <svg className="w-5 h-5 text-brand flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -787,7 +837,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
                         checked={splitShipping}
                         onChange={setSplitShipping}
                       />
-                      Ship items separately
+                      Deliver items separately
                     </span>
                   )}
                 </div>
@@ -806,7 +856,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
                   </div>
                 ) : splitShipping && perItemOptions.length > 0 ? (
                   <div className="space-y-4">
-                    <p className="text-xs text-gray-500">Choose a shipping method for each item. Items ship in separate packages.</p>
+                    <p className="text-xs text-gray-500">Choose a delivery method for each item. Items are delivered in separate packages.</p>
                     {items.map((it, idx) => {
                       if (it.requires_shipping === false) return null;
                       const opts = perItemOptions.find(p => p.product_id === it.product_id)?.options ?? shippingOptions;
@@ -836,7 +886,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
                                 </span>
                               </label>
                             )) : (
-                              <p className="text-xs text-gray-400">No shipping options available.</p>
+                              <p className="text-xs text-gray-400">No delivery options available.</p>
                             )}
                           </div>
                         </div>
@@ -866,21 +916,21 @@ export default function CheckoutPage({ params }: { params: {} }) {
                     ))
                   ) : (
                     <p className="text-sm text-gray-500">
-                      No shipping options are configured. Enable a shipping method in the backoffice.
+                      No delivery options are configured. Enable a shipping method in the backoffice.
                     </p>
                   )}
                 </div>
                 )}
               </div>
             ) : !shippingModuleOn ? null : (
-              <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 sm:p-6">
-                <p className="font-medium text-emerald-700 text-sm">No shipping required</p>
-                <p className="text-xs text-emerald-600 mt-0.5">Your cart contains only digital/no-shipping items.</p>
+              <div className={`bg-emerald-50 rounded-2xl border border-emerald-200 p-4 sm:p-6 ${step === 2 ? "hidden lg:block" : ""}`}>
+                <p className="font-medium text-emerald-700 text-sm">No delivery required</p>
+                <p className="text-xs text-emerald-600 mt-0.5">Your cart contains only digital/no-delivery items.</p>
               </div>
             )}
 
-            {/* Coupon + notes */}
-            <div className="bg-white rounded-2xl border p-4 sm:p-6 space-y-4">
+            {/* Coupon + notes — step 1 on mobile */}
+            <div className={`bg-white rounded-2xl border p-4 sm:p-6 space-y-4 ${step === 2 ? "hidden lg:block" : ""}`}>
               {/* Coupon collapsible — only when the store has an active discount code */}
               {bootstrap.discounts_enabled && (
               <div>
@@ -930,8 +980,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
               </FormField>
             </div>
 
-            {/* Payment Method */}
-            <div className="bg-white rounded-2xl border p-4 sm:p-6">
+            {/* Payment Method — step 2 on mobile */}
+            <div className={`bg-white rounded-2xl border p-4 sm:p-6 ${step === 1 ? "hidden lg:block" : ""}`}>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5 text-brand flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
@@ -992,7 +1042,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
             {/* Selected gateway form — third-party providers (Razorpay, PayPal)
                 surface their hosted flow here before the order is placed. */}
             {SelectedForm && selectedMethod && (
-              <div className="bg-white rounded-2xl border p-4 sm:p-6">
+              <div className={`bg-white rounded-2xl border p-4 sm:p-6 ${step === 1 ? "hidden lg:block" : ""}`}>
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
                   {selectedGateway?.meta.name} Details
                 </h2>
@@ -1013,8 +1063,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-2 gap-3">
+            {/* Actions — desktop only; mobile uses the sticky step bar */}
+            <div className="hidden lg:flex items-center justify-between pt-2 gap-3">
               <Link href={`/cart`} className="flex items-center gap-1.5 text-gray-600 font-medium hover:text-gray-900 whitespace-nowrap">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -1049,8 +1099,8 @@ export default function CheckoutPage({ params }: { params: {} }) {
             </div>
           </div>
 
-          {/* Order summary sidebar */}
-          <div className="lg:sticky lg:top-28 h-fit">
+          {/* Order summary sidebar — shown on mobile step 2, always on desktop */}
+          <div className={`lg:sticky lg:top-28 h-fit ${step === 1 ? "hidden lg:block" : ""}`}>
             <div className="bg-white rounded-2xl border p-4 sm:p-6 space-y-4">
               <h2 className="font-bold text-gray-900 text-lg">Order Summary</h2>
 
@@ -1083,7 +1133,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
                 )}
                 {hasShippableItems && shippingModuleOn && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
+                  <span className="text-gray-600">Delivery</span>
                   <span className="font-medium">
                     {shippingQ.isLoading
                       ? <span className="text-gray-400">…</span>
@@ -1138,6 +1188,46 @@ export default function CheckoutPage({ params }: { params: {} }) {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile step navigation — sticky bottom bar */}
+        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)]">
+          <div className="max-w-6xl mx-auto flex items-center gap-3">
+            {step === 1 ? (
+              <>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-lg font-bold text-gray-900 truncate">{formatPrice(total, currencyObj)}</p>
+                </div>
+                <button
+                  onClick={handleNextStep}
+                  className="shrink-0 ml-auto px-10 bg-brand text-white font-semibold py-3 rounded-xl hover:bg-brand-dark transition shadow-md"
+                >
+                  Next
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-5 py-3 rounded-xl border border-stone-300 font-semibold text-gray-700 hover:bg-stone-50 transition"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={placeOrderMut.isPending}
+                  className="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {placeOrderMut.isPending
+                    ? "Placing Order..."
+                    : isOfflinePayment
+                      ? `Place Order · ${formatPrice(total, currencyObj)}`
+                      : `Pay ${formatPrice(total, currencyObj)}`}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1221,6 +1311,12 @@ export default function CheckoutPage({ params }: { params: {} }) {
 }
 
 // ============ Helper components ============
+
+// COD first — it's the most common choice for this store; the rest keep their
+// configured sort order (stable sort).
+function sortPaymentMethods(methods: PaymentGatewayInfo[]): PaymentGatewayInfo[] {
+  return [...methods].sort((a, b) => Number(b.id === "cod") - Number(a.id === "cod"));
+}
 const inputCls = "w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand focus:border-brand transition";
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {

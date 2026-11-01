@@ -84,7 +84,7 @@ export default function CartPage({ params }: { params: {} }) {
         setLang={setLang}
       />
 
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-6 pb-28 sm:pt-8 lg:pb-8">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">Shopping Cart</h1>
         {cartError && (
           <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-4 py-3 text-sm">
@@ -186,7 +186,7 @@ export default function CartPage({ params }: { params: {} }) {
                     <span className="font-medium">{formatPrice(subtotal, currencyObj)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping</span>
+                    <span className="text-gray-600">Delivery</span>
                     <span className="text-gray-400">Calculated at checkout</span>
                   </div>
                   {bootstrapQ.data?.modules?.tax !== false && (
@@ -202,14 +202,32 @@ export default function CartPage({ params }: { params: {} }) {
                 </div>
                 <button
                   onClick={() => window.location.href = `/checkout`}
-                  className="w-full bg-brand text-white font-semibold py-2.5 rounded-lg hover:bg-brand-dark transition shadow-md"
+                  className="hidden lg:block w-full bg-brand text-white font-semibold py-2.5 rounded-lg hover:bg-brand-dark transition shadow-md"
                 >
                   Proceed to Checkout
                 </button>
-                <p className="text-xs text-gray-400 text-center">
+                <p className="hidden lg:block text-xs text-gray-400 text-center">
                   Secure checkout{bootstrapQ.data?.modules?.returns !== false && bootstrapQ.data?.settings?.returns_enabled !== false ? ` · Free returns within ${bootstrapQ.data?.settings?.return_period_days || 30} days` : ""}
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sticky checkout bar — mobile only */}
+        {items.length > 0 && (
+          <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)]">
+            <div className="max-w-5xl mx-auto flex items-center gap-4">
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{formatPrice(subtotal, currencyObj)}</p>
+              </div>
+              <button
+                onClick={() => window.location.href = `/checkout`}
+                className="shrink-0 ml-auto px-10 bg-brand text-white font-semibold py-3 rounded-xl hover:bg-brand-dark transition shadow-md"
+              >
+                Checkout
+              </button>
             </div>
           </div>
         )}

@@ -13,7 +13,7 @@ import {
   useMotionValue,
   useInView,
 } from "framer-motion";
-import { ShoppingBag, ShoppingCart, ArrowRight, ArrowUpRight, Star, Truck, ShieldCheck, RefreshCw, Headphones, Quote, Sparkles, Camera, Mail, Plus, Minus, Leaf, Heart, Award, Globe, Scissors, Share2 } from "lucide-react";
+import { ShoppingBag, ShoppingBasket, ArrowRight, ArrowUpRight, Star, Truck, ShieldCheck, RefreshCw, Headphones, Quote, Sparkles, Camera, Mail, Plus, Minus, Leaf, Heart, Award, Globe, Scissors, Share2, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { fetchProducts } from "@/lib/api";
 import { OfferBanner } from "@/components/OfferBanner";
@@ -554,25 +554,45 @@ function ProductCard3D({ product, currency, brandColor }: { product: import("@/t
           </div>
         </div>
 
-        {/* Add to cart button — floats at highest depth, slides up on hover */}
-        <div className="px-4 sm:px-5 pb-4 sm:pb-5" style={{ transform: "translateZ(50px)" }}>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!outOfStock) cart?.addItem(product.id, undefined, 1, price, currency?.code);
-            }}
-            disabled={outOfStock}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${
-              outOfStock
-                ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-                : "text-white shadow-lg hover:shadow-xl"
-            }`}
-            style={!outOfStock ? { backgroundColor: brandColor } : undefined}
-          >
-            <ShoppingCart className="w-4 h-4" strokeWidth={2} />
-            {outOfStock ? "Sold Out" : "Add to Cart"}
-          </button>
+        {/* Add to basket + Buy buttons — float at highest depth, slide up on hover */}
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5 flex gap-2" style={{ transform: "translateZ(50px)" }}>
+          {outOfStock ? (
+            <button
+              disabled
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-stone-200 text-stone-400 cursor-not-allowed transition-all duration-300"
+            >
+              <ShoppingBasket className="w-4 h-4" strokeWidth={2} />
+              Sold Out
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  cart?.addItem(product.id, undefined, 1, price, currency?.code);
+                }}
+                className="peer flex-none w-11 sm:flex-1 sm:w-auto min-w-0 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm text-white bg-neutral-900 hover:bg-neutral-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                aria-label="Add to basket"
+              >
+                <ShoppingBasket className="w-4 h-4 flex-shrink-0" strokeWidth={2} aria-hidden />
+                <span className="hidden sm:inline whitespace-nowrap">Add to Basket</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  cart?.buyNow(product.id, undefined, 1, price, currency?.code);
+                }}
+                className="flex-1 min-w-0 sm:peer-hover:flex-none sm:peer-hover:w-11 sm:peer-hover:[&_.buy-txt]:hidden sm:peer-hover:[&_.buy-ico]:inline-block flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                style={{ backgroundColor: brandColor }}
+                aria-label="Buy now"
+              >
+                <Zap className="buy-ico hidden w-4 h-4 flex-shrink-0" strokeWidth={2} aria-hidden />
+                <span className="buy-txt">Buy</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Glare overlay — follows mouse */}

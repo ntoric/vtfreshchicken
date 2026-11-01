@@ -78,9 +78,11 @@ export default function LoginPage({ params }: { params: {} }) {
       >
         {pendingAction && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {pendingAction.type === "add_to_cart"
-              ? "Sign in to add items to your cart."
-              : "Sign in to add items to your wishlist."}
+            {pendingAction.type === "add_to_wishlist"
+              ? "Sign in to add items to your wishlist."
+              : pendingAction.type === "buy_now"
+                ? "Sign in to buy this item."
+                : "Sign in to add items to your basket."}
           </div>
         )}
 

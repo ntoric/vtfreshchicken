@@ -118,7 +118,7 @@ export function CartDrawer({ currency }: { currency?: Currency }) {
                 <span className="text-gray-600">Subtotal</span>
                 <span className="text-xl font-bold text-gray-900">{formatPrice(subtotal, currency)}</span>
               </div>
-              <p className="text-xs text-gray-400">{taxModuleOn ? "Shipping and taxes calculated at checkout." : "Shipping calculated at checkout."}</p>
+              <p className="text-xs text-gray-400">{taxModuleOn ? "Delivery and taxes calculated at checkout." : "Delivery calculated at checkout."}</p>
               <div className="flex gap-3">
                 <Link
                   href={`/cart`}

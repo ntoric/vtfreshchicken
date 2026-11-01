@@ -3,8 +3,9 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import type { Currency, Product } from "@/types";
 
 const addItem = vi.fn();
+const buyNow = vi.fn();
 const toggleItem = vi.fn();
-vi.mock("@/lib/cart", () => ({ useCart: () => ({ addItem }) }));
+vi.mock("@/lib/cart", () => ({ useCart: () => ({ addItem, buyNow }) }));
 vi.mock("@/lib/wishlist", () => ({ useWishlist: () => ({ isInWishlist: () => false, toggleItem }) }));
 vi.mock("@/lib/bootstrap", () => ({
   useBootstrap: () => ({ categories: [{ slug: "fresh-chicken", name: "Fresh Chicken" }] }),
@@ -48,6 +49,7 @@ function product(overrides: Partial<Product> = {}): Product {
 describe("ProductCard", () => {
   beforeEach(() => {
     addItem.mockClear();
+    buyNow.mockClear();
     toggleItem.mockClear();
   });
 
@@ -76,14 +78,21 @@ describe("ProductCard", () => {
   it("adds the selected size at its price", () => {
     render(<ProductCard product={product()} currency={inr} />);
     fireEvent.click(screen.getByRole("radio", { name: "1 kg" }));
-    fireEvent.click(screen.getByRole("button", { name: /add chicken breast.*1 kg.*to cart/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add chicken breast.*1 kg.*to basket/i }));
     expect(addItem).toHaveBeenCalledWith("p1", "v1", 1, 789.57, "INR");
+  });
+
+  it("buys the selected size directly", () => {
+    render(<ProductCard product={product()} currency={inr} />);
+    fireEvent.click(screen.getByRole("radio", { name: "1 kg" }));
+    fireEvent.click(screen.getByRole("button", { name: /buy chicken breast.*1 kg.*now/i }));
+    expect(buyNow).toHaveBeenCalledWith("p1", "v1", 1, 789.57, "INR");
   });
 
   it("applies the offer percentage to the selected size", () => {
     render(<ProductCard product={product({ discounted_price: 631.66, discount_pct: 20 })} currency={inr} />);
     expect(screen.getByText("20% off")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /add .* to cart/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add .* to basket/i }));
     expect(addItem.mock.calls[0][3]).toBeCloseTo(415.17 * 0.8, 2);
   });
 
@@ -96,7 +105,7 @@ describe("ProductCard", () => {
     );
     expect(screen.getByText("1 kg pack")).toBeInTheDocument();
     expect(screen.getByText("Only 3 left")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /add .* to cart/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add .* to basket/i }));
     expect(addItem).toHaveBeenCalledWith("p1", undefined, 1, 789.57, "INR");
   });
 

@@ -39,15 +39,14 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
 
   // Nav overflow ("More" dropdown) — measure items, fold what doesn't fit
+  const hasBranches = (bootstrap.branches ?? []).length > 0;
   const navItems = useMemo(
     () => [
       { label: "Home", href: `/` },
-      ...(bootstrap.categories || []).map((c) => ({
-        label: c.name,
-        href: `/shop?category=${c.slug}`,
-      })),
+      { label: "Shop", href: `/shop` },
+      ...(hasBranches ? [{ label: "Branches", href: `/branches` }] : []),
     ],
-    [bootstrap.categories]
+    [hasBranches]
   );
   const navRef = useRef<HTMLElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
@@ -419,18 +418,6 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
         </AnimatePresence>
       </div>
 
-      {/* Mobile category strip — shown on md and below */}
-      <div className="xl:hidden bg-white/80 backdrop-blur-md border-b border-stone-200">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2.5 flex gap-5 overflow-x-auto no-scrollbar text-sm font-medium text-gray-600">
-          <Link href={`/`} className="whitespace-nowrap hover:text-gray-900 transition-colors">Home</Link>
-          {(bootstrap.categories || []).map((cat) => (
-            <Link key={cat.id} href={`/shop?category=${cat.slug}`} className="whitespace-nowrap hover:text-gray-900 transition-colors">
-              {cat.name}
-            </Link>
-          ))}
-        </div>
-      </div>
-
       {/* Mobile menu drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
@@ -504,16 +491,29 @@ export function Header({ bootstrap, appearance = "default" }: HeaderProps) {
                   >
                     Home
                   </Link>
-                  {(bootstrap.categories || []).map((cat) => (
+                  <Link
+                    href={`/shop`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 rounded-xl text-base font-medium text-gray-900 hover:bg-stone-100 transition-colors"
+                  >
+                    Shop
+                  </Link>
+                  {hasBranches && (
                     <Link
-                      key={cat.id}
-                      href={`/shop?category=${cat.slug}`}
+                      href={`/branches`}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-stone-100 transition-colors"
+                      className="block px-4 py-3 rounded-xl text-base font-medium text-gray-900 hover:bg-stone-100 transition-colors"
                     >
-                      {cat.name}
+                      Branches
                     </Link>
-                  ))}
+                  )}
+                  <Link
+                    href={`/contact`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-3 rounded-xl text-base font-medium text-gray-900 hover:bg-stone-100 transition-colors"
+                  >
+                    Contact Us
+                  </Link>
                 </nav>
 
                 {/* Account section */}

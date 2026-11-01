@@ -138,7 +138,7 @@ export function LandingHome() {
     staleTime: 60_000,
   });
   const picks = picksQ.data?.items ?? [];
-  const showPicks = !!bootstrap && (picksQ.isLoading || picks.length > 0);
+  const showPicks = !!bootstrap && (picksQ.isLoading || picksQ.isError || picks.length > 0);
 
   return (
     <div className={styles.page}>
@@ -517,6 +517,17 @@ export function LandingHome() {
             <div className="mt-8">
               <ProductGridSkeleton count={PICKS_COUNT} />
             </div>
+          ) : picksQ.isError ? (
+            <p className="mt-8 text-sm text-stone-400">
+              Couldn&apos;t load products right now.{" "}
+              <button
+                type="button"
+                onClick={() => picksQ.refetch()}
+                className="font-medium text-stone-600 underline underline-offset-4 hover:text-brand transition-colors"
+              >
+                Retry
+              </button>
+            </p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 mt-8">
               {picks.map((p) => (

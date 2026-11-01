@@ -8,7 +8,7 @@ export interface Tenant {
   is_active: boolean;
 }
 
-export type LandingVariant = "classic" | "minimal" | "malayalam";
+export type LandingVariant = "classic" | "minimal" | "malayalam" | "simple";
 
 export type ShopBannerTheme = "crimson" | "plum" | "forest" | "charcoal" | "saffron";
 
@@ -433,8 +433,10 @@ export interface Branch {
   phone?: string;
   email?: string;
   line1?: string;
+  line2?: string;
   city?: string;
   state?: string;
+  postal_code?: string;
   country?: string;
   center_lat: number;
   center_lng: number;

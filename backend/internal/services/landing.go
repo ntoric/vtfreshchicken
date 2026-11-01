@@ -13,10 +13,11 @@ const (
 	LandingVariantClassic   = "classic"
 	LandingVariantMinimal   = "minimal"
 	LandingVariantMalayalam = "malayalam"
+	LandingVariantSimple    = "simple"
 )
 
 // LandingVariants lists every selectable homepage design, in display order.
-var LandingVariants = []string{LandingVariantClassic, LandingVariantMinimal, LandingVariantMalayalam}
+var LandingVariants = []string{LandingVariantClassic, LandingVariantMinimal, LandingVariantMalayalam, LandingVariantSimple}
 
 // ErrInvalidLandingVariant is returned for an unknown variant code.
 var ErrInvalidLandingVariant = errors.New("invalid landing variant")

@@ -78,9 +78,11 @@ export default function RegisterPage({ params }: { params: {} }) {
       >
         {pendingAction && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {pendingAction.type === "add_to_cart"
-              ? "Register to add items to your cart."
-              : "Register to add items to your wishlist."}
+            {pendingAction.type === "add_to_wishlist"
+              ? "Register to add items to your wishlist."
+              : pendingAction.type === "buy_now"
+                ? "Register to buy this item."
+                : "Register to add items to your basket."}
           </div>
         )}
 

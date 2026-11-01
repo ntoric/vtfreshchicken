@@ -1,7 +1,7 @@
 import { fetchBootstrap } from "@/lib/api";
 import type { BootstrapResponse, LandingVariant } from "@/types";
 
-const VARIANTS: readonly LandingVariant[] = ["classic", "minimal", "malayalam"];
+const VARIANTS: readonly LandingVariant[] = ["classic", "minimal", "malayalam", "simple"];
 import { LandingSwitch } from "./LandingSwitch";
 
 /** Active homepage design (Backoffice → Developer → Landing Page); classic by default. */

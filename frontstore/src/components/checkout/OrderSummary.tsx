@@ -101,7 +101,7 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
                 </p>
                 {item.shipping_method && (
                   <p className="text-xs text-gray-400">
-                    Ships via <span className="capitalize">{item.shipping_method}</span>
+                    Delivered via <span className="capitalize">{item.shipping_method}</span>
                     {item.shipping_cost != null && item.shipping_cost > 0 && ` · ${formatPrice(item.shipping_cost, currencyObj)}`}
                     {item.shipping_weight != null && item.shipping_weight > 0 && ` · ${item.shipping_weight.toFixed(2)} kg`}
                   </p>
@@ -128,7 +128,7 @@ export function OrderSummary({ order, currencyObj, transactionId, paymentMethod 
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-gray-600">Shipping{order.shipping_weight ? ` (${order.shipping_weight.toFixed(2)} kg)` : ""}</span>
+            <span className="text-gray-600">Delivery{order.shipping_weight ? ` (${order.shipping_weight.toFixed(2)} kg)` : ""}</span>
             <span className="font-medium">
               {order.shipping_total === 0 ? <span className="text-emerald-600">FREE</span> : formatPrice(order.shipping_total, currencyObj)}
             </span>

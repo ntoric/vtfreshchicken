@@ -62,7 +62,7 @@ export function LandingMalayalam() {
     staleTime: 60_000,
   });
   const picks = picksQ.data?.items ?? [];
-  const showPicks = !!bootstrap && (picksQ.isLoading || picks.length > 0);
+  const showPicks = !!bootstrap && (picksQ.isLoading || picksQ.isError || picks.length > 0);
 
   return (
     <div lang="ml" className={`${styles.page} ${mlBody.className}`}>
@@ -215,6 +215,17 @@ export function LandingMalayalam() {
             <div className="mt-8">
               {picksQ.isLoading ? (
                 <ProductGridSkeleton count={PICKS_COUNT} />
+              ) : picksQ.isError ? (
+                <p className="text-sm text-neutral-400">
+                  {ui.popularError}{" "}
+                  <button
+                    type="button"
+                    onClick={() => picksQ.refetch()}
+                    className="font-medium text-neutral-600 underline underline-offset-4 hover:text-brand transition-colors"
+                  >
+                    {ui.retry}
+                  </button>
+                </p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
                   {picks.map((p) => (

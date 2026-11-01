@@ -232,6 +232,11 @@ const LANDING_OPTIONS: { value: LandingVariant; label: string; description: stri
     label: "Malayalam (മലയാളം)",
     description: "The clean, simple layout with all homepage copy in Malayalam, set in Malayalam typefaces.",
   },
+  {
+    value: "simple",
+    label: "Simple",
+    description: "Bare-bones storefront — a short intro, a product grid and a link to the shop. Nothing else.",
+  },
 ];
 
 function LandingPageSettings() {
@@ -336,6 +341,23 @@ function LandingPreview({ variant }: { variant: LandingVariant }) {
           <div className="h-6 rounded bg-neutral-100" />
           <div className="h-6 rounded bg-neutral-100" />
           <div className="h-6 rounded bg-neutral-100" />
+        </div>
+      </div>
+    );
+  }
+  if (variant === "simple") {
+    return (
+      <div aria-hidden className="h-28 rounded-lg bg-white border p-2.5 flex flex-col gap-2 overflow-hidden">
+        <div className="space-y-1.5">
+          <div className="h-1 w-10 rounded bg-brand" />
+          <div className="h-2.5 w-3/4 rounded bg-neutral-800" />
+          <div className="h-2.5 w-10 rounded-full bg-brand" />
+        </div>
+        <div className="grid grid-cols-4 gap-1.5 mt-auto">
+          <div className="h-10 rounded bg-neutral-100" />
+          <div className="h-10 rounded bg-neutral-100" />
+          <div className="h-10 rounded bg-neutral-100" />
+          <div className="h-10 rounded bg-neutral-100" />
         </div>
       </div>
     );

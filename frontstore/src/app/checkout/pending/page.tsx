@@ -85,7 +85,7 @@ function PendingContent() {
         />
       )}
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 pt-8 pb-28 lg:pb-8">
         {/* Pending banner */}
         <div className="text-center mb-8 animate-fade-in-up">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-100 mb-4 relative">
@@ -176,8 +176,8 @@ function PendingContent() {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Actions — desktop inline; mobile uses the sticky bottom bar */}
+        <div className="hidden lg:flex flex-col sm:flex-row gap-3">
           <Link
             href={`/orders/${order.id}`}
             className="flex-1 bg-amber-600 text-white font-semibold py-2.5 rounded-lg text-center hover:bg-amber-700 transition shadow-md flex items-center justify-center gap-2"
@@ -196,6 +196,24 @@ function PendingContent() {
             </svg>
             Continue Shopping
           </Link>
+        </div>
+
+        {/* Mobile actions — sticky bottom bar */}
+        <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden border-t border-white/60 bg-white/60 backdrop-blur-xl backdrop-saturate-150 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.15)]">
+          <div className="max-w-3xl mx-auto flex items-center gap-3">
+            <Link
+              href={``}
+              className="shrink-0 px-4 py-3 rounded-xl border border-stone-300 bg-white/60 font-semibold text-gray-700 hover:bg-white transition text-sm whitespace-nowrap"
+            >
+              Continue Shopping
+            </Link>
+            <Link
+              href={`/orders/${order.id}`}
+              className="flex-1 bg-amber-600 text-white font-semibold py-3 rounded-xl text-center hover:bg-amber-700 transition shadow-md"
+            >
+              View Order Details
+            </Link>
+          </div>
         </div>
       </div>
     </div>

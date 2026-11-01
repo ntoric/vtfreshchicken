@@ -109,16 +109,16 @@ function ToastCard({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
   return (
     <div
-      className={`relative overflow-hidden flex items-start gap-3 p-4 pb-3.5 rounded-2xl border ${cfg.borderColor} ${cfg.accent}
+      className={`relative overflow-hidden flex items-center gap-2.5 p-3 pb-2.5 rounded-xl border ${cfg.borderColor} ${cfg.accent}
         backdrop-blur-xl bg-white/70 shadow-lg shadow-slate-900/5
-        min-w-[320px] max-w-md`}
+        w-auto min-w-0 max-w-full sm:items-start sm:gap-3 sm:p-4 sm:pb-3.5 sm:rounded-2xl sm:min-w-[320px] sm:max-w-md`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${cfg.iconColor}`} strokeWidth={2} />
+      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 sm:mt-0.5 ${cfg.iconColor}`} strokeWidth={2} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
-        {toast.message && <p className="text-sm text-slate-600 mt-0.5">{toast.message}</p>}
+        {toast.message && <p className="text-xs sm:text-sm text-slate-600 mt-0.5">{toast.message}</p>}
       </div>
       <button
         onClick={onClose}
@@ -169,7 +169,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none">
+      <div className="fixed top-3 inset-x-3 z-[9999] flex flex-col items-center gap-2 pointer-events-none sm:top-4 sm:inset-x-auto sm:right-4 sm:items-end sm:gap-3">
         {toasts.map((t) => (
           <div key={t.id} className="pointer-events-auto">
             <ToastCard toast={t} onClose={() => removeToast(t.id)} />
