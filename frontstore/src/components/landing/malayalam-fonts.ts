@@ -1,4 +1,4 @@
-import { Baloo_Chettan_2, Chilanka, Noto_Sans_Malayalam } from "next/font/google";
+import styles from "./malayalam-fonts.module.css";
 
 // Malayalam typefaces for the Malayalam landing page. The Latin display fonts
 // used by the other designs (Oswald, Dancing Script, Fraunces) have no
@@ -6,20 +6,11 @@ import { Baloo_Chettan_2, Chilanka, Noto_Sans_Malayalam } from "next/font/google
 //   body    — Noto Sans Malayalam (clean, highly legible UI text)
 //   display — Baloo Chettan 2 (heavy, rounded headline face)
 //   script  — Chilanka (hand-lettered accent, like the hero script line)
-export const mlBody = Noto_Sans_Malayalam({
-  subsets: ["malayalam", "latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-export const mlDisplay = Baloo_Chettan_2({
-  subsets: ["malayalam", "latin"],
-  weight: ["600", "800"],
-  display: "swap",
-});
-
-export const mlScript = Chilanka({
-  subsets: ["malayalam", "latin"],
-  weight: ["400"],
-  display: "swap",
-});
+//
+// Self-hosted (./fonts, declared in malayalam-fonts.module.css) rather than
+// next/font/google: Google intermittently serves these families with
+// extension-less file URLs, which crashes the Next 14 font loader at build time.
+// Same `{ className }` shape as next/font so call sites are unchanged.
+export const mlBody = { className: styles.body };
+export const mlDisplay = { className: styles.display };
+export const mlScript = { className: styles.script };
