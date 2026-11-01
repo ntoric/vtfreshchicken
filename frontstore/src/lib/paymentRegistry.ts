@@ -34,6 +34,14 @@ export interface PaymentComponentProps {
   onDetailsChange: (details: PaymentDetails | null) => void;
   /** Whether the parent is currently submitting the payment */
   isProcessing?: boolean;
+  /** ISO currency code of the checkout (e.g. "INR") */
+  currencyCode?: string;
+  /** Customer contact details from the checkout form (hosted gateways need them) */
+  customer?: { name?: string; email?: string; phone?: string };
+  /** Validates the rest of the checkout before a hosted payment is opened. Returns false to abort. */
+  validateBeforePayment?: () => boolean;
+  /** Called once a hosted payment has succeeded, after onDetailsChange — the parent places the order. */
+  onPaymentComplete?: () => void;
 }
 
 export interface RegisteredGateway {
@@ -63,10 +71,12 @@ import { CardGateway } from "@/components/payment/CardGateway";
 import { PaypalGateway } from "@/components/payment/PaypalGateway";
 import { CodGateway } from "@/components/payment/CodGateway";
 import { RazorpayGateway } from "@/components/payment/RazorpayGateway";
+import { CashfreeGateway } from "@/components/payment/CashfreeGateway";
 import { WalletGateway } from "@/components/payment/WalletGateway";
 
 registerGateway(CardGateway);
 registerGateway(PaypalGateway);
 registerGateway(CodGateway);
 registerGateway(RazorpayGateway);
+registerGateway(CashfreeGateway);
 registerGateway(WalletGateway);

@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
-import { BrandLogo } from "@/components/BrandLogo";
 import { OfferBanner } from "@/components/OfferBanner";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGridSkeleton } from "@/components/Loaders";
@@ -30,6 +29,7 @@ import { fetchProducts } from "@/lib/api";
 import { getCurrencySymbol } from "@/lib/format";
 import styles from "./LandingHome.module.css";
 import { testimonials, knownFor, steps, faqs } from "./landing-content";
+import { LandingFooter } from "./landing/LandingFooter";
 
 const PICKS_COUNT = 8;
 
@@ -130,7 +130,6 @@ export function LandingHome() {
   const storeName = bootstrap?.store_name || "VT Fresh Chicken";
   const offers = bootstrap?.offers || [];
   const currencyObj = getCurrencySymbol(bootstrap?.currencies || [], currency);
-  const year = new Date().getFullYear();
 
   const picksQ = useQuery({
     queryKey: ["landing-picks", currency, lang],
@@ -519,7 +518,7 @@ export function LandingHome() {
               <ProductGridSkeleton count={PICKS_COUNT} />
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 mt-8">
               {picks.map((p) => (
                 <ProductCard key={p.id} product={p} currency={currencyObj} />
               ))}
@@ -770,108 +769,7 @@ export function LandingHome() {
       </section>
       </main>
 
-      {/* ============ Footer ============ */}
-      <footer className="relative overflow-hidden bg-stone-950 text-stone-400">
-        <div aria-hidden className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: NOISE_BG }} />
-        <div
-          aria-hidden
-          className="absolute -top-40 left-1/4 w-[34rem] h-[34rem] rounded-full opacity-[0.08] blur-3xl"
-          style={{ background: "var(--brand-color)" }}
-        />
-        <div
-          aria-hidden
-          className="absolute top-0 inset-x-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, var(--brand-color), transparent)" }}
-        />
-        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pt-12 sm:pt-16 pb-8">
-          <div className="grid gap-10 sm:gap-12 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr]">
-            <div>
-              <BrandLogo inverse storeName={storeName} />
-              <p className="mt-4 text-sm leading-relaxed max-w-xs">
-                Purely washed, machine-cut and cold-chain kept — premium fresh
-                chicken delivered to your door.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {[
-                  { icon: Droplets, label: "Purely washed" },
-                  { icon: ThermometerSnowflake, label: "Chilled delivery" },
-                  { icon: ShieldCheck, label: "Secure checkout" },
-                ].map(({ icon: Icon, label }) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-stone-800 bg-stone-900/60 px-3 py-1.5 text-[11px] font-medium text-stone-400"
-                  >
-                    <Icon className="w-3.5 h-3.5 text-brand" strokeWidth={1.8} />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h4 className="text-[11px] font-semibold tracking-[0.2em] uppercase text-stone-500">
-                Shop
-              </h4>
-              <ul className="mt-4 space-y-2.5 text-sm">
-                <li>
-                  <Link href={SHOP} className="hover:text-white transition-colors">
-                    Shop chicken
-                  </Link>
-                </li>
-                {(bootstrap?.categories || []).slice(0, 5).map((cat) => (
-                  <li key={cat.id}>
-                    <Link
-                      href={`/shop?category=${cat.slug}`}
-                      className="hover:text-white transition-colors"
-                    >
-                      {cat.name}
-                    </Link>
-                  </li>
-                ))}
-                <li>
-                  <Link href="/wishlist" className="hover:text-white transition-colors">
-                    Wishlist
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-[11px] font-semibold tracking-[0.2em] uppercase text-stone-500">
-                Company
-              </h4>
-              <ul className="mt-4 space-y-2.5 text-sm">
-                <li><Link href="/about" className="hover:text-white transition-colors">About us</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-                <li><Link href="/orders" className="hover:text-white transition-colors">Track orders</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-[11px] font-semibold tracking-[0.2em] uppercase text-stone-500">
-                Our promise
-              </h4>
-              <p className="mt-4 text-sm leading-relaxed">
-                Honest chicken, clearly labelled, prepared the morning your
-                order ships and packed in insulated, food-safe chill packs.
-              </p>
-              <Link
-                href="/about"
-                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-white hover:underline underline-offset-4 decoration-brand"
-              >
-                Read our story<span aria-hidden>→</span>
-              </Link>
-            </div>
-          </div>
-          <div className="mt-12 pt-6 border-t border-stone-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="text-xs text-stone-500">
-              © {year} {storeName}. All rights reserved.
-            </p>
-            <div className="flex gap-5 text-xs">
-              <Link href="/privacy-policy" className="text-stone-500 hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/cookie-policy" className="text-stone-500 hover:text-white transition-colors">Cookie Policy</Link>
-              <Link href="/terms" className="text-stone-500 hover:text-white transition-colors">Terms</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter bootstrap={bootstrap} storeName={storeName} shopHref={SHOP} />
     </div>
   );
 }

@@ -149,9 +149,13 @@ type TenantSettings struct {
 	LogoURL             string `json:"logo_url"`
 	LandingPageEnabled  bool   `json:"landing_page_enabled"`
 	LandingPageContent  *LandingPageContent `json:"landing_page_content,omitempty"`
-	// Homepage design ("classic" | "minimal"). Superadmin-only; set via
+	// Homepage design ("classic" | "minimal" | "malayalam"). Superadmin-only; set via
 	// PUT /api/developer/landing — not writable through PUT /api/settings.
 	LandingVariant      string `json:"landing_variant"`
+	// Shop page banner carousel. Managed via GET/PUT /api/settings/shop-banners —
+	// not writable through PUT /api/settings. Defaults are served when the
+	// store has never configured banners.
+	ShopBanners         []ShopBanner `json:"shop_banners"`
 	// Tax settings
 	TaxInclusive        bool   `json:"tax_inclusive"`
 	TaxShipping         bool   `json:"tax_shipping"`
@@ -260,6 +264,23 @@ type TenantSMTPSettings struct {
 	Enabled    bool   `json:"enabled"`
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
+}
+
+// ShopBanner is one slide of the /shop banner carousel.
+type ShopBanner struct {
+	ID         string `json:"id"`
+	Enabled    bool   `json:"enabled"`
+	Theme      string `json:"theme"`       // colour scheme — see services.ShopBannerThemes
+	Eyebrow    string `json:"eyebrow"`     // script-style lead word, e.g. "Farm Fresh"
+	Title      string `json:"title"`       // big display word, e.g. "CHICKEN"
+	Subtitle   string `json:"subtitle"`    // supporting copy
+	BadgeValue string `json:"badge_value"` // hexagon badge headline, e.g. "20%"
+	BadgeLabel string `json:"badge_label"` // hexagon badge caption, e.g. "OFF"
+	ImageURL   string `json:"image_url"`
+	CTAText    string `json:"cta_text"`
+	CTALink    string `json:"cta_link"`
+	Phone      string `json:"phone"`       // optional, shown in the footer strip
+	FooterNote string `json:"footer_note"` // optional, shown in the footer strip
 }
 
 // LandingPageContent holds configurable content for the store landing page.
@@ -1221,6 +1242,8 @@ type PaymentDetails struct {
 	RazorpayOrderID   string `json:"razorpay_order_id,omitempty"`
 	RazorpayPaymentID string `json:"razorpay_payment_id,omitempty"`
 	RazorpaySignature string `json:"razorpay_signature,omitempty"`
+	// Cashfree
+	CashfreeOrderID string `json:"cashfree_order_id,omitempty"`
 }
 
 type OrderResponse struct {

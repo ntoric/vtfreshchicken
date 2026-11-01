@@ -757,7 +757,7 @@ export function Settings() {
     return (
       <div>
         <PageHeader title="Settings" />
-        <div className="bg-white rounded-2xl border p-8 animate-pulse space-y-4 max-w-3xl">
+        <div className="bg-white rounded-2xl border p-8 animate-pulse space-y-4">
           <div className="h-6 bg-neutral-100 rounded w-1/4" />
           <div className="h-10 bg-neutral-100 rounded" />
           <div className="h-6 bg-neutral-100 rounded w-1/4" />
@@ -780,7 +780,7 @@ export function Settings() {
         }
       />
 
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6">
         {/* Account Info */}
         <Section title="Account" description="Your account information">
           <div className="space-y-1 text-sm text-neutral-600">

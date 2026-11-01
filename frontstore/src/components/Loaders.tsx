@@ -57,14 +57,18 @@ export function FullPageLoader({ label = "Loading" }: { label?: string }) {
 // ============ Product card skeleton ============
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border overflow-hidden">
-      <div className="aspect-square bg-gray-100 shimmer" />
-      <div className="p-3 sm:p-4 space-y-2.5">
+    <div className="rounded-2xl bg-white border border-neutral-200 p-1.5">
+      <div className="aspect-square rounded-xl bg-gray-100 shimmer" />
+      <div className="px-2 pt-2.5 pb-1.5 space-y-2.5">
         <div className="h-3 bg-gray-100 rounded shimmer w-1/3" />
-        <div className="h-4 bg-gray-100 rounded shimmer w-2/3" />
-        <div className="flex items-center justify-between pt-1">
-          <div className="h-5 bg-gray-100 rounded shimmer w-1/4" />
-          <div className="h-8 w-8 bg-gray-100 rounded-lg shimmer" />
+        <div className="h-4 bg-gray-100 rounded shimmer w-4/5" />
+        <div className="flex gap-1.5">
+          <div className="h-6 w-12 bg-gray-100 rounded-lg shimmer" />
+          <div className="h-6 w-12 bg-gray-100 rounded-lg shimmer" />
+        </div>
+        <div className="flex items-end justify-between pt-1">
+          <div className="h-5 bg-gray-100 rounded shimmer w-1/3" />
+          <div className="h-9 w-16 bg-gray-100 rounded-full shimmer" />
         </div>
       </div>
     </div>
@@ -74,7 +78,7 @@ export function ProductCardSkeleton() {
 // ============ Product grid skeleton ============
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}

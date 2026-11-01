@@ -58,15 +58,14 @@ export function LandingSkeleton() {
       </div>
 
       {/* Range tiles */}
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-14 sm:py-20">
-        <div className={`h-8 w-48 ${bar}`} />
-        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2.5 sm:gap-5">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="space-y-3">
-              <div className={`aspect-square sm:aspect-[4/3] rounded-xl sm:rounded-2xl ${bar}`} />
-              <div className={`h-4 w-2/3 ${bar}`} />
-            </div>
-          ))}
+      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-16 sm:py-24">
+        <div className={`h-3 w-24 ${bar}`} />
+        <div className={`mt-2 h-8 w-56 ${bar}`} />
+        <div className={`mt-3 h-4 w-full max-w-md ${bar}`} />
+        <div className="mt-10 sm:mt-12 grid grid-cols-2 lg:grid-cols-12 lg:grid-rows-2 gap-3 sm:gap-5 lg:h-[560px]">
+          <div className={`col-span-2 aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:col-span-7 lg:row-span-2 rounded-2xl sm:rounded-[1.75rem] ${bar}`} />
+          <div className={`aspect-[4/5] sm:aspect-[4/3] lg:aspect-auto lg:col-span-5 rounded-2xl sm:rounded-[1.75rem] ${bar}`} />
+          <div className={`aspect-[4/5] sm:aspect-[4/3] lg:aspect-auto lg:col-span-5 rounded-2xl sm:rounded-[1.75rem] ${bar}`} />
         </div>
       </div>
     </div>
@@ -78,17 +77,16 @@ export function LandingMoreSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading more">
       {/* How it works */}
-      <div className="border-y border-neutral-100 bg-neutral-50/60">
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-14 sm:py-20">
-          <div className={`h-3 w-24 ${bar}`} />
-          <div className={`mt-3 h-8 w-64 ${bar}`} />
-          <div className="mt-8 sm:mt-10 grid sm:grid-cols-3 gap-4 sm:gap-5">
+      <div className="bg-neutral-950">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-20 sm:py-28">
+          <div className="h-3 w-24 rounded bg-white/10" />
+          <div className="mt-4 h-9 w-80 max-w-full rounded bg-white/10" />
+          <div className="mt-14 sm:mt-20 grid sm:grid-cols-3 gap-x-8 lg:gap-x-12 gap-y-12">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="rounded-2xl bg-white border border-neutral-200 p-6 space-y-3">
-                <div className={`w-10 h-10 rounded-full ${bar}`} />
-                <div className={`h-4 w-1/2 ${bar}`} />
-                <div className={`h-3 w-full ${bar}`} />
-                <div className={`h-3 w-4/5 ${bar}`} />
+              <div key={i} className="border-t border-white/10 pt-10 space-y-3">
+                <div className="h-14 w-20 rounded bg-white/10" />
+                <div className="h-4 w-1/2 rounded bg-white/10" />
+                <div className="h-3 w-full rounded bg-white/5" />
               </div>
             ))}
           </div>

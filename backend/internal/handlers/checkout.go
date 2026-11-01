@@ -362,6 +362,9 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 		if req.PaymentDetails.RazorpaySignature != "" {
 			detailsMap["razorpay_signature"] = req.PaymentDetails.RazorpaySignature
 		}
+		if req.PaymentDetails.CashfreeOrderID != "" {
+			detailsMap["cashfree_order_id"] = req.PaymentDetails.CashfreeOrderID
+		}
 	}
 
 	// Process payment through the gateway (or wallet service for wallet payments)
@@ -422,6 +425,20 @@ func (h *CheckoutHandler) PlaceOrder(c *gin.Context) {
 			"payment_status": payResult.Status,
 		})
 		return
+	}
+
+	// Hosted gateways (Razorpay, Cashfree) verify a payment made in the browser;
+	// make sure that payment hasn't already been used for another order.
+	if _, hosted := gateway.(payment.OrderCreator); hosted && !isWalletPayment && payResult.TransactionID != "" {
+		used, uErr := h.store.OrderTransactionExists(c.Request.Context(), tid, req.PaymentMethod, payResult.TransactionID)
+		if uErr != nil {
+			errResponse(c, http.StatusInternalServerError, uErr.Error())
+			return
+		}
+		if used {
+			errResponse(c, http.StatusConflict, "this payment has already been used for another order")
+			return
+		}
 	}
 
 	// Set the order status from the payment result

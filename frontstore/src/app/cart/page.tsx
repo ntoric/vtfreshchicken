@@ -12,6 +12,7 @@ import { formatPrice, getCurrencySymbol } from "@/lib/format";
 import { useCurrencyLang } from "@/lib/currency-lang";
 import { useToast } from "@/components/Toast";
 import { useConfirmState, ConfirmDialog } from "@/components/ConfirmDialog";
+import { thumbUrl } from "@/lib/images";
 
 export default function CartPage({ params }: { params: {} }) {
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
@@ -122,7 +123,7 @@ export default function CartPage({ params }: { params: {} }) {
                 <div key={item.id} className="bg-white rounded-2xl border p-3 sm:p-4 flex gap-3 sm:gap-4">
                   <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                     {item.image_url && (
-                      <Image src={item.image_url} alt={item.product_name} fill sizes="96px" className="object-cover" />
+                      <Image src={thumbUrl(item.image_url)} alt={item.product_name} fill sizes="96px" className="object-cover" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

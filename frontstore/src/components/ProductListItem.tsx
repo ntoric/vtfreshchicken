@@ -7,6 +7,7 @@ import type { Product, Currency } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
+import { thumbUrl } from "@/lib/images";
 
 interface ProductListItemProps {
   product: Product;
@@ -34,7 +35,7 @@ export function ProductListItem({ product, currency }: ProductListItemProps) {
       <div className="relative w-full sm:w-48 md:w-56 aspect-square sm:aspect-auto flex-shrink-0 bg-gray-100 overflow-hidden">
         {displayImage ? (
           <Image
-            src={displayImage}
+            src={thumbUrl(displayImage)}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 100vw, 224px"

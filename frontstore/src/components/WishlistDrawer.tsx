@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart";
 import { InlineLoader } from "@/components/Loaders";
 import { formatPrice } from "@/lib/format";
 import type { Currency } from "@/types";
+import { thumbUrl } from "@/lib/images";
 
 export function WishlistDrawer({ currency }: { currency?: Currency }) {
   const { wishlist, isOpen, closeWishlist, removeItem, isLoading } = useWishlist();
@@ -51,7 +52,7 @@ export function WishlistDrawer({ currency }: { currency?: Currency }) {
                 <div key={item.id} className="flex gap-3">
                   <Link href={`/products/${item.slug}`} onClick={closeWishlist} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                     {item.image_url && (
-                      <Image src={item.image_url} alt={item.product_name} fill sizes="80px" className="object-cover" />
+                      <Image src={thumbUrl(item.image_url)} alt={item.product_name} fill sizes="80px" className="object-cover" />
                     )}
                   </Link>
                   <div className="flex-1 min-w-0">

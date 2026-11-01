@@ -1133,6 +1133,33 @@ export interface PaymentGatewayConfig {
 // Storefront homepage design (Developer → Landing Page).
 export type LandingVariant = "classic" | "minimal";
 
+// Shop page banner carousel (Content → Shop Banners).
+export type ShopBannerTheme = "crimson" | "plum" | "forest" | "charcoal" | "saffron";
+
+export interface ShopBanner {
+  id: string;
+  enabled: boolean;
+  theme: ShopBannerTheme;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  badge_value: string;
+  badge_label: string;
+  image_url: string;
+  cta_text: string;
+  cta_link: string;
+  phone: string;
+  footer_note: string;
+}
+
+export interface ShopBannersResponse {
+  banners: ShopBanner[];
+  customized: boolean;
+  defaults: ShopBanner[];
+  themes: ShopBannerTheme[];
+  max: number;
+}
+
 export interface LandingSettings {
   landing_variant: LandingVariant;
   options: LandingVariant[];

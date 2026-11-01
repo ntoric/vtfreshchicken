@@ -23,6 +23,11 @@ const SUGGESTED_KEYS: Record<string, { key: string; label: string }[]> = {
     { key: "key_secret", label: "Key Secret" },
     { key: "webhook_secret", label: "Webhook Secret" },
   ],
+  cashfree: [
+    { key: "app_id", label: "App ID (public)" },
+    { key: "secret_key", label: "Secret Key" },
+    { key: "environment", label: "Environment (sandbox / production)" },
+  ],
   paypal: [
     { key: "client_id", label: "Client ID" },
     { key: "client_secret", label: "Client Secret" },

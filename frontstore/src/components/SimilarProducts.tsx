@@ -47,7 +47,7 @@ export function SimilarProducts({ product, currency, lang }: SimilarProductsProp
     return (
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">You May Also Like</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
               <div className="aspect-square bg-gray-200" />
@@ -84,7 +84,7 @@ export function SimilarProducts({ product, currency, lang }: SimilarProductsProp
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {products.map((p) => (
           <ProductCard
             key={p.id}

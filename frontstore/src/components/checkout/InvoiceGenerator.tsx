@@ -19,6 +19,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   paypal: "PayPal",
   cod: "Cash on Delivery",
   razorpay: "Razorpay",
+  cashfree: "Cashfree",
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {

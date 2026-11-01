@@ -355,6 +355,9 @@ func buildPaymentDetailsMap(pd *models.PaymentDetails) map[string]interface{} {
 	if pd.RazorpaySignature != "" {
 		m["razorpay_signature"] = pd.RazorpaySignature
 	}
+	if pd.CashfreeOrderID != "" {
+		m["cashfree_order_id"] = pd.CashfreeOrderID
+	}
 	return m
 }
 

@@ -15,6 +15,7 @@ import { Vendors } from "@/pages/Vendors";
 import { Categories } from "@/pages/Categories";
 import { Attributes } from "@/pages/Attributes";
 import { Offers } from "@/pages/Offers";
+import { ShopBanners } from "@/pages/ShopBanners";
 import { Discounts } from "@/pages/Discounts";
 import { Orders } from "@/pages/Orders";
 import { OrderDetail } from "@/pages/OrderDetail";
@@ -78,6 +79,7 @@ const pageRoutes = (
     <Route path="shipping" element={<Page><ModuleGate module="shipping"><Shipping /></ModuleGate></Page>} />
     <Route path="payments" element={<Page><Payments /></Page>} />
     <Route path="notifications" element={<Page><Notifications /></Page>} />
+    <Route path="shop-banners" element={<Page><ShopBanners /></Page>} />
     <Route path="pages" element={<Page><ModuleGate module="page_builder"><Pages /></ModuleGate></Page>} />
     <Route path="pages/:id/edit" element={<Page><ModuleGate module="page_builder"><PageBuilder /></ModuleGate></Page>} />
     <Route path="contact-submissions" element={<Page><ContactSubmissions /></Page>} />

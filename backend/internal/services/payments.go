@@ -368,16 +368,20 @@ func maskGatewayConfig(cfg map[string]interface{}) map[string]interface{} {
 
 // defaultGatewaySeeds mirrors the seeds in migration 0010 so that stores
 // created after that migration (via the setup wizard) get the same rows.
+// Cashfree starts disabled: it needs credentials (Backoffice → Developer)
+// before it can take real payments.
 var defaultGatewaySeeds = []struct {
 	code      string
 	name      string
+	enabled   bool
 	testMode  bool
 	sortOrder int
 }{
-	{"card", "Credit / Debit Card", true, 10},
-	{"paypal", "PayPal", true, 20},
-	{"razorpay", "Razorpay", true, 30},
-	{"cod", "Cash on Delivery", false, 90},
+	{"card", "Credit / Debit Card", true, true, 10},
+	{"paypal", "PayPal", true, true, 20},
+	{"razorpay", "Razorpay", true, true, 30},
+	{"cashfree", "Cashfree", false, true, 35},
+	{"cod", "Cash on Delivery", true, false, 90},
 }
 
 // EnsureDefaultGatewayConfigs inserts config rows for any built-in gateway
@@ -386,9 +390,9 @@ func (s *Store) EnsureDefaultGatewayConfigs(ctx context.Context, tenantID uuid.U
 	for _, g := range defaultGatewaySeeds {
 		if _, err := s.Pool.Exec(ctx,
 			`INSERT INTO payment_gateway_configs (tenant_id, gateway_code, display_name, is_enabled, is_test_mode, sort_order)
-			 VALUES ($1,$2,$3,TRUE,$4,$5)
+			 VALUES ($1,$2,$3,$4,$5,$6)
 			 ON CONFLICT (tenant_id, gateway_code) DO NOTHING`,
-			tenantID, g.code, g.name, g.testMode, g.sortOrder); err != nil {
+			tenantID, g.code, g.name, g.enabled, g.testMode, g.sortOrder); err != nil {
 			return err
 		}
 	}
@@ -619,3 +623,14 @@ func (s *Store) PaymentStats(ctx context.Context, tenantID uuid.UUID, dr DateRan
 // pgtypeText is a helper to convert a string to pgtype.Text for nullable columns.
 var _ = pgtype.Text{}
 var _ = time.Now
+
+// OrderTransactionExists reports whether an order already references the
+// given gateway transaction. Used to stop one hosted-gateway payment from
+// being redeemed for more than one order.
+func (s *Store) OrderTransactionExists(ctx context.Context, tenantID uuid.UUID, paymentMethod, transactionID string) (bool, error) {
+	var exists bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM orders WHERE tenant_id=$1 AND payment_method=$2 AND transaction_id=$3)`,
+		tenantID, paymentMethod, transactionID).Scan(&exists)
+	return exists, err
+}

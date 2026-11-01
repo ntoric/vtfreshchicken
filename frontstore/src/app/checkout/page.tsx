@@ -93,6 +93,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
   }, [deliveryArea, serviceArea]);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [autoPlace, setAutoPlace] = useState(false);
 
   // Pre-fill name/email from the logged-in customer profile
   useEffect(() => {
@@ -428,7 +429,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
     testTxsQ.refetch();
   }, [testTxsQ]);
 
-  function validateCheckout(): boolean {
+  function validateCheckout(skipPayment = false): boolean {
     setError("");
     // Delivery address doubles as the billing address
     if (!address.first_name || !address.last_name) return setError("Please enter your first and last name"), false;
@@ -444,6 +445,7 @@ export default function CheckoutPage({ params }: { params: {} }) {
       if (!address.line1) return setError("Delivery street address is required"), false;
     }
     if (!selectedMethod) return setError("Please select a payment method."), false;
+    if (skipPayment) return true;
     if (!paymentDetails) return setError("Please complete the payment details for the selected method."), false;
     return true;
   }
@@ -486,6 +488,21 @@ export default function CheckoutPage({ params }: { params: {} }) {
     };
     placeOrderMut.mutate(req);
   }, [address, isAuthenticated, selectedMethod, paymentDetails, currency, discountCode, notes, shippingMethod, hasShippableItems, shippingModuleOn, discountsModuleOn, splitShipping, itemShippingMethods, placeOrderMut, deliveryArea, deliveryLat, deliveryLng, areaServiceable, openPicker]);
+
+  // Hosted gateways (e.g. Cashfree) check the form before opening their popup,
+  // then ask us to place the order as soon as payment succeeds.
+  const validateBeforePayment = () => {
+    const ok = validateCheckout(true);
+    if (!ok) window.scrollTo({ top: 0, behavior: "smooth" });
+    return ok;
+  };
+  const handlePaymentComplete = useCallback(() => setAutoPlace(true), []);
+  useEffect(() => {
+    if (autoPlace && paymentDetails && !placeOrderMut.isPending) {
+      setAutoPlace(false);
+      handlePlaceOrder();
+    }
+  }, [autoPlace, paymentDetails, placeOrderMut.isPending, handlePlaceOrder]);
 
   if (bootstrapQ.isLoading) {
     return <CartSkeleton />;
@@ -984,6 +1001,14 @@ export default function CheckoutPage({ params }: { params: {} }) {
                   currencySymbol={currencyObj?.symbol || "$"}
                   onDetailsChange={setPaymentDetails}
                   isProcessing={placeOrderMut.isPending}
+                  currencyCode={currency}
+                  customer={{
+                    name: `${address.first_name} ${address.last_name}`.trim(),
+                    email: address.email,
+                    phone: address.phone,
+                  }}
+                  validateBeforePayment={validateBeforePayment}
+                  onPaymentComplete={handlePaymentComplete}
                 />
               </div>
             )}

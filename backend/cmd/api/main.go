@@ -168,6 +168,7 @@ func main() {
 	branchH := handlers.NewBranchHandler(store)
 	modulesH := handlers.NewModulesHandler(store)
 	landingH := handlers.NewLandingHandler(store)
+	shopBannersH := handlers.NewShopBannersHandler(store)
 	deliveryH := handlers.NewDeliveryHandler(store)
 
 	r := gin.New()
@@ -199,8 +200,10 @@ func main() {
 
 	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 
-	// Serve uploaded files statically
-	r.Static("/uploads", "/app/uploads")
+	// Serve uploaded files (immutable cache headers); /uploads/thumbs/* are
+	// compressed card-size thumbnails, generated on demand when missing.
+	r.GET("/uploads/*filepath", uploadH.ServeUploads)
+	r.HEAD("/uploads/*filepath", uploadH.ServeUploads)
 
 	// Store resolution middleware applied globally; it loads the single store's
 	// tenant record for every /api route (setup + platform auth are exempt).
@@ -365,6 +368,9 @@ func main() {
 			admin.GET("/settings/smtp", middleware.RequirePermission(store, "settings.manage"), emailH.GetSMTPSettings)
 			admin.PUT("/settings/smtp", middleware.RequirePermission(store, "settings.manage"), emailH.UpdateSMTPSettings)
 			admin.POST("/settings/smtp/test", middleware.RequirePermission(store, "settings.manage"), emailH.TestSMTPSettings)
+			// Shop page banner carousel
+			admin.GET("/settings/shop-banners", middleware.RequirePermission(store, "settings.manage"), shopBannersH.Get)
+			admin.PUT("/settings/shop-banners", middleware.RequirePermission(store, "settings.manage"), shopBannersH.Update)
 
 			// Notifications
 			admin.GET("/notifications/events", middleware.RequirePermission(store, "settings.manage"), notifH.ListEvents)

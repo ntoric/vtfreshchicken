@@ -224,6 +224,14 @@ func (h *StorefrontHandler) ListProducts(c *gin.Context) {
 		} else {
 			p.EffectivePrice = p.BasePrice
 		}
+		// Variant prices in the target currency too (matches GetProduct), so
+		// product cards can show per-size prices and add the right one.
+		for j := range p.Variants {
+			v := &p.Variants[j]
+			if vc, verr := h.currency.Convert(c.Request.Context(), v.Price, p.CurrencyCode, targetCur); verr == nil {
+				v.Price = vc
+			}
+		}
 		// offers (promotions module)
 		if promotionsOn {
 			offer, err := h.store.ActiveOfferForProduct(c.Request.Context(), tid, p.ID, p.CategoryID, queryBranchID(c))

@@ -27,6 +27,7 @@ func NewPaymentHandler(registry *payment.Registry, store *services.Store) *Payme
 // secret-looking keys are masked in admin API responses.
 var gatewayPublicConfigKeys = map[string][]string{
 	"razorpay": {"key_id"},
+	"cashfree": {"app_id"},
 	"paypal":   {"client_id"},
 }
 
@@ -137,6 +138,7 @@ type createOrderReq struct {
 	Receipt      string  `json:"receipt"`
 	CustomerName string  `json:"customer_name"`
 	CustomerEmail string `json:"customer_email"`
+	CustomerPhone string `json:"customer_phone"`
 }
 
 func (h *PaymentHandler) CreateOrder(c *gin.Context) {
@@ -184,6 +186,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		Receipt:       req.Receipt,
 		CustomerName:  req.CustomerName,
 		CustomerEmail: req.CustomerEmail,
+		CustomerPhone: req.CustomerPhone,
 		Config:        cfg,
 	})
 	if err != nil {

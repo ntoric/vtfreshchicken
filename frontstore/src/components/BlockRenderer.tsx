@@ -217,7 +217,7 @@ function FeaturedProductsBlock({ props: p, currency }: { props: any; currency?: 
   return (
     <div className="px-4 py-8">
       {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{p.title}</h2>}
-      <div className={`grid grid-cols-2 sm:grid-cols-${Math.min(p.columns || 4, 4)} gap-4 max-w-6xl mx-auto`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-${Math.min(p.columns || 4, 4)} gap-2.5 sm:gap-4 max-w-6xl mx-auto`}>
         {products.map((product) => (
           <ProductCard key={product.id} product={product} currency={currency} />
         ))}

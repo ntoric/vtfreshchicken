@@ -68,6 +68,8 @@ import type {
   StoreModule,
   LandingSettings,
   LandingVariant,
+  ShopBanner,
+  ShopBannersResponse,
   StorePage,
   StorePageRequest,
   ExportJob,
@@ -251,6 +253,19 @@ export const api = {
     req<StoreModule>(`/api/developer/modules/${code}`, {
       method: "PUT",
       body: JSON.stringify({ is_enabled: isEnabled }),
+    }),
+
+  // ---- Shop page banners (Content → Shop Banners) ----
+  getShopBanners: () => req<ShopBannersResponse>(`/api/settings/shop-banners`),
+  updateShopBanners: (banners: ShopBanner[]) =>
+    req<ShopBannersResponse>(`/api/settings/shop-banners`, {
+      method: "PUT",
+      body: JSON.stringify({ banners }),
+    }),
+  resetShopBanners: () =>
+    req<ShopBannersResponse>(`/api/settings/shop-banners`, {
+      method: "PUT",
+      body: JSON.stringify({ reset: true }),
     }),
 
   // ---- Landing page (superadmin, Developer → Landing Page) ----

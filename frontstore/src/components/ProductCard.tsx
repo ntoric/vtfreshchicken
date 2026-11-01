@@ -1,139 +1,230 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, ShoppingCart } from "lucide-react";
-import type { Product, Currency } from "@/types";
+import { Heart, Plus, Snowflake, Star, ThermometerSnowflake } from "lucide-react";
+import type { Product, Currency, Variant } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { useWishlist } from "@/lib/wishlist";
+import { useBootstrap } from "@/lib/bootstrap";
+import { thumbUrl } from "@/lib/images";
 
 interface ProductCardProps {
   product: Product;
   currency?: Currency;
 }
 
+const MAX_SIZE_CHIPS = 3;
+
+function attrValue(product: Product, slug: string): string | undefined {
+  const a = product.attributes?.find((x) => x.attribute_slug === slug);
+  return a?.option_label ?? a?.value_text ?? undefined;
+}
+
+function prettifySlug(slug: string) {
+  return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function ProductCard({ product, currency }: ProductCardProps) {
-  const price = product.discounted_price ?? product.effective_price ?? (product.base_price || product.variants?.[0]?.price) ?? 0;
-  const hasDiscount = product.discounted_price != null && (product.discount_pct ?? 0) > 0;
   const cart = useCart();
   const wishlist = useWishlist();
+  const bootstrap = useBootstrap();
   const isWishlisted = wishlist?.isInWishlist(product.id) ?? false;
-  const variantStock = product.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
-  const stock = product.stock || variantStock;
-  const outOfStock = stock <= 0;
+
+  const variants = useMemo(() => (product.variants ?? []).filter((v) => v.is_active !== false), [product.variants]);
+  const hasVariants = variants.length > 0;
+  // Default to the first size that is in stock.
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    () => (variants.find((v) => v.stock > 0) ?? variants[0])?.id
+  );
+  const selected: Variant | undefined = variants.find((v) => v.id === selectedId);
+
+  const discountPct = product.discounted_price != null ? product.discount_pct ?? 0 : 0;
+  const hasDiscount = discountPct > 0;
+  // Same pricing rule as the product page: a size's price, less any offer.
+  const listPrice = selected?.price ?? product.effective_price ?? (product.base_price || 0);
+  const price = hasDiscount
+    ? selected
+      ? selected.price * (1 - discountPct / 100)
+      : product.discounted_price ?? listPrice
+    : listPrice;
+
+  const totalStock = hasVariants ? variants.reduce((s, v) => s + (v.stock ?? 0), 0) : product.stock ?? 0;
+  const outOfStock = totalStock <= 0;
+  const stock = hasVariants ? selected?.stock ?? 0 : product.stock ?? 0;
+  const selectedOut = stock <= 0;
   const lowStock = stock > 0 && stock <= (product.low_stock_threshold ?? 5);
-  const displayImage = product.image_url || product.images?.[0]?.url || product.variants?.[0]?.image_url;
+
+  const image = selected?.image_url || product.image_url || product.images?.[0]?.url || variants[0]?.image_url;
+  const categoryName = product.category_slug
+    ? bootstrap?.categories?.find((c) => c.slug === product.category_slug)?.name ?? prettifySlug(product.category_slug)
+    : undefined;
+  const storage = attrValue(product, "storage");
+  const isFrozen = storage ? /frozen/i.test(storage) : false;
+  const isChilled = storage ? /chill/i.test(storage) : false;
+  const packSize = !hasVariants ? attrValue(product, "pack-size") : undefined;
+
+  const extraSizes = Math.max(0, variants.length - MAX_SIZE_CHIPS);
+  const href = `/products/${product.slug}`;
+
+  const badge = outOfStock
+    ? { label: "Sold out", cls: "bg-neutral-900 text-white" }
+    : hasDiscount
+      ? { label: `${Math.round(discountPct)}% off`, cls: "bg-brand text-white" }
+      : product.is_featured
+        ? { label: "Bestseller", cls: "bg-white text-neutral-900 ring-1 ring-neutral-200" }
+        : null;
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
-      className="group flex flex-col bg-white rounded-[1.35rem] ring-1 ring-stone-200/80 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_24px_48px_-20px_rgba(68,64,60,0.35)] hover:ring-stone-300"
-    >
-      <div className="relative aspect-[5/4] bg-[#f4efe6] overflow-hidden">
-        {displayImage ? (
+    <article className="group relative flex flex-col rounded-2xl bg-white border border-neutral-200 p-1.5 transition-all duration-200 hover:border-neutral-300 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)]">
+      {/* Image */}
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
+        {image ? (
           <Image
-            src={displayImage}
+            src={thumbUrl(image)}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.07]"
+            className={`object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] ${
+              outOfStock ? "grayscale opacity-70" : ""
+            }`}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-stone-400">No image</div>
+          <div className="flex items-center justify-center h-full text-sm text-neutral-400">No image</div>
         )}
 
-        {/* soft top veil */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/[0.06] via-transparent to-transparent pointer-events-none" />
-
-        {/* Badges */}
-        {hasDiscount && (
-          <span className="absolute top-3 left-3 bg-brand text-white text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm">
-            −{Math.round(product.discount_pct!)}%
-          </span>
-        )}
-        {product.is_featured && !hasDiscount && !outOfStock && (
-          <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-stone-800 text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-stone-200 shadow-sm">
-            Bestseller
-          </span>
-        )}
-        {outOfStock && (
-          <span className="absolute top-3 left-3 bg-stone-900/90 backdrop-blur-sm text-white text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
-            Sold out
-          </span>
-        )}
-        {lowStock && !outOfStock && (
-          <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-amber-700 text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-amber-200 shadow-sm">
-            Only {stock} left
+        {badge && (
+          <span
+            className={`absolute top-2 left-2 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm ${badge.cls}`}
+          >
+            {badge.label}
           </span>
         )}
 
-        {/* Wishlist heart */}
+        {(isFrozen || isChilled) && (
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-sm px-2 py-1 text-[11px] font-medium leading-none text-neutral-700">
+            {isFrozen ? (
+              <Snowflake className="w-3 h-3 text-sky-600" aria-hidden />
+            ) : (
+              <ThermometerSnowflake className="w-3 h-3 text-emerald-600" aria-hidden />
+            )}
+            {isFrozen ? "Frozen" : "Chilled"}
+          </span>
+        )}
+
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            wishlist?.toggleItem(product.id);
-          }}
-          className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm ring-1 ${
-            isWishlisted
-              ? "bg-rose-500 text-white ring-rose-500"
-              : "bg-white/85 backdrop-blur-sm text-stone-500 ring-stone-200/80 hover:text-rose-500 hover:scale-110"
-          }`}
+          type="button"
+          onClick={() => wishlist?.toggleItem(product.id)}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={isWishlisted}
+          className={`absolute top-2 right-2 z-10 grid place-items-center w-8 h-8 rounded-full shadow-sm transition-colors ${
+            isWishlisted ? "bg-rose-500 text-white" : "bg-white/90 backdrop-blur-sm text-neutral-500 hover:text-rose-500"
+          }`}
         >
-          <svg className="w-[18px] h-[18px]" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
-          </svg>
+          <Heart className="w-4 h-4" fill={isWishlisted ? "currentColor" : "none"} strokeWidth={1.8} />
         </button>
       </div>
 
-      <div className="flex flex-col flex-1 p-3.5 sm:p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] sm:text-[11px] text-stone-400 uppercase tracking-[0.16em] font-medium">
-            {product.category_slug || "General"}
-          </p>
+      {/* Body */}
+      <div className="flex flex-1 flex-col px-2 pt-2.5 pb-1.5">
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-neutral-500">
+          {categoryName && <span className="truncate">{categoryName}</span>}
           {product.rating > 0 && (
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-700">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              {product.rating.toFixed(1)}
-            </span>
+            <>
+              {categoryName && <span aria-hidden>·</span>}
+              <span className="inline-flex items-center gap-0.5 font-medium text-neutral-700 shrink-0">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" aria-hidden />
+                {product.rating.toFixed(1)}
+              </span>
+            </>
           )}
         </div>
 
-        <h3 className="font-display font-semibold text-[15px] sm:text-[17px] leading-snug text-stone-900 mt-1.5 line-clamp-2 group-hover:text-brand transition-colors">
-          {product.name}
+        <h3 className="mt-1 text-sm sm:text-[15px] font-semibold leading-snug text-neutral-900 line-clamp-2">
+          {/* Stretched link: the whole card navigates; controls sit above it. */}
+          <Link href={href} className="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none group-hover:text-brand transition-colors">
+            {product.name}
+          </Link>
         </h3>
 
-        <div className="mt-auto pt-3 flex items-center justify-between gap-2 border-t border-dashed border-stone-200">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="font-display text-lg sm:text-xl font-bold text-stone-900">
-              {formatPrice(price, currency)}
-            </span>
-            {hasDiscount && (
-              <span className="text-xs sm:text-sm text-stone-400 line-through">
-                {formatPrice(product.effective_price ?? product.base_price, currency)}
-              </span>
+        {hasVariants ? (
+          <div className="relative z-10 mt-2.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`${product.name} size`}>
+            {variants.slice(0, MAX_SIZE_CHIPS).map((v) => {
+              const active = v.id === selectedId;
+              const unavailable = v.stock <= 0;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={unavailable}
+                  onClick={() => setSelectedId(v.id)}
+                  className={`rounded-lg border px-2 py-1 text-[11px] sm:text-xs font-medium leading-none transition-colors ${
+                    active
+                      ? "border-neutral-900 bg-neutral-900 text-white"
+                      : unavailable
+                        ? "border-neutral-200 text-neutral-300 line-through cursor-not-allowed"
+                        : "border-neutral-200 text-neutral-700 hover:border-neutral-400"
+                  }`}
+                >
+                  {v.name}
+                </button>
+              );
+            })}
+            {extraSizes > 0 && (
+              <Link
+                href={href}
+                className="rounded-lg px-1.5 py-1 text-[11px] sm:text-xs font-medium leading-none text-neutral-500 hover:text-neutral-900"
+              >
+                +{extraSizes} more
+              </Link>
             )}
           </div>
+        ) : (
+          packSize && <p className="mt-2 text-xs text-neutral-500">{packSize} pack</p>
+        )}
+
+        <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            {hasDiscount && (
+              <p className="text-[11px] sm:text-xs text-neutral-400 line-through leading-none mb-1">
+                {formatPrice(listPrice, currency)}
+              </p>
+            )}
+            <p className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 leading-none">
+              {formatPrice(price, currency)}
+            </p>
+            {lowStock && !selectedOut && (
+              <p className="mt-1 text-[11px] font-medium text-amber-700 leading-none">Only {stock} left</p>
+            )}
+          </div>
+
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!outOfStock) cart?.addItem(product.id, undefined, 1, price, currency?.code);
+            type="button"
+            onClick={() => {
+              if (!selectedOut) cart?.addItem(product.id, selected?.id, 1, price, currency?.code);
             }}
-            disabled={outOfStock}
-            className={`rounded-full w-9 h-9 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
-              outOfStock
-                ? "bg-stone-100 text-stone-300 cursor-not-allowed"
-                : "bg-brand text-white hover:bg-brand-dark hover:scale-110 shadow-sm md:opacity-0 md:group-hover:opacity-100"
+            disabled={selectedOut}
+            aria-label={selectedOut ? "Sold out" : `Add ${product.name}${selected ? ` (${selected.name})` : ""} to cart`}
+            className={`relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full px-3 sm:px-3.5 h-9 text-xs sm:text-sm font-semibold transition-colors ${
+              selectedOut
+                ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                : "bg-brand text-white hover:bg-brand-dark"
             }`}
-            aria-label="Add to cart"
           >
-            <ShoppingCart className="w-4 h-4" strokeWidth={2} />
+            {selectedOut ? (
+              "Sold out"
+            ) : (
+              <>
+                <Plus className="w-4 h-4" strokeWidth={2.5} aria-hidden /> Add
+              </>
+            )}
           </button>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

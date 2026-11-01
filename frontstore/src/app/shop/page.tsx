@@ -10,6 +10,7 @@ import { Header } from "@/components/Header";
 import { ProductCard } from "@/components/ProductCard";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { OfferBanner } from "@/components/OfferBanner";
+import { ShopBannerCarousel } from "@/components/ShopBannerCarousel";
 import { StorefrontSkeleton, ProductGridSkeleton, ProductListSkeleton, Spinner } from "@/components/Loaders";
 import { ProductListItem } from "@/components/ProductListItem";
 import { ViewToggle, type ViewMode } from "@/components/ViewToggle";
@@ -85,6 +86,7 @@ function StorefrontContent() {
   const activeCategory = bootstrap?.categories?.find((c) => c.slug === category);
 
   const filterableAttrs = bootstrap?.attributes || [];
+  const shopBanners = (bootstrap?.settings?.shop_banners || []).filter((b) => b.enabled);
 
   // Flatten all loaded pages into a single product list (defensive against null items)
   const allProducts: Product[] = productsQ.data?.pages.flatMap((p) => p.items ?? []) ?? [];
@@ -131,7 +133,38 @@ function StorefrontContent() {
         setLang={setLang}
       />
 
-      {/* Hero */}
+      {shopBanners.length > 0 ? (
+        /* Banner carousel (Backoffice → Content → Shop Banners) */
+        <section className="border-b border-stone-200 bg-[#faf7f1]">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-5 sm:pb-7">
+            <ShopBannerCarousel banners={shopBanners} brandName={bootstrap.store_name} />
+            {activeCategory || (bootstrap.offers || []).length > 0 ? (
+              <div className="mt-5 sm:mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="min-w-0">
+                  {activeCategory ? (
+                    <>
+                      <h1 className="font-display text-3xl sm:text-4xl leading-tight tracking-tight text-stone-900">
+                        {activeCategory.name}
+                      </h1>
+                      {activeCategory.description && (
+                        <p className="text-sm sm:text-base text-stone-500 mt-1.5 max-w-xl">{activeCategory.description}</p>
+                      )}
+                    </>
+                  ) : (
+                    <h1 className="font-display text-2xl sm:text-3xl leading-tight tracking-tight text-stone-900">
+                      Fresh &amp; <em className="italic text-brand">Frozen</em> Chicken
+                    </h1>
+                  )}
+                </div>
+                <OfferBanner offers={bootstrap.offers || []} inline />
+              </div>
+            ) : (
+              <h1 className="sr-only">Fresh &amp; Frozen Chicken</h1>
+            )}
+          </div>
+        </section>
+      ) : (
+      /* Hero (fallback when no banners are enabled) */
       <section className="relative overflow-hidden border-b border-stone-200 bg-[#faf7f1]">
         {/* paper-grain noise texture */}
         <div
@@ -221,6 +254,7 @@ function StorefrontContent() {
           </div>
         </div>
       </section>
+      )}
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8">
         <div className="hidden lg:block">
@@ -276,7 +310,7 @@ function StorefrontContent() {
           ) : allProducts.length > 0 ? (
             <>
               {viewMode === "grid" ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
                   {allProducts.map((p) => (
                     <ProductCard key={p.id} product={p} currency={currencyObj} />
                   ))}

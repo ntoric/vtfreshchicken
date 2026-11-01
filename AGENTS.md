@@ -149,6 +149,7 @@ Tests: `cd backoffice && npm test`
 - Exports: `GET/POST /api/exports`, `GET /api/exports/types`, `GET /api/exports/estimate`, `GET /api/exports/:id`, `GET /api/exports/download/:id`
 - Uploads: `POST /api/upload/image`, `POST /api/upload/images`
 - SMTP: `GET/PUT /api/settings/smtp`, `POST /api/settings/smtp/test`
+- Shop banners: `GET/PUT /api/settings/shop-banners` (`settings.manage`) — see "Shop banner carousel" below
 
 ## Notes
 
@@ -281,6 +282,16 @@ Endpoints (`/api/delivery`, authed):
 - `PUT /orders/:id/assign {partner_id|""}` — assign/reassign/unassign (admin roles, `orders.update`)
 - `POST /orders/:id/claim` · `POST /orders/:id/start` · `POST /orders/:id/deliver` — partner actions
 
+## Cashfree payments
+
+Gateway `cashfree` (`backend/internal/payment/cashfree.go`, frontstore `components/payment/CashfreeGateway.tsx`). Seeded **disabled** (migration `0050_cashfree_gateway.sql`).
+
+- **Setup**: Backoffice → Developer → payment methods → Cashfree: set `app_id`, `secret_key`, optional `environment` (`sandbox`|`production`; inferred from a `TEST`-prefixed App ID when empty), then enable. Env fallbacks: `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`.
+- **Flow**: checkout validates the form → `POST /api/payment/cashfree/create-order` (needs `customer_phone`; returns `payment_session_id` + `mode`) → Cashfree JS SDK v3 popup (`_modal`) → on success the order is placed automatically with `payment_details.cashfree_order_id`. `ProcessPayment` calls `GET /pg/orders/{id}` and accepts only `PAID` orders whose amount/currency match the server-computed total; the transaction ID is the successful `cf_payment_id`.
+- Checkout rejects (409) a hosted-gateway transaction ID already used by another order (applies to Razorpay too).
+- With no credentials it runs in demo mode — only when `APP_ENV != production`; in production it fails closed.
+- Not yet implemented: webhooks (`notify_url`) and gateway-side refunds (admin refunds remain record-only, as for Razorpay).
+
 ## CI — Docker image publishing
 
 `.github/workflows/docker.yml` builds the `production` target of `backend/`, `frontstore/`, and `backoffice/` on every push to `main` (and via manual dispatch) and pushes to Docker Hub in parallel:
@@ -301,4 +312,5 @@ Endpoints (`/api/delivery`, authed):
 - Optional Caddy edge proxy (HTTPS + HTTP/2/3 + brotli/zstd): `docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile edge up -d` — needs DNS for `SITE_DOMAIN` + ports 80/443. A CDN (e.g. Cloudflare) in front is the bigger win since `_next/static` and optimized images are immutable/cacheable.
 - Homepage variants: `src/app/page.tsx` renders `<Suspense fallback={<LandingSkeleton/>}>` around `components/landing/HomeVariant.tsx` (async server component reading `settings.landing_variant`), which renders the client `LandingSwitch` — `classic` → `LandingHome.tsx` (default), `minimal` → `LandingMinimal.tsx`. The switch must stay a client component: `next/dynamic` from a server component does NOT split client components, so only `LandingSwitch` keeps the inactive design out of the bundle. Switched in Backoffice → Developer → Landing Page; takes effect within the 60s bootstrap revalidate window. Shared copy (steps, testimonials, FAQs, "known for" points) lives in `src/components/landing-content.ts`.
 - Minimal landing lazy loading: hero, promises, range and popular products render eagerly; everything below (how it works → closing CTA, `LandingMinimalMore.tsx`) is `next/dynamic({ ssr: false })` inside `landing/LazyMount` (IntersectionObserver, 600px margin) with `LandingMoreSkeleton` as placeholder — so it is absent from the server HTML (not crawlable) and its chunk loads only on scroll.
+- Shop banner carousel: `/shop` opens with `components/ShopBannerCarousel.tsx` (autoplay 6s, pauses on hover/focus/hidden tab, swipe, reduced-motion aware; only the current + next slide images load). Banners live in `tenant_settings.shop_banners` (JSONB, migration `0051`): NULL = never configured → backend serves `services.DefaultShopBanners()` (4 slides using `/brand/*.jpg`); `[]` or all hidden → the original hero renders. Exposed as `settings.shop_banners` in `/api/bootstrap`; edited in Backoffice → Content → Shop Banners (`/shop-banners`, live preview, upload/crop, reorder, `{"reset": true}` restores defaults); not writable via `PUT /api/settings`. Themes (`crimson|plum|forest|charcoal|saffron`) are validated in `services.ShopBannerThemes`; the palette is duplicated in the frontstore component and `backoffice/src/pages/ShopBanners.tsx` — keep them in sync. Links/images must be `/path` or http(s).
 - `frontstore/src/components/LandingPage.tsx` is currently unused; framer-motion ships via `Header.tsx` only, using `LazyMotion` + `m` (domAnimation feature bundle).

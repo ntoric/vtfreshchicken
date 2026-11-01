@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,7 +29,7 @@ func (h *LandingHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"landing_variant": v, "options": services.LandingVariants})
 }
 
-// Update sets the active variant. Body: {"landing_variant": "classic"|"minimal"}.
+// Update sets the active variant. Body: {"landing_variant": "classic"|"minimal"|"malayalam"}.
 func (h *LandingHandler) Update(c *gin.Context) {
 	var req struct {
 		LandingVariant string `json:"landing_variant" binding:"required"`
@@ -38,7 +39,7 @@ func (h *LandingHandler) Update(c *gin.Context) {
 		return
 	}
 	if !services.IsValidLandingVariant(req.LandingVariant) {
-		errResponse(c, http.StatusBadRequest, "landing_variant must be one of: classic, minimal")
+		errResponse(c, http.StatusBadRequest, "landing_variant must be one of: "+strings.Join(services.LandingVariants, ", "))
 		return
 	}
 	if err := h.store.SetLandingVariant(c.Request.Context(), tenantID(c), req.LandingVariant); err != nil {

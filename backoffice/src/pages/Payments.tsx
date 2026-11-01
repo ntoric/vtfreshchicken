@@ -192,6 +192,7 @@ function TransactionsTab({ tenant }: { tenant: string }) {
           <option value="card">Card</option>
           <option value="paypal">PayPal</option>
           <option value="razorpay">Razorpay</option>
+          <option value="cashfree">Cashfree</option>
           <option value="cod">COD</option>
         </select>
         <input

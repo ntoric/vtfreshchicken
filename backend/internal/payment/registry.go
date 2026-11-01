@@ -75,6 +75,7 @@ type CreateOrderRequest struct {
 	Receipt      string  // internal reference (cart ID etc.)
 	CustomerName string
 	CustomerEmail string
+	CustomerPhone string // required by some gateways (e.g. Cashfree)
 	Config       map[string]interface{} // resolved gateway config from the store (credentials etc.)
 }
 
@@ -84,6 +85,11 @@ type CreateOrderResult struct {
 	Amount         int64  `json:"amount"`           // amount in smallest unit (paise/cents)
 	Currency       string `json:"currency"`
 	KeyID          string `json:"key_id,omitempty"` // public key for frontend checkout
+	// PaymentSessionID is used by session-based checkouts (e.g. Cashfree).
+	PaymentSessionID string `json:"payment_session_id,omitempty"`
+	// Mode tells the frontend SDK which environment to use:
+	// "sandbox", "production", or "demo" (no credentials — simulate).
+	Mode string `json:"mode,omitempty"`
 }
 
 // Registry holds all registered payment gateways.

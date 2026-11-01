@@ -10,6 +10,24 @@ export interface Tenant {
 
 export type LandingVariant = "classic" | "minimal";
 
+export type ShopBannerTheme = "crimson" | "plum" | "forest" | "charcoal" | "saffron";
+
+export interface ShopBanner {
+  id: string;
+  enabled: boolean;
+  theme: ShopBannerTheme;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  badge_value: string;
+  badge_label: string;
+  image_url: string;
+  cta_text: string;
+  cta_link: string;
+  phone: string;
+  footer_note: string;
+}
+
 export interface TenantSettings {
   tenant_id: UUID;
   default_currency_id?: UUID;
@@ -21,6 +39,9 @@ export interface TenantSettings {
   landing_page_content?: LandingPageContent;
   // Homepage design, set by superadmin under Backoffice → Developer → Landing Page.
   landing_variant?: LandingVariant;
+  // Shop page banner carousel, managed in Backoffice → Content → Shop Banners.
+  // Built-in defaults when never configured; [] = show the plain hero.
+  shop_banners?: ShopBanner[];
   anonymous_checkout?: boolean;
   returns_enabled?: boolean;
   return_period_days?: number;
@@ -745,6 +766,7 @@ export interface PaymentDetails {
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
   razorpay_signature?: string;
+  cashfree_order_id?: string;
 }
 
 export interface PaymentGatewayInfo {

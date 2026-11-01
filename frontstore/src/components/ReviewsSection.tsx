@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchReviews } from "@/lib/api";
 import { InlineLoader } from "@/components/Loaders";
 import type { Review } from "@/types";
+import { thumbUrl } from "@/lib/images";
 
 function StarRow({ rating, size = "w-4 h-4" }: { rating: number; size?: string }) {
   return (
@@ -68,7 +69,7 @@ function ReviewCard({ review }: { review: Review }) {
               rel="noopener noreferrer"
               className="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition"
             >
-              <img src={img.url} alt={img.alt || "Review photo"} className="w-full h-full object-cover" />
+              <img src={thumbUrl(img.url)} alt={img.alt || "Review photo"} loading="lazy" className="w-full h-full object-cover" />
             </a>
           ))}
         </div>

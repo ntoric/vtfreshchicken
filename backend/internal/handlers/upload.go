@@ -89,12 +89,16 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 
 	// Return the public URL path — served by the static file server at /uploads/
 	url := "/uploads/" + filename
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"url":      url,
 		"filename": filename,
 		"size":     file.Size,
 		"type":     contentType,
-	})
+	}
+	if thumb := h.makeThumbnail(filename); thumb != "" {
+		resp["thumbnail_url"] = thumb
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // UploadImages handles multiple-file image upload.
@@ -159,12 +163,16 @@ func (h *UploadHandler) UploadImages(c *gin.Context) {
 			continue
 		}
 
-		results = append(results, gin.H{
+		res := gin.H{
 			"url":      "/uploads/" + filename,
 			"filename": filename,
 			"size":     file.Size,
 			"type":     contentType,
-		})
+		}
+		if thumb := h.makeThumbnail(filename); thumb != "" {
+			res["thumbnail_url"] = thumb
+		}
+		results = append(results, res)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

@@ -31,6 +31,7 @@ import { formatPrice, getCurrencySymbol } from "@/lib/format";
 import { useCurrencyLang } from "@/lib/currency-lang";
 import { useToast } from "@/components/Toast";
 import type { Currency, Order, Address, PurchasedProduct } from "@/types";
+import { thumbUrl } from "@/lib/images";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: LucideIcon }> = {
   paid: { label: "Paid", color: "#059669", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle },
@@ -385,7 +386,7 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
                       className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition"
                     >
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                        <img src={thumbUrl(p.image_url)} alt={p.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                           <Package className="w-6 h-6 text-slate-300" />
@@ -456,7 +457,7 @@ export default function AccountDashboardPage({ params }: { params: {} }) {
                       className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition"
                     >
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                        <img src={thumbUrl(p.image_url)} alt={p.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                           <Package className="w-6 h-6 text-slate-300" />

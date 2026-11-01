@@ -10,12 +10,13 @@ import (
 
 // Storefront homepage designs, selectable under Backoffice → Developer.
 const (
-	LandingVariantClassic = "classic"
-	LandingVariantMinimal = "minimal"
+	LandingVariantClassic   = "classic"
+	LandingVariantMinimal   = "minimal"
+	LandingVariantMalayalam = "malayalam"
 )
 
 // LandingVariants lists every selectable homepage design, in display order.
-var LandingVariants = []string{LandingVariantClassic, LandingVariantMinimal}
+var LandingVariants = []string{LandingVariantClassic, LandingVariantMinimal, LandingVariantMalayalam}
 
 // ErrInvalidLandingVariant is returned for an unknown variant code.
 var ErrInvalidLandingVariant = errors.New("invalid landing variant")

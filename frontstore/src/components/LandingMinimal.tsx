@@ -3,10 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { ArrowRight, Drumstick, ShieldCheck, Sprout, ThermometerSnowflake, Truck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ShieldCheck, Sprout, ThermometerSnowflake, Truck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
-import { BrandLogo } from "@/components/BrandLogo";
 import { OfferBanner } from "@/components/OfferBanner";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGridSkeleton } from "@/components/Loaders";
@@ -16,6 +15,8 @@ import { fetchProducts } from "@/lib/api";
 import { getCurrencySymbol } from "@/lib/format";
 import styles from "./LandingMinimal.module.css";
 import { LazyMount } from "./landing/LazyMount";
+import { HeroBanner } from "./landing/HeroBanner";
+import { LandingFooter } from "./landing/LandingFooter";
 import { LandingMoreSkeleton } from "./landing/LandingSkeleton";
 
 // Lower sections live in their own chunk: not in the initial JS or HTML.
@@ -31,7 +32,6 @@ const LandingMinimalMore = dynamic(() => import("./LandingMinimalMore").then((m)
  */
 
 const SHOP = "/shop";
-const HERO_IMG = "/brand/chicken-table.jpg";
 const PICKS_COUNT = 8;
 
 const promises = [
@@ -42,9 +42,9 @@ const promises = [
 ];
 
 const range = [
-  { title: "Fresh chicken", copy: "Chilled cuts for tonight", href: "/shop?search=fresh", img: "/brand/range-fresh.jpg", alt: "Whole fresh chicken with lemon and herbs" },
-  { title: "Frozen", copy: "Freezer staples, ready when you are", href: "/shop?search=frozen", img: "/brand/range-frozen.jpg", alt: "Crispy breaded chicken pieces" },
-  { title: "Everyday cuts", copy: "Breasts, wings, drumsticks & more", href: "/shop?search=chicken", img: "/brand/range-everyday.jpg", alt: "Fresh raw chicken portions on a board" },
+  { title: "Fresh chicken", tag: "Chilled · Cut daily", copy: "Chilled cuts for tonight", href: "/shop?search=fresh", img: "/brand/range-fresh.jpg", alt: "Whole fresh chicken with lemon and herbs" },
+  { title: "Frozen", tag: "Freezer ready", copy: "Freezer staples, ready when you are", href: "/shop?search=frozen", img: "/brand/range-frozen.jpg", alt: "Crispy breaded chicken pieces" },
+  { title: "Everyday cuts", tag: "Kitchen staples", copy: "Breasts, wings, drumsticks & more", href: "/shop?search=chicken", img: "/brand/range-everyday.jpg", alt: "Fresh raw chicken portions on a board" },
 ];
 
 export function LandingMinimal() {
@@ -54,7 +54,6 @@ export function LandingMinimal() {
   const offers = bootstrap?.offers || [];
   const currencyObj = getCurrencySymbol(bootstrap?.currencies || [], currency);
   const topCategories = (bootstrap?.categories || []).filter((c) => !c.parent_id && c.is_active).slice(0, 6);
-  const year = new Date().getFullYear();
 
   const picksQ = useQuery({
     queryKey: ["landing-picks", currency, lang],
@@ -75,55 +74,12 @@ export function LandingMinimal() {
       )}
 
       <main id="main-content" tabIndex={-1}>
-        {/* Hero */}
-        <section className="max-w-6xl mx-auto px-4 lg:px-8 pt-10 sm:pt-14 lg:pt-20 pb-12 sm:pb-16">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-brand">{storeName}</p>
-              <h1 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-tight text-neutral-900 leading-[1.08]">
-                Fresh chicken,
-                <br />
-                delivered simply.
-              </h1>
-              <p className="mt-5 text-base sm:text-lg text-neutral-500 max-w-md leading-relaxed">
-                Clean cuts, kept cold all the way to your door. Order in a few taps.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href={SHOP}
-                  className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand-dark transition-colors"
-                >
-                  Shop now <ArrowRight className="w-4 h-4" aria-hidden />
-                </Link>
-                <Link
-                  href="/about"
-                  className="inline-flex items-center rounded-full border border-neutral-200 px-6 py-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
-                >
-                  About us
-                </Link>
-              </div>
-              {offers.length > 0 && (
-                <div className="mt-8">
-                  <OfferBanner offers={offers} inline />
-                </div>
-              )}
-            </div>
-
-            <div className="relative aspect-[4/3] lg:aspect-[5/4] rounded-3xl overflow-hidden bg-neutral-100">
-              <span className="absolute inset-0 grid place-items-center text-neutral-300" aria-hidden>
-                <Drumstick className="w-14 h-14" />
-              </span>
-              <Image
-                src={HERO_IMG}
-                alt="Grilled chicken served with vegetables and lemon"
-                fill
-                priority
-                sizes="(min-width: 1024px) 560px, 100vw"
-                className="object-cover"
-              />
-            </div>
+        <HeroBanner storeName={storeName} />
+        {offers.length > 0 && (
+          <div className="max-w-6xl mx-auto px-4 lg:px-8 pt-6">
+            <OfferBanner offers={offers} inline />
           </div>
-        </section>
+        )}
 
         {/* Promises */}
         <section className="border-y border-neutral-100 bg-neutral-50/60">
@@ -142,47 +98,122 @@ export function LandingMinimal() {
           </ul>
         </section>
 
-        {/* Range */}
-        <section className="max-w-6xl mx-auto px-4 lg:px-8 py-14 sm:py-20">
-          <SectionHeading title="Shop the range" href={SHOP} linkLabel="View all" />
-          <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2.5 sm:gap-5">
-            {range.map((r) => (
-              <Link key={r.title} href={r.href} className="group block">
-                <div className="relative aspect-square sm:aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden bg-neutral-100">
+        {/* Range — editorial bento: one featured tile + two stacked */}
+        <section aria-labelledby="range-heading" className="max-w-6xl mx-auto px-4 lg:px-8 py-16 sm:py-24">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+            <div className="max-w-xl">
+              <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                <span className="h-px w-8 bg-brand/60" aria-hidden />
+                The range
+              </p>
+              <h2
+                id="range-heading"
+                className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900"
+              >
+                Shop the range
+              </h2>
+              <p className="mt-3 text-sm sm:text-base text-neutral-500 leading-relaxed">
+                Hand-cut, hygienically packed and kept cold — choose how you like to cook.
+              </p>
+            </div>
+            <Link
+              href={SHOP}
+              className="group inline-flex items-center gap-2 self-start sm:self-auto text-sm font-medium text-neutral-900"
+            >
+              <span className="border-b border-neutral-300 pb-0.5 transition-colors group-hover:border-brand group-hover:text-brand">
+                View all products
+              </span>
+              <span className="grid place-items-center w-8 h-8 rounded-full border border-neutral-200 transition-all group-hover:border-brand group-hover:bg-brand group-hover:text-white">
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+              </span>
+            </Link>
+          </div>
+
+          <div className="mt-10 sm:mt-12 grid grid-cols-2 lg:grid-cols-12 lg:grid-rows-2 gap-3 sm:gap-5 lg:h-[560px]">
+            {range.map((r, i) => {
+              const featured = i === 0;
+              return (
+                <Link
+                  key={r.title}
+                  href={r.href}
+                  className={`group relative isolate overflow-hidden rounded-2xl sm:rounded-[1.75rem] bg-neutral-900 ${
+                    featured
+                      ? "col-span-2 aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:col-span-7 lg:row-span-2"
+                      : "aspect-[4/5] sm:aspect-[4/3] lg:aspect-auto lg:col-span-5"
+                  }`}
+                >
                   <Image
                     src={r.img}
                     alt={r.alt}
                     fill
-                    sizes="(min-width: 1152px) 360px, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    sizes={featured ? "(min-width: 1152px) 640px, 100vw" : "(min-width: 1152px) 460px, 50vw"}
+                    className="-z-10 object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
                   />
-                </div>
-                <div className="mt-2 sm:mt-3 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm sm:text-base font-semibold text-neutral-900">{r.title}</p>
-                    <p className="hidden sm:block text-sm text-neutral-500">{r.copy}</p>
-                  </div>
-                  <ArrowRight
-                    className="hidden sm:block w-4 h-4 shrink-0 text-neutral-400 transition-all group-hover:text-brand group-hover:translate-x-0.5"
+                  <div
+                    className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/20 to-transparent"
                     aria-hidden
                   />
-                </div>
-              </Link>
-            ))}
+                  <div className="absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/10" aria-hidden />
+
+                  <span className="absolute top-3 left-3 sm:top-5 sm:left-5 rounded-full bg-white/15 backdrop-blur-md px-2.5 py-1 text-[10px] sm:text-[11px] font-semibold tracking-[0.18em] text-white tabular-nums">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8 flex items-end justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+                        {r.tag}
+                      </p>
+                      <h3
+                        className={`mt-1.5 font-semibold tracking-tight leading-tight text-white ${
+                          featured ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
+                        }`}
+                      >
+                        {r.title}
+                      </h3>
+                      <p
+                        className={`mt-1.5 text-sm text-white/75 ${featured ? "block max-w-sm" : "hidden sm:block"}`}
+                      >
+                        {r.copy}
+                      </p>
+                    </div>
+                    <span
+                      className="hidden sm:grid place-items-center shrink-0 w-11 h-11 rounded-full bg-white text-neutral-900 shadow-lg transition-all duration-300 group-hover:bg-brand group-hover:text-white group-hover:-rotate-45"
+                      aria-hidden
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           {topCategories.length > 0 && (
-            <div className="mt-10 flex flex-wrap gap-2">
-              {topCategories.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/shop?category=${c.slug}`}
-                  className="rounded-full border border-neutral-200 px-4 py-1.5 text-sm text-neutral-700 hover:border-brand hover:text-brand transition-colors"
-                >
-                  {c.name}
-                </Link>
-              ))}
-            </div>
+            <nav
+              aria-label="Shop by category"
+              className="mt-10 sm:mt-12 pt-8 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
+            >
+              <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                Browse by category
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {topCategories.map((c) => (
+                  <li key={c.id}>
+                    <Link
+                      href={`/shop?category=${c.slug}`}
+                      className="group inline-flex items-center gap-1.5 rounded-full bg-neutral-50 border border-neutral-200/70 px-4 py-2 text-sm text-neutral-700 transition-colors hover:bg-white hover:border-neutral-900 hover:text-neutral-900"
+                    >
+                      {c.name}
+                      <ArrowUpRight
+                        className="w-3.5 h-3.5 text-neutral-400 transition-all group-hover:text-brand group-hover:translate-x-px group-hover:-translate-y-px"
+                        aria-hidden
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           )}
         </section>
 
@@ -194,7 +225,7 @@ export function LandingMinimal() {
               {picksQ.isLoading ? (
                 <ProductGridSkeleton count={PICKS_COUNT} />
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
                   {picks.map((p) => (
                     <ProductCard key={p.id} product={p} currency={currencyObj} />
                   ))}
@@ -210,26 +241,7 @@ export function LandingMinimal() {
         </LazyMount>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-100">
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <BrandLogo storeName={storeName} compact />
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-500">
-            <Link href={SHOP} className="hover:text-neutral-900 transition-colors">Shop</Link>
-            <Link href="/about" className="hover:text-neutral-900 transition-colors">About</Link>
-            <Link href="/contact" className="hover:text-neutral-900 transition-colors">Contact</Link>
-            <Link href="/orders" className="hover:text-neutral-900 transition-colors">Orders</Link>
-            <Link href="/privacy-policy" className="hover:text-neutral-900 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-neutral-900 transition-colors">Terms</Link>
-            <Link href="/cookie-policy" className="hover:text-neutral-900 transition-colors">Cookies</Link>
-          </nav>
-        </div>
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 pb-8">
-          <p className="text-xs text-neutral-400">
-            © {year} {storeName}. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <LandingFooter bootstrap={bootstrap} storeName={storeName} shopHref={SHOP} signature={false} />
     </div>
   );
 }

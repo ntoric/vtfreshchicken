@@ -346,11 +346,13 @@ export interface GatewayOrderResult {
   amount: number;
   currency: string;
   key_id?: string;
+  payment_session_id?: string;
+  mode?: "sandbox" | "production" | "demo";
 }
 
 export async function createGatewayOrder(
   gatewayId: string,
-  data: { amount: number; currency?: string; receipt?: string; customer_name?: string; customer_email?: string }
+  data: { amount: number; currency?: string; receipt?: string; customer_name?: string; customer_email?: string; customer_phone?: string }
 ): Promise<GatewayOrderResult> {
   return fetchJson<GatewayOrderResult>(`${API}/payment/${gatewayId}/create-order`, {
     method: "POST",

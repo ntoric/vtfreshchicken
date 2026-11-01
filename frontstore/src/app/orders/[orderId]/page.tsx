@@ -39,6 +39,7 @@ import type { OrderResponse, OrderReturn, CreateReturnRequest, OrderReturnEligib
 import { RETURN_STATUS_LABELS, RETURN_TYPE_LABELS, REFUND_METHOD_LABELS } from "@/types";
 import { useCurrencyLang } from "@/lib/currency-lang";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { thumbUrl } from "@/lib/images";
 
 const ORDER_CTX_KEY = "tc_order_response";
 
@@ -511,7 +512,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
                     <div key={item.id} className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={thumbUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
                         )}
@@ -827,7 +828,7 @@ function OrderDetailsContent({ orderId }: { orderId: string }) {
                             />
                             {item.image_url && (
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                                <Image src={item.image_url} alt={item.name} fill sizes="40px" className="object-cover" />
+                                <Image src={thumbUrl(item.image_url)} alt={item.name} fill sizes="40px" className="object-cover" />
                               </div>
                             )}
                             <div className="flex-1 min-w-0">

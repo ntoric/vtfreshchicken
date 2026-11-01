@@ -810,6 +810,7 @@ function TransactionsReport() {
           ] },
           { key: "gateway", label: "Gateway", options: [
             { value: "razorpay", label: "Razorpay" },
+            { value: "cashfree", label: "Cashfree" },
             { value: "stripe", label: "Stripe" },
             { value: "mock", label: "Mock" },
             { value: "wallet", label: "Wallet" },

@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Star, ImagePlus, Trash2, Loader2 } from "lucide-react";
 import { createReview, uploadReviewImages, type UploadedImage } from "@/lib/api";
+import { thumbUrl } from "@/lib/images";
 
 /** Minimal product shape needed to submit a review — PurchasedProduct and
  * OrderItem both satisfy it. */
@@ -92,7 +93,7 @@ export function ReviewFormModal({ product, brandColor, onClose, onSuccess }: Rev
         <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white rounded-t-2xl z-10">
           <div className="flex items-center gap-3 min-w-0">
             {product.image_url && (
-              <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+              <img src={thumbUrl(product.image_url)} alt={product.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
             )}
             <div className="min-w-0">
               <h2 className="font-bold text-slate-900 text-sm truncate">Write a Review</h2>

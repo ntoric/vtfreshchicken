@@ -12,6 +12,7 @@ import { useWishlist } from "@/lib/wishlist";
 import { useCart } from "@/lib/cart";
 import { formatPrice, getCurrencySymbol } from "@/lib/format";
 import { useCurrencyLang } from "@/lib/currency-lang";
+import { thumbUrl } from "@/lib/images";
 
 export default function WishlistPage({ params }: { params: {} }) {
   const { currency, setCurrency, lang, setLang } = useCurrencyLang();
@@ -82,7 +83,7 @@ export default function WishlistPage({ params }: { params: {} }) {
               <div key={item.id} className="bg-white rounded-2xl border overflow-hidden group flex flex-col">
                 <Link href={`/products/${item.slug}`} className="relative aspect-square bg-gray-100 block overflow-hidden">
                   {item.image_url ? (
-                    <Image src={item.image_url} alt={item.product_name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <Image src={thumbUrl(item.image_url)} alt={item.product_name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400 text-xs">No image</div>
                   )}
